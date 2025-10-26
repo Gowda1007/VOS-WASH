@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { AnalyticsData, Invoice } from '../types';
 import { filterAndGroupInvoicesForChart } from '../services/analyticsService';
-import { Card, PageHeader, Badge, Icon } from './Common';
+import { Card, Badge, Icon } from './Common';
 import { calculateInvoiceTotal, calculateStatus } from '../hooks/useInvoices';
 import { CUSTOMER_TYPE_LABELS } from '../constants';
 
@@ -132,10 +132,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ analytics, recentI
     }, [analytics.revenueByCustomerType, isDarkMode]);
 
     return (
-        <div>
-            <PageHeader title="Dashboard" subtitle="Welcome back! Here's your business overview." />
+        <div className="space-y-8">
+            <p className="text-slate-500 dark:text-slate-400">Welcome back! Here's your business overview.</p>
             
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
                 <KpiCard title="Total Revenue" value={`₹${analytics.totalRevenue.toLocaleString('en-IN')}`} icon="chart-pie" color="text-green-600 dark:text-green-400" />
                 <KpiCard title="Collected" value={`₹${analytics.totalPayments.toLocaleString('en-IN')}`} icon="banknotes" color="text-blue-600 dark:text-blue-400" />
                 <KpiCard title="Unpaid Balance" value={`₹${analytics.unpaidBalance.toLocaleString('en-IN')}`} icon="document-text" color="text-red-600 dark:text-red-400" />
@@ -171,7 +171,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ analytics, recentI
                     </Card>
                 </div>
             </div>
-             <Card className="mt-8">
+             <Card>
                 <div className="p-6">
                     <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">Recent Invoices</h3>
                 </div>

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import type { Invoice, InvoiceStatus } from '../types';
-import { PageHeader, Card, Badge, Button, Icon, EmptyState } from './Common';
+import { Card, Badge, Button, Icon, EmptyState } from './Common';
 import { calculateInvoiceTotal, calculateStatus, calculateRemainingBalance, calculateTotalPaid } from '../hooks/useInvoices';
 import { exportToCSV } from '../services/exportService';
 import { useToast } from '../hooks/useToast';
@@ -84,26 +84,31 @@ export const InvoiceListPage: React.FC<InvoiceListPageProps> = ({ invoices, onDe
   };
 
   return (
-    <div>
-      <PageHeader title="Invoices" subtitle={`You have ${invoices.length} total invoices.`}>
-          <Button onClick={handleExport} variant="secondary">
-              <Icon name="document-duplicate" className="w-5 h-5" />
-              Export CSV
-          </Button>
-      </PageHeader>
-      
+    <div className="space-y-6">
+       <p className="text-slate-500 dark:text-slate-400">{`You have ${invoices.length} total invoices.`}</p>
+
       <Card>
-        <div className="p-4 flex flex-col md:flex-row gap-4 border-b border-slate-200 dark:border-slate-700">
-            <input
-              type="search"
-              placeholder="Search by name, phone, or invoice #"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full md:flex-1 px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
-            />
-            <div className="flex flex-col sm:flex-row gap-2">
-                <input type="date" value={dateRange.start} onChange={e => setDateRange(p => ({...p, start: e.target.value}))} className="px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" />
-                <input type="date" value={dateRange.end} onChange={e => setDateRange(p => ({...p, end: e.target.value}))} className="px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" />
+        <div className="p-4 flex flex-col md:flex-row gap-4 border-b border-slate-200 dark:border-slate-700 items-start">
+            <div className="flex-grow w-full">
+                <input
+                  type="search"
+                  placeholder="Search by name, phone, or invoice #"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
+                />
+            </div>
+            <div className="w-full md:w-auto">
+                 <Button onClick={handleExport} variant="secondary" className="w-full">
+                    <Icon name="document-duplicate" className="w-5 h-5" />
+                    Export CSV
+                </Button>
+            </div>
+        </div>
+        <div className="p-4 flex flex-col sm:flex-row gap-4 border-b border-slate-200 dark:border-slate-700">
+             <div className="flex flex-col sm:flex-row gap-2 flex-grow">
+                <input type="date" value={dateRange.start} onChange={e => setDateRange(p => ({...p, start: e.target.value}))} className="px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 w-full" />
+                <input type="date" value={dateRange.end} onChange={e => setDateRange(p => ({...p, end: e.target.value}))} className="px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 w-full" />
             </div>
             <div className="flex items-center gap-2 flex-wrap">
                 {(['all', 'unpaid', 'partially_paid', 'paid'] as FilterStatus[]).map(status => (

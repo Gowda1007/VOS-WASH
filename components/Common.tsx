@@ -12,6 +12,7 @@ export const Logo: React.FC<{ className?: string }> = ({ className = 'w-12 h-12'
 // This example assumes you have SVG paths for the icons.
 export const Icon: React.FC<{ name: string, className?: string }> = ({ name, className = 'w-6 h-6' }) => {
     const icons: Record<string, string> = {
+        'bars-3': 'M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5',
         'chart-pie': 'M10.5 6a7.5 7.5 0 100 15 7.5 7.5 0 000-15zM2.25 10.5a8.25 8.25 0 1114.59 5.28l4.69-4.69a.75.75 0 10-1.06-1.06l-4.69 4.69A8.25 8.25 0 012.25 10.5z',
         'document-text': 'M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z',
         'users': 'M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m-7.5-2.226c-3.42-.776-6.22-3.64-6.22-7.22 0-4.14 3.36-7.5 7.5-7.5s7.5 3.36 7.5 7.5c0 3.58-2.8 6.444-6.22 7.226m-2.16-1.148a4.5 4.5 0 00-5.46 0m5.46 0a4.5 4.5 0 01-5.46 0m5.46 0a4.5 4.5 0 015.46 0',
@@ -53,18 +54,6 @@ export const Icon: React.FC<{ name: string, className?: string }> = ({ name, cla
 export const Card: React.FC<{ children: React.ReactNode, className?: string }> = ({ children, className }) => (
     <div className={`bg-white dark:bg-slate-800 rounded-lg shadow-md border border-slate-200 dark:border-slate-700 ${className}`}>
         {children}
-    </div>
-);
-
-// --- PageHeader Component ---
-// For consistent page titles and subtitles.
-export const PageHeader: React.FC<{ title: string, subtitle?: string, children?: React.ReactNode }> = ({ title, subtitle, children }) => (
-    <div className="flex flex-col md:flex-row justify-between md:items-center mb-6">
-        <div>
-            <h2 className="text-3xl font-bold text-slate-800 dark:text-slate-100">{title}</h2>
-            {subtitle && <p className="mt-1 text-slate-500 dark:text-slate-400">{subtitle}</p>}
-        </div>
-        {children && <div className="mt-4 md:mt-0 flex items-center gap-2">{children}</div>}
     </div>
 );
 

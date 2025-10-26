@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import type { Invoice, Payment } from '../types';
-import { PageHeader, Card, Icon, Badge } from './Common';
+import { Card, Icon, Badge } from './Common';
 import { calculateInvoiceTotal, calculateTotalPaid } from '../hooks/useInvoices';
 
 interface DayBookPageProps {
@@ -59,10 +59,9 @@ export const DayBookPage: React.FC<DayBookPageProps> = ({ invoices, onPreviewInv
     }, [selectedDate, invoices]);
 
     return (
-        <div>
-            <PageHeader title="Day Book" subtitle="View a financial summary for any day." />
-            
-            <div className="mb-6">
+        <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                 <p className="text-slate-500 dark:text-slate-400">View a financial summary for any day.</p>
                  <input 
                     type="date" 
                     value={selectedDate} 
@@ -71,7 +70,7 @@ export const DayBookPage: React.FC<DayBookPageProps> = ({ invoices, onPreviewInv
                 />
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <StatCard title="Total Revenue" value={`₹${dayBookData.stats.revenue.toLocaleString('en-IN')}`} />
                 <StatCard title="Total Collections" value={`₹${dayBookData.stats.collections.toLocaleString('en-IN')}`} />
                 <StatCard title="New Invoices" value={dayBookData.stats.newInvoices} />

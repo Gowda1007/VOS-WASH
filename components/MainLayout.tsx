@@ -7,6 +7,7 @@ import { useAuth } from '../hooks/useAuth';
 interface MainLayoutProps {
     children: React.ReactNode;
     currentView: View;
+    pageTitle: string;
     onNavigate: (view: View) => void;
     onNewInvoice: () => void;
 }
@@ -22,119 +23,96 @@ const navItems: { view: View; label: string; icon: React.ComponentProps<typeof I
     { view: 'settings', label: 'Settings', icon: 'cog-6-tooth' },
 ];
 
-export const MainLayout: React.FC<MainLayoutProps> = ({ children, currentView, onNavigate, onNewInvoice }) => {
-    const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+export const MainLayout: React.FC<MainLayoutProps> = ({ children, currentView, pageTitle, onNavigate, onNewInvoice }) => {
+    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+    const drawerRef = useRef<HTMLDivElement>(null);
 
-    // --- Mobile Nav Items ---
-    const mainMobileNav: View[] = ['dashboard', 'invoices', 'customers'];
-    const mainNavItems = navItems.filter(item => mainMobileNav.includes(item.view));
-    const moreNavItems = navItems.filter(item => !mainMobileNav.includes(item.view));
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (drawerRef.current && !drawerRef.current.contains(event.target as Node)) {
+                setIsDrawerOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
-    return (
-        <>
-            <div className="flex h-screen bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200">
-                {/* Sidebar for Desktop */}
-                <aside className="hidden md:flex w-64 flex-col bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700">
-                    <div className="flex items-center justify-center h-20 border-b border-slate-200 dark:border-slate-700">
-                        <div className="flex items-center space-x-2">
-                            <Logo className="w-12 h-12 text-blue-700 dark:text-blue-400" />
-                            <h1 className="text-xl font-bold text-blue-700 dark:text-blue-400">VOS WASH Pro</h1>
-                        </div>
-                    </div>
-                    <nav className="flex-1 px-4 py-4 space-y-2">
-                        {navItems.map(item => (
-                            <NavItem
-                                key={item.view}
-                                {...item}
-                                isActive={currentView === item.view}
-                                onClick={() => onNavigate(item.view)}
-                            />
-                        ))}
-                    </nav>
-                    <div className="px-4 py-4 space-y-4">
-                        <UserMenu />
-                        <button
-                            onClick={onNewInvoice}
-                            className="w-full flex items-center justify-center gap-2 bg-indigo-600 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:bg-indigo-700 transition"
-                        >
-                            <Icon name="plus-circle" className="w-6 h-6" />
-                            New Invoice
-                        </button>
-                    </div>
-                </aside>
-
-                {/* Main Content */}
-                <div className="flex-1 flex flex-col overflow-hidden">
-                    <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-100 dark:bg-slate-900 p-4 md:p-8 pb-24 md:pb-8">
-                        {children}
-                    </main>
-                </div>
-
-                {/* Bottom Nav for Mobile */}
-                <footer className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 flex justify-around z-30">
-                    {mainNavItems.map(item => (
-                        <BottomNavItem
-                            key={item.view}
-                            {...item}
-                            isActive={currentView === item.view}
-                            onClick={() => onNavigate(item.view)}
-                        />
-                    ))}
-                    <BottomNavItem
-                        label="More"
-                        icon="ellipsis-vertical"
-                        isActive={isMoreMenuOpen}
-                        onClick={() => setIsMoreMenuOpen(true)}
-                    />
-                </footer>
-
-                {/* FAB for New Invoice on Mobile */}
-                <div className="md:hidden fixed bottom-20 right-5 z-20">
-                    <button
-                        onClick={onNewInvoice}
-                        className="w-16 h-16 flex items-center justify-center bg-indigo-600 text-white rounded-full shadow-xl hover:bg-indigo-700 transition transform hover:scale-105"
-                        aria-label="New Invoice"
-                    >
-                        <Icon name="plus" className="w-8 h-8" />
-                    </button>
+    const handleNavItemClick = (view: View) => {
+        onNavigate(view);
+        setIsDrawerOpen(false);
+    };
+    
+    const SidebarContent = () => (
+         <div className="flex flex-col h-full bg-white dark:bg-slate-800">
+            <div className="flex items-center justify-center h-20 border-b border-slate-200 dark:border-slate-700">
+                <div className="flex items-center space-x-2">
+                    <Logo className="w-10 h-10 text-blue-700 dark:text-blue-400" />
+                    <h1 className="text-xl font-bold text-blue-700 dark:text-blue-400">VOS WASH Pro</h1>
                 </div>
             </div>
+            <nav className="flex-1 px-4 py-4 space-y-2">
+                {navItems.map(item => (
+                    <NavItem
+                        key={item.view}
+                        {...item}
+                        isActive={currentView === item.view}
+                        onClick={() => handleNavItemClick(item.view)}
+                    />
+                ))}
+            </nav>
+            <div className="px-4 py-4 space-y-4">
+                <UserMenu />
+                <Button fullWidth onClick={onNewInvoice}>
+                    <Icon name="plus-circle" className="w-6 h-6" />
+                    New Invoice
+                </Button>
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="flex h-screen bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200">
+            {/* --- Desktop Sidebar --- */}
+            <aside className="hidden lg:block w-64 flex-shrink-0 border-r border-slate-200 dark:border-slate-700">
+                <SidebarContent />
+            </aside>
             
-            {/* "More" menu panel for mobile */}
-            {isMoreMenuOpen && (
-                <div className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-40" onClick={() => setIsMoreMenuOpen(false)}>
-                    <div 
-                        className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-2xl p-4 pb-6 shadow-lg animate-slide-up"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                         <div className="mx-auto w-12 h-1.5 flex-shrink-0 rounded-full bg-slate-300 dark:bg-slate-600 mb-4"></div>
-                        <div className="grid grid-cols-4 gap-2 mb-4">
-                            {moreNavItems.map(item => (
-                                <BottomNavItem
-                                    key={item.view}
-                                    {...item}
-                                    isActive={currentView === item.view}
-                                    onClick={() => {
-                                        onNavigate(item.view);
-                                        setIsMoreMenuOpen(false);
-                                    }}
-                                />
-                            ))}
-                        </div>
-                        <div className="px-2">
-                             <UserMenu />
-                        </div>
-                    </div>
-                </div>
-            )}
-            <style>{`
-                @keyframes slide-up {
-                    from { transform: translateY(100%); }
-                    to { transform: translateY(0); }
-                }
-                .animate-slide-up { animation: slide-up 0.3s ease-out; }
-            `}</style>
-        </>
+            {/* --- Mobile Drawer --- */}
+            <div 
+                ref={drawerRef}
+                className={`fixed top-0 left-0 h-full w-64 z-50 transform transition-transform duration-300 ease-in-out lg:hidden ${isDrawerOpen ? 'translate-x-0' : '-translate-x-full'}`}
+            >
+                <SidebarContent />
+            </div>
+            {isDrawerOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setIsDrawerOpen(false)}></div>}
+
+            {/* --- Main Content Area --- */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+                {/* --- Top Header for Mobile/Tablet --- */}
+                <header className="lg:hidden flex items-center justify-between h-16 px-4 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex-shrink-0">
+                    <button onClick={() => setIsDrawerOpen(true)} className="p-2 -ml-2">
+                        <Icon name="bars-3" className="w-6 h-6" />
+                    </button>
+                    <h1 className="text-lg font-semibold">{pageTitle}</h1>
+                    <div className="w-6"></div> {/* Spacer */}
+                </header>
+                
+                <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-8 pb-24 lg:pb-8">
+                    {children}
+                </main>
+            </div>
+            
+            {/* --- FAB for New Invoice on Mobile --- */}
+            <div className="lg:hidden fixed bottom-6 right-6 z-30">
+                <button
+                    onClick={onNewInvoice}
+                    className="w-16 h-16 flex items-center justify-center bg-indigo-600 text-white rounded-full shadow-xl hover:bg-indigo-700 transition transform hover:scale-105"
+                    aria-label="New Invoice"
+                >
+                    <Icon name="plus" className="w-8 h-8" />
+                </button>
+            </div>
+        </div>
     );
 };
 
@@ -153,19 +131,6 @@ const NavItem: React.FC<{ label: string; icon: any; isActive: boolean; onClick: 
     </a>
 );
 
-const BottomNavItem: React.FC<{ label: string; icon: any; isActive: boolean; onClick: () => void }> = ({ label, icon, isActive, onClick }) => (
-     <a
-        href="#"
-        onClick={(e) => { e.preventDefault(); onClick(); }}
-        className={`flex flex-col items-center justify-center w-full pt-3 pb-2 transition text-center rounded-lg ${
-            isActive ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
-        }`}
-    >
-        <Icon name={icon} className="w-6 h-6 mb-1" />
-        <span className="text-xs font-medium">{label}</span>
-    </a>
-);
-
 const UserMenu: React.FC = () => {
     const { theme, setTheme } = useTheme();
     const { logout } = useAuth();
@@ -178,7 +143,6 @@ const UserMenu: React.FC = () => {
         { name: 'System', value: 'system', icon: 'computer-desktop' },
     ] as const;
 
-    // Close dropdown on click outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -228,3 +192,16 @@ const UserMenu: React.FC = () => {
         </div>
     );
 };
+
+const Button: React.FC<{ 
+    onClick?: () => void;
+    children: React.ReactNode;
+    fullWidth?: boolean;
+}> = ({ onClick, children, fullWidth }) => (
+    <button
+        onClick={onClick}
+        className={`flex items-center justify-center gap-2 bg-indigo-600 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:bg-indigo-700 transition ${fullWidth ? 'w-full' : ''}`}
+    >
+        {children}
+    </button>
+);

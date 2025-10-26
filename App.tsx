@@ -28,6 +28,19 @@ import { useOrders } from './hooks/useOrders';
 import { useAppSettings } from './hooks/useAppSettings';
 import { calculateAnalytics } from './services/analyticsService';
 
+const viewTitles: Record<View, string> = {
+    dashboard: 'Dashboard',
+    invoices: 'Invoices',
+    customers: 'Customers',
+    settings: 'Settings',
+    reports: 'Financial Reports',
+    'new-invoice': 'New Invoice',
+    products: 'Product Management',
+    orders: 'Order Management',
+    'customer-detail': 'Customer Details',
+    'day-book': 'Day Book',
+};
+
 const App: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const { user, loading: authLoading } = useAuth();
@@ -72,20 +85,17 @@ const App: React.FC = () => {
         setPreviewInvoice(invoice);
     };
 
-    const handleSaveInvoice = (invoiceData: Omit<Invoice, 'id' | 'invoiceNumber' | 'invoiceDate' | 'payments'>, initialPayment?: { amount: number, method: PaymentMethod }) => {
+    const handleSaveInvoice = (invoiceData: Omit<Invoice, 'id' | 'invoiceNumber' | 'invoiceDate'>) => {
         addOrUpdateCustomer({
             phone: invoiceData.customerPhone,
             name: invoiceData.customerName,
             address: invoiceData.customerAddress
         });
-
-        const finalPayments = initialPayment && initialPayment.amount > 0 ? [{ ...initialPayment, date: new Date().toLocaleDateString("en-IN") }] : [];
         
         const newInvoice: Omit<Invoice, 'id'> = {
             ...invoiceData,
             invoiceNumber: generateInvoiceNumber(invoices),
             invoiceDate: new Date().toLocaleDateString("en-IN"),
-            payments: finalPayments,
         };
         
         addInvoice(newInvoice);
@@ -93,6 +103,7 @@ const App: React.FC = () => {
         setInvoiceToEdit(null);
         setView('invoices');
     };
+
 
     const handleDeleteRequest = (invoiceId: number) => {
         const invoice = invoices.find(inv => inv.id === invoiceId);
@@ -148,6 +159,9 @@ const App: React.FC = () => {
                     setView('customers');
                     return null;
                 }
+                const customerTitle = selectedCustomer ? `${selectedCustomer.name}` : 'Customer Details';
+                viewTitles['customer-detail'] = customerTitle;
+
                 return <CustomerDetailPage 
                     customer={selectedCustomer} 
                     invoices={invoices.filter(i => i.customerPhone === selectedCustomer.phone)}
@@ -200,7 +214,12 @@ const App: React.FC = () => {
     
     return (
         <>
-            <MainLayout currentView={view} onNavigate={handleNavigate} onNewInvoice={handleStartNewInvoice}>
+            <MainLayout 
+                currentView={view} 
+                onNavigate={handleNavigate} 
+                onNewInvoice={handleStartNewInvoice}
+                pageTitle={viewTitles[view] || 'VOS WASH Pro'}
+            >
                 {renderAdminContent()}
             </MainLayout>
             <ConfirmationModal state={confirmModalState} setState={setConfirmModalState} />

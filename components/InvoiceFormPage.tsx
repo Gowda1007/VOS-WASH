@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import type { Invoice, CustomerType, Service, Customer, ServiceSets, ManageableService, PaymentMethod } from '../types';
-import { PageHeader, Card, Button, Icon } from './Common';
+import { Card, Button, Icon } from './Common';
 import { InvoicePreview } from './InvoicePreview';
 import { CUSTOMER_TYPE_LABELS } from '../constants';
 import { downloadPDF } from '../services/pdfService';
 import { useToast } from '../hooks/useToast';
 
 interface InvoiceFormPageProps {
-    onSave: (invoiceData: Omit<Invoice, 'id' | 'invoiceNumber' | 'invoiceDate' | 'payments'>, initialPayment?: { amount: number, method: PaymentMethod }) => void;
+    onSave: (invoiceData: Omit<Invoice, 'id' | 'invoiceNumber' | 'invoiceDate'>) => void;
     existingInvoice: Invoice | null; // Note: editing is not fully re-implemented in this classic view
     customers: Customer[];
     serviceSets: ServiceSets;
@@ -87,19 +87,7 @@ export const InvoiceFormPage: React.FC<InvoiceFormPageProps> = ({ onSave, custom
     const handleFinalSave = () => {
         if (!previewData) return;
         
-        const invoiceDataToSave: Omit<Invoice, 'id' | 'invoiceNumber' | 'invoiceDate' | 'payments'> = {
-            customerName: previewData.customerName,
-            customerPhone: previewData.customerPhone,
-            customerAddress: previewData.customerAddress,
-            customerType: previewData.customerType,
-            services: previewData.services,
-            oldBalance: previewData.oldBalance,
-            advancePaid: previewData.advancePaid,
-        };
-        
-        const initialPayment = previewData.payments.length > 0 ? previewData.payments[0] : undefined;
-
-        onSave(invoiceDataToSave, initialPayment);
+        onSave(previewData);
     };
     
     const handleDownload = async () => {
@@ -109,8 +97,8 @@ export const InvoiceFormPage: React.FC<InvoiceFormPageProps> = ({ onSave, custom
     };
 
     return (
-        <div>
-            <PageHeader title="Create New Invoice" subtitle="Fill out the details below to generate an invoice." />
+        <div className="space-y-6">
+            <p className="text-slate-500 dark:text-slate-400">Fill out the details below to generate an invoice.</p>
 
             <Card className="p-6 md:p-8">
                 {/* Customer Details */}

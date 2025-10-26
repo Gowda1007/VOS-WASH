@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import type { Customer, Invoice } from '../types';
-import { PageHeader, Card, Button, Icon, EmptyState } from './Common';
+import { Card, Button, Icon, EmptyState } from './Common';
 import { calculateInvoiceTotal } from '../hooks/useInvoices';
 import { exportToCSV } from '../services/exportService';
 import { useToast } from '../hooks/useToast';
@@ -57,26 +57,26 @@ export const CustomerListPage: React.FC<CustomerListPageProps> = ({ customers, i
     const hasSearchResults = filteredCustomers.length > 0;
 
     return (
-        <div>
-            <PageHeader
-                title="Customers"
-                subtitle={`You have ${customers.length} unique customers.`}
-            >
-                 <Button onClick={handleExport} variant="secondary">
-                    <Icon name="document-duplicate" className="w-5 h-5" />
-                    Export CSV
-                </Button>
-            </PageHeader>
+        <div className="space-y-6">
+            <p className="text-slate-500 dark:text-slate-400">{`You have ${customers.length} unique customers.`}</p>
 
             <Card>
-                <div className="p-4 border-b border-slate-200 dark:border-slate-700">
-                    <input
-                        type="search"
-                        placeholder="Search by name or phone..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full md:w-1/3 px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
-                    />
+                <div className="p-4 flex flex-col md:flex-row gap-4 border-b border-slate-200 dark:border-slate-700 items-start">
+                     <div className="flex-grow w-full">
+                        <input
+                            type="search"
+                            placeholder="Search by name or phone..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
+                        />
+                    </div>
+                     <div className="w-full md:w-auto">
+                        <Button onClick={handleExport} variant="secondary" className="w-full">
+                            <Icon name="document-duplicate" className="w-5 h-5" />
+                            Export CSV
+                        </Button>
+                    </div>
                 </div>
                 
                 {/* Mobile Card View */}

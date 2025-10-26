@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { Order, OrderStatus, ShippingDetails, Customer } from '../types';
-import { PageHeader, Card, Button, Icon, Modal, Badge, EmptyState } from './Common';
+import { Card, Button, Icon, Modal, Badge, EmptyState } from './Common';
 
 interface OrderManagementPageProps {
   orders: Order[];
@@ -27,8 +27,8 @@ export const OrderManagementPage: React.FC<OrderManagementPageProps> = ({ orders
     };
 
     return (
-        <div>
-            <PageHeader title="Order Management" subtitle={`There are ${orders.length} total orders.`} />
+        <div className="space-y-6">
+            <p className="text-slate-500 dark:text-slate-400">{`There are ${orders.length} total orders.`}</p>
 
             <Card>
                 <div className="overflow-x-auto">

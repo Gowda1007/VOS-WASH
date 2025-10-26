@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { Product } from '../types';
-import { PageHeader, Card, Button, Icon, Modal } from './Common';
+import { Card, Button, Icon, Modal } from './Common';
 import { useToast } from '../hooks/useToast';
 
 interface ProductManagementPageProps {
@@ -41,13 +41,14 @@ export const ProductManagementPage: React.FC<ProductManagementPageProps> = ({ pr
     }
 
     return (
-        <div>
-            <PageHeader title="Product Management" subtitle="Add, edit, and remove products.">
+        <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <p className="text-slate-500 dark:text-slate-400">Add, edit, and remove products for the customer shop.</p>
                 <Button onClick={() => handleOpenModal(null)}>
                     <Icon name="plus" className="w-5 h-5"/>
                     Add Product
                 </Button>
-            </PageHeader>
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {products.map(product => (

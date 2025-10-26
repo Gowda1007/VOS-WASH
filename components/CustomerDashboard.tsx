@@ -2,7 +2,8 @@ import React, { useMemo, useState } from 'react';
 import type { Customer, Invoice, Product, Order, OrderStatus, AppSettings } from '../types';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
-import { PageHeader, Card, Badge, Button, Icon, Modal } from './Common';
+// fix: Removed unused 'PageHeader' import as it is not exported from './Common'.
+import { Card, Badge, Button, Icon, Modal } from './Common';
 import { InvoicePreview } from './InvoicePreview';
 import { calculateInvoiceTotal, calculateStatus } from '../hooks/useInvoices';
 

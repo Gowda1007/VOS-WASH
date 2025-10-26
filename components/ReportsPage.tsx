@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import type { Invoice } from '../types';
-import { PageHeader, Card, Button, Icon } from './Common';
+import { Card, Button, Icon } from './Common';
 import { calculateInvoiceTotal, calculateTotalPaid } from '../hooks/useInvoices';
 import { downloadPDF } from '../services/pdfService';
 import { useToast } from '../hooks/useToast';
@@ -145,12 +145,9 @@ export const ReportsPage: React.FC<{ invoices: Invoice[] }> = ({ invoices }) => 
     };
 
     return (
-        <div>
-            <PageHeader title="Financial Reports" subtitle="Analyze your revenue and collections.">
-                <Button onClick={handleDownload}><Icon name="document-duplicate" className="w-5 h-5" /> Download PDF</Button>
-            </PageHeader>
-
-            <div className="mb-6">
+        <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                <p className="text-slate-500 dark:text-slate-400">Analyze your revenue and collections.</p>
                 <div className="flex gap-2">
                     {(['this_month', 'last_month', 'this_year'] as ReportPeriod[]).map(p => (
                         <button key={p} onClick={() => setPeriod(p)} className={`px-4 py-2 text-sm font-semibold rounded-lg capitalize transition ${period === p ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-700'}`}>{p.replace('_', ' ')}</button>
@@ -159,6 +156,9 @@ export const ReportsPage: React.FC<{ invoices: Invoice[] }> = ({ invoices }) => 
             </div>
             
             <div id="report-content-wrapper">
+                 <div className="text-right mb-4">
+                    <Button onClick={handleDownload} variant="secondary"><Icon name="document-duplicate" className="w-5 h-5" /> Download PDF</Button>
+                </div>
                 <div id="report-content" className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-lg">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                         <StatCard title="Total Revenue" value={`₹${filteredData.stats.totalRevenue.toLocaleString()}`} />

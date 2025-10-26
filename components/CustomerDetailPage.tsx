@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import type { Customer, Invoice, Order, OrderStatus, InvoiceStatus } from '../types';
-import { PageHeader, Card, Button, Icon, Badge } from './Common';
+import { Card, Button, Icon, Badge } from './Common';
 import { calculateInvoiceTotal, calculateStatus } from '../hooks/useInvoices';
 
 interface CustomerDetailPageProps {
@@ -34,17 +34,19 @@ export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({ customer
     }, [invoices, orders]);
 
     return (
-        <div>
-            <PageHeader title={customer.name} subtitle={customer.phone}>
+        <div className="space-y-6">
+            <div className="flex justify-between items-start">
+                 <div>
+                    <p className="text-slate-500 dark:text-slate-400">{customer.phone}</p>
+                    <p className="text-slate-600 dark:text-slate-400 max-w-2xl">{customer.address}</p>
+                </div>
                 <Button onClick={onNavigateBack} variant="secondary">
                     <Icon name="arrow-left" className="w-5 h-5"/>
                     Back to Customers
                 </Button>
-            </PageHeader>
+            </div>
             
-            <p className="text-slate-600 dark:text-slate-400 mb-6 max-w-2xl">{customer.address}</p>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <KpiCard title="Total Spent" value={stats.totalSpent} />
                 <KpiCard title="Total Invoices" value={stats.totalInvoices} />
                 <KpiCard title="Total Orders" value={stats.totalOrders} />

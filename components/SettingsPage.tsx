@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import type { ServiceSets, CustomerType, ManageableService, AppSettings } from '../types';
-import { PageHeader, Card, Button, Icon } from './Common';
-import { useAuth } from '../hooks/useAuth';
+import { Card, Button, Icon } from './Common';
 import { useToast } from '../hooks/useToast';
 import { CUSTOMER_TYPE_LABELS } from '../constants';
 
@@ -47,16 +46,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ serviceSets: initial
   };
 
   return (
-    <div>
-      <PageHeader
-        title="Settings"
-        subtitle="Customize services, app settings, and manage your account."
-      >
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <p className="text-slate-500 dark:text-slate-400">Customize services, app settings, and manage your account.</p>
         <Button onClick={handleSaveChanges}>
             <Icon name="document-duplicate" className="w-5 h-5"/>
             Save All Changes
         </Button>
-      </PageHeader>
+      </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div>
@@ -121,7 +118,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ serviceSets: initial
                <Card className="p-4 md:p-6">
                    <h4 className="text-lg font-semibold mb-2">Account</h4>
                     <p className="text-sm text-slate-500 dark:text-slate-400">
-                    You can logout from the 'Options' menu in the sidebar.
+                    You can logout from the 'Options' menu in the navigation drawer.
                  </p>
               </Card>
            </div>
