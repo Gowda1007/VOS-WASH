@@ -1,0 +1,5 @@
+{
+  "name": "VOS WASH Pro",
+  "description": "A secure, professional-grade application for VOS WASH featuring a modern, mobile-first design with automatic dark mode. Includes a login system, invoice generation, customer management, customizable services, and an analytics dashboard.",
+  "requestFramePermissions": []
+}

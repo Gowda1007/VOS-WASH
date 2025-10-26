@@ -1,0 +1,29 @@
+import type { ServiceSets } from './types';
+
+export const INVOICE_STORAGE_KEY = 'vosWashInvoices_v2';
+export const CUSTOMERS_STORAGE_KEY = 'vosWashCustomers_v2';
+export const SERVICES_STORAGE_KEY = 'vosWashServices_v2';
+
+export const DEFAULT_SERVICE_SETS: ServiceSets = {
+    garage: [
+        { name: "Interior & Exterior", price: 250 },
+        { name: "Fiber Shine", price: 200 },
+        { name: "Bright Wash", price: 180 },
+        { name: "Gold and Silver", price: 80 },
+        { name: "Spray Gun", price: 50 },
+    ],
+    dealer: [
+        { name: "Interior & Exterior", price: 200 },
+        { name: "Fiber Shine", price: 140 },
+        { name: "Bright Wash", price: 130 },
+        { name: "Gold and Silver", price: 50 },
+        { name: "Spray Gun", price: 50 },
+    ],
+    customer: [
+        { name: "Interior & Exterior", price: 250 },
+        { name: "Fiber Shine", price: 250 },
+        { name: "Bright Wash", price: 200 },
+        { name: "Gold and Silver", price: 90 },
+        { name: "Spray Gun", price: 50 },
+    ],
+};
