@@ -4,14 +4,19 @@ import { useAuth } from '../hooks/useAuth';
 export const LoginPage: React.FC = () => {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
-    const { login } = useAuth();
+    const { adminLogin } = useAuth();
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        const success = login(password);
+        const success = adminLogin(password);
         if (!success) {
             setError('Invalid password. Please try again.');
         }
+    };
+    
+    const goBack = () => {
+        localStorage.removeItem('selectedRole');
+        window.location.reload();
     };
 
     return (
@@ -56,6 +61,9 @@ export const LoginPage: React.FC = () => {
                             </button>
                         </div>
                     </form>
+                    <div className="mt-4 text-center">
+                        <button onClick={goBack} className="text-sm text-slate-500 hover:text-indigo-600">Not an Admin?</button>
+                    </div>
                 </div>
             </div>
         </div>

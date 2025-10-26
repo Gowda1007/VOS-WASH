@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { AnalyticsData, Invoice } from '../types';
 import { filterAndGroupInvoicesForChart } from '../services/analyticsService';
-import { useInvoices } from '../hooks/useInvoices';
 import { Card, PageHeader, Badge, Icon } from './Common';
+import { calculateInvoiceTotal, calculateStatus } from '../hooks/useInvoices';
 
 declare global {
     interface Window { Chart: any; }
@@ -29,7 +29,6 @@ export const DashboardPage: React.FC<{ analytics: AnalyticsData, recentInvoices:
     const barChartInstanceRef = useRef<any>(null);
     const pieChartRef = useRef<HTMLCanvasElement>(null);
     const pieChartInstanceRef = useRef<any>(null);
-    const { invoices } = useInvoices();
     const [chartPeriod, setChartPeriod] = useState<ChartPeriod>('month');
     const [isDarkMode, setIsDarkMode] = useState(false);
 
@@ -48,7 +47,7 @@ export const DashboardPage: React.FC<{ analytics: AnalyticsData, recentInvoices:
         if (!ctx) return;
         if (barChartInstanceRef.current) barChartInstanceRef.current.destroy();
 
-        const data = filterAndGroupInvoicesForChart(chartPeriod, invoices);
+        const data = filterAndGroupInvoicesForChart(chartPeriod, recentInvoices);
         const chartColors = {
             grid: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
             ticks: isDarkMode ? '#cbd5e1' : '#64748b',
@@ -85,7 +84,7 @@ export const DashboardPage: React.FC<{ analytics: AnalyticsData, recentInvoices:
             }
         });
         return () => barChartInstanceRef.current?.destroy();
-    }, [chartPeriod, invoices, isDarkMode]);
+    }, [chartPeriod, recentInvoices, isDarkMode]);
 
     // Pie Chart Effect
      useEffect(() => {
@@ -131,9 +130,9 @@ export const DashboardPage: React.FC<{ analytics: AnalyticsData, recentInvoices:
             
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-8">
                 <KpiCard title="Total Revenue" value={`₹${analytics.totalRevenue.toLocaleString('en-IN')}`} icon="chart-pie" color="text-green-600 dark:text-green-400" />
-                <KpiCard title="Total Invoices" value={analytics.totalInvoices} icon="document-text" color="text-blue-600 dark:text-blue-400" />
+                <KpiCard title="Collected" value={`₹${analytics.totalPayments.toLocaleString('en-IN')}`} icon="banknotes" color="text-blue-600 dark:text-blue-400" />
                 <KpiCard title="Unpaid Balance" value={`₹${analytics.unpaidBalance.toLocaleString('en-IN')}`} icon="document-text" color="text-red-600 dark:text-red-400" />
-                <KpiCard title="Avg. Invoice" value={analytics.totalInvoices > 0 ? `₹${(analytics.totalRevenue / analytics.totalInvoices).toFixed(0)}` : '₹0'} icon="chart-pie" color="text-slate-600 dark:text-slate-400" />
+                <KpiCard title="Total Invoices" value={analytics.totalInvoices} icon="document-duplicate" color="text-slate-600 dark:text-slate-400" />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -180,17 +179,22 @@ export const DashboardPage: React.FC<{ analytics: AnalyticsData, recentInvoices:
 };
 
 
-const InvoiceListItem: React.FC<{ invoice: Invoice }> = ({ invoice }) => (
-    <li className="px-6 py-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50">
-        <div>
-            <p className="font-semibold text-indigo-600 dark:text-indigo-400">{invoice.customerName}</p>
-            <p className="text-sm text-slate-500 dark:text-slate-400">#{invoice.invoiceNumber} &bull; {invoice.invoiceDate}</p>
-        </div>
-        <div className="text-right">
-             <p className="font-bold text-slate-800 dark:text-slate-100">₹{invoice.totals.total.toLocaleString('en-IN')}</p>
-            {invoice.status === 'paid' && <Badge color="green">Paid</Badge>}
-            {invoice.status === 'partially_paid' && <Badge color="amber">Partial</Badge>}
-            {invoice.status === 'unpaid' && <Badge color="red">Unpaid</Badge>}
-        </div>
-    </li>
-);
+const InvoiceListItem: React.FC<{ invoice: Invoice }> = ({ invoice }) => {
+    const totalAmount = calculateInvoiceTotal(invoice.services);
+    const status = calculateStatus(invoice);
+    
+    return (
+        <li className="px-6 py-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50">
+            <div>
+                <p className="font-semibold text-indigo-600 dark:text-indigo-400">{invoice.customerName}</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">#{invoice.invoiceNumber} &bull; {invoice.invoiceDate}</p>
+            </div>
+            <div className="text-right">
+                 <p className="font-bold text-slate-800 dark:text-slate-100">₹{totalAmount.toLocaleString('en-IN')}</p>
+                {status === 'paid' && <Badge color="green">Paid</Badge>}
+                {status === 'partially_paid' && <Badge color="amber">Partial</Badge>}
+                {status === 'unpaid' && <Badge color="red">Unpaid</Badge>}
+            </div>
+        </li>
+    );
+}

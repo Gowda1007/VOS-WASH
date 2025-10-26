@@ -54,21 +54,23 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ serviceSets: initial
 
       <Card>
         <div className="border-b border-slate-200 dark:border-slate-700">
-          <nav className="-mb-px flex space-x-6 px-6" aria-label="Tabs">
-            {(['customer', 'garage', 'dealer'] as CustomerType[]).map(tab => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition capitalize ${
-                  activeTab === tab
-                    ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
-                    : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-500'
-                }`}
-              >
-                {tab} Services
-              </button>
-            ))}
-          </nav>
+           <div className="overflow-x-auto">
+              <nav className="flex space-x-6 px-6" aria-label="Tabs">
+                {(['customer', 'garage', 'dealer'] as CustomerType[]).map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`flex-shrink-0 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition capitalize ${
+                      activeTab === tab
+                        ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
+                        : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-500'
+                    }`}
+                  >
+                    {tab} Services
+                  </button>
+                ))}
+              </nav>
+          </div>
         </div>
 
         <div className="p-4 md:p-6">
@@ -119,7 +121,7 @@ const ServiceRow: React.FC<ServiceRowProps> = ({ service, onChange, onDelete }) 
     />
     <input
       type="number"
-      value={service.price}
+      value={service.price || ''}
       onChange={e => onChange('price', parseFloat(e.target.value) || 0)}
       className="w-full sm:w-32 px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
       placeholder="Price"

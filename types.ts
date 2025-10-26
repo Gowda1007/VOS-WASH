@@ -2,27 +2,25 @@ export type CustomerType = 'customer' | 'garage' | 'dealer';
 
 export type InvoiceStatus = 'paid' | 'partially_paid' | 'unpaid';
 
-export type View = 'dashboard' | 'invoices' | 'customers' | 'settings' | 'new-invoice';
+export type View = 'dashboard' | 'invoices' | 'customers' | 'settings' | 'reports' | 'new-invoice';
+
+export type PaymentMethod = 'upi' | 'cash';
+
+export interface User {
+  role: 'admin' | 'customer';
+  phone?: string; // For customer identification
+}
+
+export interface Payment {
+  amount: number;
+  date: string;
+  method: PaymentMethod;
+}
 
 export interface Service {
   name: string;
   price: number;
   quantity: number;
-  total: number;
-}
-
-export interface Financials {
-  oldBalance: { amount: number; date: string; included: boolean };
-  advancePaid: { amount: number; date: string; included: boolean };
-  nowPaid: { amount: number; included: boolean };
-}
-
-export interface Totals {
-  subtotal: number;
-  tax: number;
-  discount: number;
-  total: number;
-  remainingBalance: number;
 }
 
 export interface Invoice {
@@ -34,9 +32,7 @@ export interface Invoice {
   customerAddress: string;
   customerType: CustomerType;
   services: Service[];
-  financials: Financials;
-  totals: Totals;
-  status: InvoiceStatus;
+  payments: Payment[];
 }
 
 export interface Customer {
@@ -52,15 +48,11 @@ export interface ManageableService {
 
 export type ServiceSets = Record<CustomerType, ManageableService[]>;
 
-
 export interface AnalyticsData {
     totalInvoices: number;
     totalRevenue: number;
     unpaidBalance: number;
     totalPayments: number;
-    // FIX: Add missing properties for detailed analytics.
-    totalOldBalance: number;
-    totalAdvancePaid: number;
     topServices: [string, number][];
     revenueByCustomerType: { customer: number; garage: number; dealer: number };
 }

@@ -1,48 +1,58 @@
-import { useCallback } from 'react';
-import type { Invoice, InvoiceStatus } from '../types';
-import { INVOICE_STORAGE_KEY } from '../constants';
 import { useLocalStorage } from './useLocalStorage';
+import type { Invoice, InvoiceStatus, Service, Payment } from '../types';
+import { INVOICE_STORAGE_KEY } from '../constants';
 
-const calculateStatus = (invoice: Invoice): InvoiceStatus => {
-    if (invoice.totals.remainingBalance <= 0) {
+export const calculateInvoiceTotal = (services: Service[]): number => {
+    const subtotal = services.reduce((sum, s) => sum + (s.price * s.quantity), 0);
+    // As per original logic, tax and discount cancel out, so total is rounded subtotal.
+    return Math.round(subtotal);
+};
+
+export const calculateTotalPaid = (payments: Payment[]): number => {
+    return payments.reduce((sum, p) => sum + p.amount, 0);
+};
+
+export const calculateRemainingBalance = (invoice: Invoice): number => {
+    const total = calculateInvoiceTotal(invoice.services);
+    const paid = calculateTotalPaid(invoice.payments);
+    return total - paid;
+};
+
+export const calculateStatus = (invoice: Invoice): InvoiceStatus => {
+    const balance = calculateRemainingBalance(invoice);
+    if (balance <= 0) {
         return 'paid';
     }
-    const totalPaid = (invoice.totals.total + invoice.financials.oldBalance.amount) - invoice.totals.remainingBalance;
+    const totalPaid = calculateTotalPaid(invoice.payments);
     if (totalPaid > 0) {
         return 'partially_paid';
     }
     return 'unpaid';
 };
 
+
 export const useInvoices = () => {
     const [invoices, setInvoices] = useLocalStorage<Invoice[]>(INVOICE_STORAGE_KEY, []);
 
-    const updateInvoiceStatus = useCallback((invoice: Invoice): Invoice => {
-        return { ...invoice, status: calculateStatus(invoice) };
-    }, []);
-
-    const addInvoice = (invoice: Invoice) => {
-        const newInvoice = updateInvoiceStatus(invoice);
-        setInvoices([newInvoice, ...invoices]);
+    const addInvoice = (invoiceData: Omit<Invoice, 'id'>) => {
+        const newInvoice: Invoice = {
+            id: Date.now(),
+            ...invoiceData,
+        };
+        setInvoices(prev => [newInvoice, ...prev]);
     };
 
-    const updateInvoice = (invoiceId: number, updatedInvoiceData: Partial<Invoice>) => {
-        const updatedInvoices = invoices.map(inv => {
-            if (inv.id === invoiceId) {
-                const merged = { ...inv, ...updatedInvoiceData };
-                return updateInvoiceStatus(merged);
-            }
-            return inv;
-        });
-        setInvoices(updatedInvoices);
+    const updateInvoice = (invoiceId: number, updatedData: Partial<Invoice>) => {
+        setInvoices(prev => 
+            prev.map(inv => 
+                inv.id === invoiceId ? { ...inv, ...updatedData } : inv
+            )
+        );
     };
 
     const deleteInvoice = (invoiceId: number) => {
-        setInvoices(invoices.filter(inv => inv.id !== invoiceId));
+        setInvoices(prev => prev.filter(inv => inv.id !== invoiceId));
     };
-    
-    // Ensure all invoices have a status on load
-    const processedInvoices = invoices.map(inv => inv.status ? inv : updateInvoiceStatus(inv));
 
-    return { invoices: processedInvoices, addInvoice, updateInvoice, deleteInvoice };
+    return { invoices, addInvoice, updateInvoice, deleteInvoice };
 };

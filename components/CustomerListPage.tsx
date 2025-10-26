@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import type { Customer, Invoice } from '../types';
 import { PageHeader, Card } from './Common';
+import { calculateInvoiceTotal } from '../hooks/useInvoices';
 
 interface CustomerListPageProps {
     customers: Customer[];
@@ -18,7 +19,7 @@ export const CustomerListPage: React.FC<CustomerListPageProps> = ({ customers, i
     const customersWithStats = useMemo(() => {
         return customers.map(customer => {
             const customerInvoices = invoices.filter(inv => inv.customerPhone === customer.phone);
-            const totalSpent = customerInvoices.reduce((sum, inv) => sum + inv.totals.total, 0);
+            const totalSpent = customerInvoices.reduce((sum, inv) => sum + calculateInvoiceTotal(inv.services), 0);
             return {
                 ...customer,
                 invoiceCount: customerInvoices.length,

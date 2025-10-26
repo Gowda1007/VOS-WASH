@@ -1,6 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
-// FIX: Correctly type the setter to accept a value or an updater function, similar to React's useState.
 export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((prevState: T) => T)) => void] {
     const [storedValue, setStoredValue] = useState<T>(() => {
         if (typeof window === 'undefined') {

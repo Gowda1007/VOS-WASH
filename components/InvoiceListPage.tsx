@@ -3,6 +3,7 @@ import type { Invoice, InvoiceStatus } from '../types';
 import { PageHeader, Card, Badge, Button, Icon } from './Common';
 import { InvoicePreview } from './InvoicePreview';
 import { downloadPDF } from '../services/pdfService';
+import { calculateInvoiceTotal, calculateStatus, calculateRemainingBalance } from '../hooks/useInvoices';
 
 interface InvoiceListPageProps {
   invoices: Invoice[];
@@ -17,8 +18,16 @@ export const InvoiceListPage: React.FC<InvoiceListPageProps> = ({ invoices, onDe
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
   const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
 
+  const processedInvoices = useMemo(() => {
+    return invoices.map(inv => ({
+      ...inv,
+      totalAmount: calculateInvoiceTotal(inv.services),
+      status: calculateStatus(inv),
+    }));
+  }, [invoices]);
+
   const filteredInvoices = useMemo(() => {
-    return invoices
+    return processedInvoices
       .filter(inv => {
         const query = searchQuery.toLowerCase();
         const matchesQuery = inv.customerName.toLowerCase().includes(query) ||
@@ -27,7 +36,7 @@ export const InvoiceListPage: React.FC<InvoiceListPageProps> = ({ invoices, onDe
         const matchesStatus = filterStatus === 'all' || inv.status === filterStatus;
         return matchesQuery && matchesStatus;
       });
-  }, [invoices, searchQuery, filterStatus]);
+  }, [processedInvoices, searchQuery, filterStatus]);
   
   if (previewInvoice) {
     return (
@@ -118,14 +127,14 @@ const FilterButton: React.FC<{label: string; isActive: boolean; onClick: () => v
     </button>
 );
 
-const InvoiceRow: React.FC<{invoice: Invoice, onDelete: (id: number) => void, onCollect: (id: number) => void, onPreview: (inv: Invoice) => void}> = ({ invoice, onDelete, onCollect, onPreview }) => (
+const InvoiceRow: React.FC<{invoice: any, onDelete: (id: number) => void, onCollect: (id: number) => void, onPreview: (inv: Invoice) => void}> = ({ invoice, onDelete, onCollect, onPreview }) => (
     <tr className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50">
         <td className="p-4">
             <div className="font-semibold text-slate-800 dark:text-slate-100">{invoice.customerName}</div>
             <div className="text-sm text-slate-500 dark:text-slate-400">#{invoice.invoiceNumber}</div>
         </td>
         <td className="p-4 text-sm text-slate-600 dark:text-slate-400">{invoice.invoiceDate}</td>
-        <td className="p-4 font-semibold text-slate-800 dark:text-slate-100 text-right">₹{invoice.totals.total.toLocaleString('en-IN')}</td>
+        <td className="p-4 font-semibold text-slate-800 dark:text-slate-100 text-right">₹{invoice.totalAmount.toLocaleString('en-IN')}</td>
         <td className="p-4 text-center">
             <StatusBadge status={invoice.status} />
         </td>
@@ -135,7 +144,7 @@ const InvoiceRow: React.FC<{invoice: Invoice, onDelete: (id: number) => void, on
     </tr>
 );
 
-const InvoiceCard: React.FC<{invoice: Invoice, onDelete: (id: number) => void, onCollect: (id: number) => void, onPreview: (inv: Invoice) => void}> = ({ invoice, onDelete, onCollect, onPreview }) => (
+const InvoiceCard: React.FC<{invoice: any, onDelete: (id: number) => void, onCollect: (id: number) => void, onPreview: (inv: Invoice) => void}> = ({ invoice, onDelete, onCollect, onPreview }) => (
   <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg border border-slate-200 dark:border-slate-700">
     <div className="flex justify-between items-start">
       <div>
@@ -146,16 +155,16 @@ const InvoiceCard: React.FC<{invoice: Invoice, onDelete: (id: number) => void, o
       <StatusBadge status={invoice.status} />
     </div>
     <div className="flex justify-between items-end mt-4">
-      <p className="text-xl font-bold text-slate-800 dark:text-slate-100">₹{invoice.totals.total.toLocaleString('en-IN')}</p>
+      <p className="text-xl font-bold text-slate-800 dark:text-slate-100">₹{invoice.totalAmount.toLocaleString('en-IN')}</p>
       <ActionButtons invoice={invoice} onCollect={onCollect} onDelete={onDelete} onPreview={onPreview} />
     </div>
   </div>
 );
 
-const ActionButtons: React.FC<{invoice: Invoice, onDelete: (id: number) => void, onCollect: (id: number) => void, onPreview: (inv: Invoice) => void}> = ({ invoice, onCollect, onDelete, onPreview }) => (
+const ActionButtons: React.FC<{invoice: any, onDelete: (id: number) => void, onCollect: (id: number) => void, onPreview: (inv: Invoice) => void}> = ({ invoice, onCollect, onDelete, onPreview }) => (
   <div className="flex items-center gap-2">
-      <button onClick={() => onPreview(invoice)} className="text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400" title="Preview"><Icon name="document-text" className="w-5 h-5"/></button>
-      <button onClick={() => onCollect(invoice.id)} disabled={invoice.status === 'paid'} className="text-slate-500 hover:text-green-600 dark:hover:text-green-400 disabled:opacity-30 disabled:hover:text-slate-500" title="Collect Payment"><Icon name="plus-circle" className="w-5 h-5"/></button>
+      <button onClick={() => onPreview(invoice)} className="text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400" title="View"><Icon name="eye" className="w-5 h-5"/></button>
+      <button onClick={() => onCollect(invoice.id)} disabled={invoice.status === 'paid'} className="text-slate-500 hover:text-green-600 dark:hover:text-green-400 disabled:opacity-30 disabled:hover:text-slate-500" title="Collect Payment"><Icon name="banknotes" className="w-5 h-5"/></button>
       <button onClick={() => onDelete(invoice.id)} className="text-slate-500 hover:text-red-600 dark:hover:text-red-400" title="Delete"><Icon name="trash" className="w-5 h-5"/></button>
   </div>
 );

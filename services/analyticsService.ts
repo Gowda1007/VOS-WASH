@@ -1,4 +1,5 @@
 import type { Invoice, AnalyticsData } from '../types';
+import { calculateInvoiceTotal, calculateTotalPaid, calculateRemainingBalance } from '../hooks/useInvoices';
 
 export const calculateAnalytics = (invoices: Invoice[]): AnalyticsData => {
     const analytics: AnalyticsData = {
@@ -6,9 +7,6 @@ export const calculateAnalytics = (invoices: Invoice[]): AnalyticsData => {
         totalRevenue: 0,
         unpaidBalance: 0,
         totalPayments: 0,
-        // FIX: Initialize new analytics properties.
-        totalOldBalance: 0,
-        totalAdvancePaid: 0,
         topServices: [],
         revenueByCustomerType: { customer: 0, garage: 0, dealer: 0 },
     };
@@ -16,26 +14,18 @@ export const calculateAnalytics = (invoices: Invoice[]): AnalyticsData => {
     const serviceCounts: { [key: string]: number } = {};
 
     invoices.forEach(inv => {
-        analytics.totalRevenue += inv.totals.total;
+        const invoiceTotal = calculateInvoiceTotal(inv.services);
+        analytics.totalRevenue += invoiceTotal;
         
-        if (inv.totals.remainingBalance > 0) {
-            analytics.unpaidBalance += inv.totals.remainingBalance;
+        const remainingBalance = calculateRemainingBalance(inv);
+        if (remainingBalance > 0) {
+            analytics.unpaidBalance += remainingBalance;
         }
 
-        // FIX: Correctly calculate total paid by checking if old balance was included.
-        const totalPaid = (inv.totals.total + (inv.financials.oldBalance.included ? inv.financials.oldBalance.amount : 0)) - inv.totals.remainingBalance;
-        analytics.totalPayments += totalPaid;
-
-        // FIX: Calculate total old balance and advance paid amounts.
-        if (inv.financials.oldBalance.included) {
-            analytics.totalOldBalance += inv.financials.oldBalance.amount;
-        }
-        if (inv.financials.advancePaid.included) {
-            analytics.totalAdvancePaid += inv.financials.advancePaid.amount;
-        }
+        analytics.totalPayments += calculateTotalPaid(inv.payments);
 
         if (analytics.revenueByCustomerType[inv.customerType] !== undefined) {
-             analytics.revenueByCustomerType[inv.customerType] += inv.totals.total;
+             analytics.revenueByCustomerType[inv.customerType] += invoiceTotal;
         }
         
         inv.services.forEach(service => {
@@ -50,8 +40,8 @@ export const calculateAnalytics = (invoices: Invoice[]): AnalyticsData => {
     return analytics;
 };
 
-export const filterAndGroupInvoicesForChart = (period: 'day' | 'week' | 'month', allInvoices: Invoice[]) => {
-    const getStartOfPeriod = (p: 'day' | 'week' | 'month'): Date => {
+export const filterAndGroupInvoicesForChart = (period: 'day' | 'week' | 'month' | 'year', allInvoices: Invoice[], dateField: 'invoiceDate' = 'invoiceDate') => {
+    const getStartOfPeriod = (p: 'day' | 'week' | 'month' | 'year'): Date => {
         const now = new Date();
         const start = new Date(now);
         if (p === 'day') start.setHours(0, 0, 0, 0);
@@ -61,41 +51,48 @@ export const filterAndGroupInvoicesForChart = (period: 'day' | 'week' | 'month',
         } else if (p === 'month') {
             start.setDate(1);
             start.setHours(0, 0, 0, 0);
+        } else if (p === 'year') {
+            start.setMonth(0, 1);
+            start.setHours(0, 0, 0, 0);
         }
         return start;
     };
     
-    const startTime = getStartOfPeriod(period);
-    const dataMap: { [key: string]: number } = {};
     let labels: string[] = [];
     const now = new Date();
 
-    if (period === 'day') {
-        labels = Array.from({ length: 24 }, (_, i) => `${i}:00`);
-        labels.forEach((_, i) => dataMap[i] = 0);
-    } else if (period === 'week') {
-        labels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        labels.forEach((_, i) => dataMap[i] = 0);
-    } else if (period === 'month') {
+    if (period === 'day') labels = Array.from({ length: 24 }, (_, i) => `${i}:00`);
+    else if (period === 'week') labels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    else if (period === 'month') {
         const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
         labels = Array.from({ length: daysInMonth }, (_, i) => String(i + 1));
-        labels.forEach((_, i) => dataMap[i+1] = 0);
+    } else if (period === 'year') {
+        labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     }
 
-    allInvoices.forEach(inv => {
-        if (inv.id >= startTime.getTime()) {
-            const invDate = new Date(inv.id);
-            let key: number | undefined;
-            if (period === 'day') key = invDate.getHours();
-            else if (period === 'week') key = invDate.getDay();
-            else if (period === 'month') key = invDate.getDate();
+    const dataMap = new Map<string, number>(labels.map(l => [l, 0]));
 
-            if (key !== undefined && dataMap[key] !== undefined) {
-                dataMap[key] += inv.totals.total;
+    allInvoices.forEach(inv => {
+        // Date is DD/MM/YYYY, need to parse it correctly
+        const dateParts = inv[dateField].split('/');
+        if (dateParts.length !== 3) return;
+        const invDate = new Date(+dateParts[2], +dateParts[1] - 1, +dateParts[0]);
+
+        if (invDate >= getStartOfPeriod(period)) {
+            const invoiceTotal = calculateInvoiceTotal(inv.services);
+            let key: string | undefined;
+
+            if (period === 'day' && invDate.toDateString() === now.toDateString()) key = `${invDate.getHours()}:00`;
+            else if (period === 'week') key = labels[invDate.getDay()];
+            else if (period === 'month' && invDate.getMonth() === now.getMonth()) key = String(invDate.getDate());
+            else if (period === 'year' && invDate.getFullYear() === now.getFullYear()) key = labels[invDate.getMonth()];
+
+            if (key && dataMap.has(key)) {
+                dataMap.set(key, (dataMap.get(key) || 0) + invoiceTotal);
             }
         }
     });
     
-    const datasets = Object.values(dataMap);
-    return { labels, datasets: [{ data: datasets }] };
+    const datasets = [{ data: Array.from(dataMap.values()) }];
+    return { labels, datasets };
 };

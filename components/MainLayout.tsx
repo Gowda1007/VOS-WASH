@@ -13,6 +13,7 @@ const navItems: { view: View; label: string; icon: React.ComponentProps<typeof I
     { view: 'dashboard', label: 'Dashboard', icon: 'chart-pie' },
     { view: 'invoices', label: 'Invoices', icon: 'document-text' },
     { view: 'customers', label: 'Customers', icon: 'users' },
+    { view: 'reports', label: 'Reports', icon: 'chart-bar-square' },
     { view: 'settings', label: 'Settings', icon: 'cog-6-tooth' },
 ];
 
@@ -56,7 +57,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children, currentView, o
             </div>
 
             {/* Bottom Nav for Mobile */}
-            <footer className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 flex justify-around">
+            <footer className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 flex justify-around z-30">
                  {navItems.map(item => (
                     <BottomNavItem
                         key={item.view}

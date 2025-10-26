@@ -1,39 +1,65 @@
-import React, { createContext, useContext, useState, useMemo } from 'react';
+import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
+import type { User } from '../types';
 
-const AUTH_KEY = 'vosWashProAuth';
+const AUTH_KEY = 'vosWashProUser';
 
 interface AuthContextType {
-    isAuthenticated: boolean;
-    login: (password: string) => boolean;
+    user: User | null;
+    loading: boolean;
+    adminLogin: (password: string) => boolean;
+    customerLogin: (phone: string, otp: string) => boolean;
     logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-        return localStorage.getItem(AUTH_KEY) === 'true';
-    });
+    const [user, setUser] = useState<User | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        try {
+            const storedUser = localStorage.getItem(AUTH_KEY);
+            if (storedUser) {
+                setUser(JSON.parse(storedUser));
+            }
+        } catch (error) {
+            console.error("Failed to parse user from localStorage", error);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
     const authContextValue = useMemo(() => ({
-        isAuthenticated,
-        login: (password: string): boolean => {
-            // In a real app, this would be a call to a server.
-            // For this demo, we'll use a simple hardcoded password.
+        user,
+        loading,
+        adminLogin: (password: string): boolean => {
             if (password === 'admin') {
-                localStorage.setItem(AUTH_KEY, 'true');
-                setIsAuthenticated(true);
+                const adminUser: User = { role: 'admin' };
+                localStorage.setItem(AUTH_KEY, JSON.stringify(adminUser));
+                setUser(adminUser);
+                return true;
+            }
+            return false;
+        },
+        customerLogin: (phone: string, otp: string): boolean => {
+            // This is a simulated OTP check. In a real app, you'd verify the OTP.
+            // For now, any 4-digit OTP is considered valid for an existing customer.
+            if (otp.length === 4) {
+                const customerUser: User = { role: 'customer', phone };
+                localStorage.setItem(AUTH_KEY, JSON.stringify(customerUser));
+                setUser(customerUser);
                 return true;
             }
             return false;
         },
         logout: () => {
             localStorage.removeItem(AUTH_KEY);
-            setIsAuthenticated(false);
+            localStorage.removeItem('selectedRole');
+            setUser(null);
         }
-    }), [isAuthenticated]);
+    }), [user, loading]);
 
-    // FIX: Replaced JSX with React.createElement to avoid parsing errors in a .ts file.
     return React.createElement(AuthContext.Provider, { value: authContextValue }, children);
 };
 

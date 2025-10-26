@@ -1,4 +1,3 @@
-
 import type { Invoice } from "../types";
 
 // Add types to window object to avoid TypeScript errors
@@ -9,9 +8,9 @@ declare global {
     }
 }
 
-export const downloadPDF = async (invoiceData: Invoice, invoiceElement: HTMLElement | null): Promise<void> => {
-    if (!invoiceElement) {
-        alert("Cannot download: Invoice element not found.");
+export const downloadPDF = async (invoiceData: Pick<Invoice, 'invoiceNumber' | 'customerName'>, elementToPrint: HTMLElement | null): Promise<void> => {
+    if (!elementToPrint) {
+        alert("Cannot download: Element to print not found.");
         return;
     }
 
@@ -24,15 +23,16 @@ export const downloadPDF = async (invoiceData: Invoice, invoiceElement: HTMLElem
     const filename = `VOS-WASH-${invoiceData.invoiceNumber}-${customerName}.pdf`;
 
     // Temporarily set a specific width for consistent PDF output
-    const originalWidth = invoiceElement.style.width;
-    invoiceElement.style.width = "800px";
+    const originalWidth = elementToPrint.style.width;
+    elementToPrint.style.width = "800px";
 
     try {
         const { jsPDF } = window.jspdf;
-        const canvas = await window.html2canvas(invoiceElement, {
+        const canvas = await window.html2canvas(elementToPrint, {
             scale: 2,
             logging: false,
             useCORS: true,
+            backgroundColor: null, // Use transparent background to respect dark mode
         });
 
         const imgData = canvas.toDataURL("image/png");
@@ -54,6 +54,6 @@ export const downloadPDF = async (invoiceData: Invoice, invoiceElement: HTMLElem
         alert("Could not generate PDF. Check console for details.");
     } finally {
         // Restore original width
-        invoiceElement.style.width = originalWidth;
+        elementToPrint.style.width = originalWidth;
     }
 };

@@ -9,12 +9,12 @@ export const useCustomers = () => {
         setCustomers(prevCustomers => {
             const existingCustomerIndex = prevCustomers.findIndex(c => c.phone === newCustomer.phone);
             if (existingCustomerIndex > -1) {
-                // Update existing customer
+                // Update existing customer, but don't overwrite with blank address
                 const updatedCustomers = [...prevCustomers];
                 updatedCustomers[existingCustomerIndex] = {
                     ...updatedCustomers[existingCustomerIndex],
                     name: newCustomer.name,
-                    address: newCustomer.address
+                    address: newCustomer.address || updatedCustomers[existingCustomerIndex].address
                 };
                 return updatedCustomers;
             } else {
