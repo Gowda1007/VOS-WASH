@@ -16,7 +16,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ serviceSets: initial
   const [currentSets, setCurrentSets] = useState<ServiceSets>(initialServiceSets);
   const [currentAppSettings, setCurrentAppSettings] = useState<AppSettings>(initialAppSettings);
   const [activeTab, setActiveTab] = useState<CustomerType>('customer');
-  const { logout } = useAuth();
   const toast = useToast();
 
   const handleServiceChange = (type: CustomerType, index: number, field: 'name' | 'price', value: string | number) => {
@@ -121,10 +120,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ serviceSets: initial
 
                <Card className="p-4 md:p-6">
                    <h4 className="text-lg font-semibold mb-2">Account</h4>
-                  <Button onClick={logout} variant="danger">
-                      <Icon name="logout" className="w-5 h-5"/>
-                      Logout
-                  </Button>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                    You can logout from the 'Options' menu in the sidebar.
+                 </p>
               </Card>
            </div>
         </div>
@@ -155,7 +153,7 @@ const ServiceRow: React.FC<ServiceRowProps> = ({ service, onChange, onDelete }) 
       className="w-full sm:w-32 px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
       placeholder="Price (₹)"
     />
-    <button onClick={onDelete} className="p-3 text-slate-500 hover:text-red-600 dark:hover:text-red-400 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700">
+    <button onClick={onDelete} className="p-3 text-red-600 dark:text-red-400 rounded-full hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors">
       <Icon name="trash" className="w-5 h-5" />
     </button>
   </div>

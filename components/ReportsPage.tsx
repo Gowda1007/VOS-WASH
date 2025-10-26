@@ -3,6 +3,7 @@ import type { Invoice } from '../types';
 import { PageHeader, Card, Button, Icon } from './Common';
 import { calculateInvoiceTotal, calculateTotalPaid } from '../hooks/useInvoices';
 import { downloadPDF } from '../services/pdfService';
+import { useToast } from '../hooks/useToast';
 
 declare global { interface Window { Chart: any; } }
 
@@ -13,6 +14,7 @@ export const ReportsPage: React.FC<{ invoices: Invoice[] }> = ({ invoices }) => 
     const chartRef = useRef<HTMLCanvasElement>(null);
     const chartInstanceRef = useRef<any>(null);
     const [isDarkMode, setIsDarkMode] = useState(window.matchMedia('(prefers-color-scheme: dark)').matches);
+    const toast = useToast();
 
     useEffect(() => {
         const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -126,19 +128,19 @@ export const ReportsPage: React.FC<{ invoices: Invoice[] }> = ({ invoices }) => 
         return () => chartInstanceRef.current?.destroy();
     }, [filteredData, period, isDarkMode]);
     
-    const handleDownload = () => {
+    const handleDownload = async () => {
         const reportElement = document.getElementById('report-content');
         if (reportElement) {
            // Temporarily add a visible title for the PDF
            const titleElement = document.createElement('h1');
-           titleElement.innerText = `VOS WASH Financial Report - ${period.replace('_', ' ')}`;
-           titleElement.className = 'text-2xl font-bold mb-4 text-black';
+           titleElement.innerText = `VOS WASH Financial Report - ${period.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}`;
+           titleElement.className = 'text-2xl font-bold mb-4 text-black p-4 sm:p-6';
            reportElement.prepend(titleElement);
 
            const fakeInvoiceForFilename = { invoiceNumber: period, customerName: 'Report' };
-           downloadPDF(fakeInvoiceForFilename as Invoice, reportElement).then(() => {
-                reportElement.removeChild(titleElement);
-           });
+           await downloadPDF(fakeInvoiceForFilename as Invoice, reportElement);
+           reportElement.removeChild(titleElement);
+           toast.success('Report saved to your Downloads folder.');
         }
     };
 
@@ -156,16 +158,18 @@ export const ReportsPage: React.FC<{ invoices: Invoice[] }> = ({ invoices }) => 
                 </div>
             </div>
             
-            <div id="report-content" className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-lg">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <StatCard title="Total Revenue" value={`₹${filteredData.stats.totalRevenue.toLocaleString()}`} />
-                    <StatCard title="Total Collected" value={`₹${filteredData.stats.totalCollected.toLocaleString()}`} />
-                    <StatCard title="Invoices Issued" value={filteredData.stats.invoiceCount} />
-                </div>
-                
-                <h3 className="text-xl font-bold mb-4">Cashflow Trend</h3>
-                <div className="h-96">
-                    <canvas ref={chartRef}></canvas>
+            <div id="report-content-wrapper">
+                <div id="report-content" className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-lg">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <StatCard title="Total Revenue" value={`₹${filteredData.stats.totalRevenue.toLocaleString()}`} />
+                        <StatCard title="Total Collected" value={`₹${filteredData.stats.totalCollected.toLocaleString()}`} />
+                        <StatCard title="Invoices Issued" value={filteredData.stats.invoiceCount} />
+                    </div>
+                    
+                    <h3 className="text-xl font-bold mb-4">Cashflow Trend</h3>
+                    <div className="h-96">
+                        <canvas ref={chartRef}></canvas>
+                    </div>
                 </div>
             </div>
         </div>

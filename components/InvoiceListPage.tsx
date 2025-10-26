@@ -1,9 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import type { Invoice, InvoiceStatus } from '../types';
-import { PageHeader, Card, Badge, Button, Icon } from './Common';
+import { PageHeader, Card, Badge, Button, Icon, EmptyState } from './Common';
 import { InvoicePreview } from './InvoicePreview';
 import { downloadPDF } from '../services/pdfService';
-import { calculateInvoiceTotal, calculateStatus, calculateRemainingBalance } from '../hooks/useInvoices';
+import { calculateInvoiceTotal, calculateStatus, calculateRemainingBalance, calculateTotalPaid } from '../hooks/useInvoices';
+import { exportToCSV } from '../services/exportService';
+import { useToast } from '../hooks/useToast';
 
 interface InvoiceListPageProps {
   invoices: Invoice[];
@@ -13,10 +15,21 @@ interface InvoiceListPageProps {
 
 type FilterStatus = 'all' | InvoiceStatus;
 
+const parseDate = (dateString: string): Date | null => {
+    const parts = dateString.split('/');
+    if (parts.length === 3) {
+        // new Date(year, monthIndex, day)
+        return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+    }
+    return null;
+};
+
 export const InvoiceListPage: React.FC<InvoiceListPageProps> = ({ invoices, onDelete, onCollect }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
+  const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
+  const toast = useToast();
 
   const processedInvoices = useMemo(() => {
     return invoices.map(inv => ({
@@ -34,10 +47,44 @@ export const InvoiceListPage: React.FC<InvoiceListPageProps> = ({ invoices, onDe
                              inv.customerPhone.includes(query) ||
                              inv.invoiceNumber.toLowerCase().includes(query);
         const matchesStatus = filterStatus === 'all' || inv.status === filterStatus;
-        return matchesQuery && matchesStatus;
+        
+        const matchesDate = (() => {
+            if (!dateRange.start && !dateRange.end) return true;
+            const invDate = parseDate(inv.invoiceDate);
+            if (!invDate) return false;
+
+            const startDate = dateRange.start ? new Date(dateRange.start) : null;
+            const endDate = dateRange.end ? new Date(dateRange.end) : null;
+
+            if (startDate) startDate.setHours(0, 0, 0, 0);
+            if (endDate) endDate.setHours(23, 59, 59, 999);
+
+            if (startDate && endDate) return invDate >= startDate && invDate <= endDate;
+            if (startDate) return invDate >= startDate;
+            if (endDate) return invDate <= endDate;
+            return true;
+        })();
+
+        return matchesQuery && matchesStatus && matchesDate;
       });
-  }, [processedInvoices, searchQuery, filterStatus]);
+  }, [processedInvoices, searchQuery, filterStatus, dateRange]);
   
+  const handleExport = () => {
+    const headers = ['Invoice #', 'Date', 'Customer Name', 'Customer Phone', 'Total Amount', 'Paid Amount', 'Balance', 'Status'];
+    const data = filteredInvoices.map(inv => [
+      inv.invoiceNumber,
+      inv.invoiceDate,
+      inv.customerName,
+      inv.customerPhone,
+      inv.totalAmount,
+      calculateTotalPaid(inv.payments),
+      calculateRemainingBalance(inv),
+      inv.status,
+    ]);
+    exportToCSV(headers, data, `vos-wash-invoices-${new Date().toISOString().split('T')[0]}.csv`);
+    toast.success('Invoice data saved to your Downloads folder.');
+  };
+
   if (previewInvoice) {
     return (
         <div>
@@ -46,18 +93,18 @@ export const InvoiceListPage: React.FC<InvoiceListPageProps> = ({ invoices, onDe
                 Back to Invoices
             </Button>
             <InvoicePreview invoiceData={previewInvoice} />
-            <div className="flex justify-center mt-6">
-                <Button onClick={() => downloadPDF(previewInvoice, document.getElementById('invoice-preview-content'))} variant="primary">
-                    Download PDF
-                </Button>
-            </div>
         </div>
     )
   }
 
   return (
     <div>
-      <PageHeader title="Invoices" subtitle={`You have ${invoices.length} total invoices.`} />
+      <PageHeader title="Invoices" subtitle={`You have ${invoices.length} total invoices.`}>
+          <Button onClick={handleExport} variant="secondary">
+              <Icon name="document-duplicate" className="w-5 h-5" />
+              Export CSV
+          </Button>
+      </PageHeader>
       
       <Card>
         <div className="p-4 flex flex-col md:flex-row gap-4 border-b border-slate-200 dark:border-slate-700">
@@ -68,6 +115,10 @@ export const InvoiceListPage: React.FC<InvoiceListPageProps> = ({ invoices, onDe
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full md:flex-1 px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
             />
+            <div className="flex flex-col sm:flex-row gap-2">
+                <input type="date" value={dateRange.start} onChange={e => setDateRange(p => ({...p, start: e.target.value}))} className="px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" />
+                <input type="date" value={dateRange.end} onChange={e => setDateRange(p => ({...p, end: e.target.value}))} className="px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" />
+            </div>
             <div className="flex items-center gap-2 flex-wrap">
                 {(['all', 'unpaid', 'partially_paid', 'paid'] as FilterStatus[]).map(status => (
                     <FilterButton 
@@ -88,7 +139,7 @@ export const InvoiceListPage: React.FC<InvoiceListPageProps> = ({ invoices, onDe
                 <InvoiceCard key={inv.id} invoice={inv} onDelete={onDelete} onCollect={onCollect} onPreview={setPreviewInvoice}/>
               ))
             ) : (
-              <p className="text-center py-12 text-slate-500 dark:text-slate-400">No invoices found.</p>
+                <EmptyState icon="document-text" title="No Invoices Found" message="Try adjusting your search, filter, or date range." />
             )}
           </div>
         </div>
@@ -111,7 +162,9 @@ export const InvoiceListPage: React.FC<InvoiceListPageProps> = ({ invoices, onDe
                             <InvoiceRow key={inv.id} invoice={inv} onDelete={onDelete} onCollect={onCollect} onPreview={setPreviewInvoice}/>
                         ))
                     ) : (
-                        <tr><td colSpan={5} className="text-center py-12 text-slate-500 dark:text-slate-400">No invoices found.</td></tr>
+                        <tr><td colSpan={5}>
+                           <EmptyState icon="document-text" title="No Invoices Found" message="Try adjusting your search, filter, or date range." />
+                        </td></tr>
                     )}
                 </tbody>
             </table>

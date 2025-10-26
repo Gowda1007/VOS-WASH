@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { Order, OrderStatus, ShippingDetails, Customer } from '../types';
-import { PageHeader, Card, Button, Icon, Modal, Badge } from './Common';
+import { PageHeader, Card, Button, Icon, Modal, Badge, EmptyState } from './Common';
 
 interface OrderManagementPageProps {
   orders: Order[];
@@ -44,24 +44,35 @@ export const OrderManagementPage: React.FC<OrderManagementPageProps> = ({ orders
                             </tr>
                         </thead>
                         <tbody>
-                            {orders.map(order => (
-                                <tr key={order.id} className="border-b dark:border-slate-700">
-                                    <td className="p-4 font-mono text-sm">#{order.id.toString().slice(-6)}</td>
-                                    <td className="p-4">
-                                        <div>{customerMap.get(order.customerPhone)?.name || order.customerName}</div>
-                                        <div className="text-xs text-slate-500">{order.customerPhone}</div>
-                                    </td>
-                                    <td className="p-4 text-sm">{order.orderDate}</td>
-                                    <td className="p-4 text-right font-semibold">₹{order.totalAmount.toLocaleString('en-IN')}</td>
-                                    <td className="p-4 text-center"><OrderStatusBadge status={order.status}/></td>
-                                    <td className="p-4 text-right">
-                                        <Button onClick={() => handleOpenModal(order)} variant="secondary">Manage</Button>
+                            {orders.length > 0 ? (
+                                orders.map(order => (
+                                    <tr key={order.id} className="border-b dark:border-slate-700">
+                                        <td className="p-4 font-mono text-sm">#{order.id.toString().slice(-6)}</td>
+                                        <td className="p-4">
+                                            <div>{customerMap.get(order.customerPhone)?.name || order.customerName}</div>
+                                            <div className="text-xs text-slate-500">{order.customerPhone}</div>
+                                        </td>
+                                        <td className="p-4 text-sm">{order.orderDate}</td>
+                                        <td className="p-4 text-right font-semibold">₹{order.totalAmount.toLocaleString('en-IN')}</td>
+                                        <td className="p-4 text-center"><OrderStatusBadge status={order.status}/></td>
+                                        <td className="p-4 text-right">
+                                            <Button onClick={() => handleOpenModal(order)} variant="secondary">Manage</Button>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan={6}>
+                                        <EmptyState 
+                                            icon="shopping-cart"
+                                            title="No Orders Yet"
+                                            message="Customers can place orders from their portal once you've added products."
+                                        />
                                     </td>
                                 </tr>
-                            ))}
+                            )}
                         </tbody>
                     </table>
-                     {orders.length === 0 && <p className="text-center py-12 text-slate-500">No orders have been placed yet.</p>}
                 </div>
             </Card>
 

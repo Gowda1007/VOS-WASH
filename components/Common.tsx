@@ -27,70 +27,125 @@ export const Icon: React.FC<{ name: string, className?: string }> = ({ name, cla
         'logout': 'M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m-3 0l3-3m0 0l-3-3m3 3H9',
         'chart-bar-square': 'M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0020.25 18V5.25A2.25 2.25 0 0018 3H6A2.25 2.25 0 003.75 5.25v12.75A2.25 2.25 0 006 20.25z',
         'eye': 'M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.432 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z M15 12a3 3 0 11-6 0 3 3 0 016 0z',
-        'banknotes': 'M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6-2.292m0 0v14.25',
-        'shopping-cart': 'M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c.51 0 .962-.328 1.125-.824l2.853-6.846A1.125 1.125 0 0018.04 8.25H5.25',
-        'tag': 'M5.25 7.5A2.25 2.25 0 017.5 5.25h9a2.25 2.25 0 012.25 2.25v9a2.25 2.25 0 01-2.25-2.25h-9a2.25 2.25 0 01-2.25-2.25v-9z M1.5 15a.75.75 0 01-.75-.75V7.5a.75.75 0 01.75-.75H3v8.25H1.5z M4.5 15V6.75H3V15h1.5z',
+        'banknotes': 'M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V6.375c0-.621.504-1.125 1.125-1.125h.375m16.5 0h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m0 0h-.375a1.125 1.125 0 01-1.125-1.125V6.375c0-.621.504-1.125 1.125-1.125h.375M3.75 21v-6.135A14.953 14.953 0 0112 15c4.478 0 8.565.93 11.25 2.565V21',
+        'tag': 'M5.25 5.25a3 3 0 00-3 3v10.5a3 3 0 003 3h10.5a3 3 0 003-3V13.5a.75.75 0 00-1.5 0v5.25a1.5 1.5 0 01-1.5 1.5H5.25a1.5 1.5 0 01-1.5-1.5V8.25a1.5 1.5 0 011.5-1.5h5.25a.75.75 0 000-1.5H5.25zM12.75 4.5a.75.75 0 000 1.5h5.25a.75.75 0 000-1.5H12.75zM15 4.5a3 3 0 106 0 3 3 0 00-6 0zM17.25 4.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z',
+        'shopping-cart': 'M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c.51 0 .962-.328 1.087-.835l1.823-6.836a.75.75 0 00-.73-.965H5.168L4.6 3zM6 14.25a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm12 0a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z',
         'x-mark': 'M6 18L18 6M6 6l12 12',
-        'check-circle': 'M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
-        'x-circle': 'M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+        'sun': 'M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z',
+        'moon': 'M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25c0 5.385 4.365 9.75 9.75 9.75 2.572 0 4.92-.99 6.752-2.648z',
+        'computer-desktop': 'M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25A2.25 2.25 0 015.25 3h13.5A2.25 2.25 0 0121 5.25z',
+        'whatsapp': 'M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z M12.012 2.163c-5.423 0-9.816 4.393-9.816 9.816 0 5.423 4.393 9.816 9.816 9.816 5.423 0 9.816-4.393 9.816-9.816s-4.393-9.816-9.816-9.816z',
+        'printer': 'M6.72 7.662a.75.75 0 01.75-.75h9a.75.75 0 010 1.5h-9a.75.75 0 01-.75-.75zM6 12.75a.75.75 0 00.75.75h9a.75.75 0 000-1.5h-9a.75.75 0 00-.75.75zM12 15a.75.75 0 01.75-.75h.008a.75.75 0 010 1.5h-.008A.75.75 0 0112 15zM4.5 5.25a3 3 0 00-3 3v10.5a3 3 0 003 3h15a3 3 0 003-3V8.25a3 3 0 00-3-3h-3.75a.75.75 0 010-1.5h3.75a4.5 4.5 0 014.5 4.5v10.5a4.5 4.5 0 01-4.5 4.5h-15a4.5 4.5 0 01-4.5-4.5V8.25a4.5 4.5 0 014.5-4.5h3.75a.75.75 0 010 1.5H4.5z',
+        'ellipsis-vertical': 'M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z'
     };
+    
     const path = icons[name] || '';
+
     return (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className} strokeWidth="1.5" stroke="currentColor" fillRule="evenodd" clipRule="evenodd">
             <path strokeLinecap="round" strokeLinejoin="round" d={path} />
         </svg>
     );
 };
 
-// --- PageHeader Component ---
-export const PageHeader: React.FC<{ title: string, subtitle?: string, children?: React.ReactNode }> = ({ title, subtitle, children }) => (
-    <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-        <div>
-            <h2 className="text-3xl font-bold text-slate-800 dark:text-slate-100">{title}</h2>
-            {subtitle && <p className="mt-1 text-slate-500 dark:text-slate-400">{subtitle}</p>}
-        </div>
-        {children && <div className="mt-4 md:mt-0">{children}</div>}
-    </div>
-);
 
 // --- Card Component ---
+// A simple container with consistent styling.
 export const Card: React.FC<{ children: React.ReactNode, className?: string }> = ({ children, className }) => (
-    <div className={`bg-white dark:bg-slate-800 shadow-lg rounded-lg border border-slate-200 dark:border-slate-700 ${className}`}>
+    <div className={`bg-white dark:bg-slate-800 rounded-lg shadow-md border border-slate-200 dark:border-slate-700 ${className}`}>
         {children}
     </div>
 );
 
+// --- PageHeader Component ---
+// For consistent page titles and subtitles.
+export const PageHeader: React.FC<{ title: string, subtitle?: string, children?: React.ReactNode }> = ({ title, subtitle, children }) => (
+    <div className="flex flex-col md:flex-row justify-between md:items-center mb-6">
+        <div>
+            <h2 className="text-3xl font-bold text-slate-800 dark:text-slate-100">{title}</h2>
+            {subtitle && <p className="mt-1 text-slate-500 dark:text-slate-400">{subtitle}</p>}
+        </div>
+        {children && <div className="mt-4 md:mt-0 flex items-center gap-2">{children}</div>}
+    </div>
+);
+
 // --- Badge Component ---
-export const Badge: React.FC<{ children: React.ReactNode, color: 'green' | 'amber' | 'red' | 'blue' | 'slate' }> = ({ children, color }) => {
+export const Badge: React.FC<{ color: 'green' | 'red' | 'amber' | 'blue' | 'slate', children: React.ReactNode }> = ({ color, children }) => {
     const colors = {
         green: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300',
-        amber: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300',
         red: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300',
+        amber: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300',
         blue: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300',
         slate: 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300',
     };
     return (
-        <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full ${colors[color]}`}>
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${colors[color]}`}>
             {children}
         </span>
     );
 };
 
 // --- Button Component ---
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-    variant?: 'primary' | 'secondary' | 'danger';
-}
-export const Button: React.FC<ButtonProps> = ({ children, className, variant = 'primary', ...props }) => {
-    const baseClasses = 'inline-flex items-center justify-center gap-2 px-4 py-2 font-semibold rounded-lg shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed';
-    const variants = {
-        primary: 'bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500',
-        secondary: 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 focus:ring-2 focus:ring-offset-2 focus:ring-slate-500',
-        danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-2 focus:ring-offset-2 focus:ring-red-500',
+type ButtonVariant = 'primary' | 'secondary' | 'danger';
+export const Button: React.FC<{ 
+    onClick?: () => void;
+    children: React.ReactNode; 
+    variant?: ButtonVariant; 
+    className?: string; 
+    disabled?: boolean;
+    type?: 'button' | 'submit' | 'reset';
+}> = ({ onClick, children, variant = 'primary', className = '', disabled, type = 'button' }) => {
+    const baseClasses = 'inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed';
+    const variantClasses: Record<ButtonVariant, string> = {
+        primary: 'bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500',
+        secondary: 'bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 focus:ring-slate-500',
+        danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
     };
     return (
-        <button className={`${baseClasses} ${variants[variant]} ${className}`} {...props}>
+        <button type={type} onClick={onClick} disabled={disabled} className={`${baseClasses} ${variantClasses[variant]} ${className}`}>
             {children}
         </button>
+    );
+};
+
+// --- Toast Components ---
+export const ToastContainer: React.FC<{ toasts: ToastMessage[]; removeToast: (id: number) => void; }> = ({ toasts, removeToast }) => (
+    <div className="fixed bottom-5 right-5 z-[100] space-y-3 w-80">
+        {toasts.map(toast => (
+            <ToastItem key={toast.id} {...toast} onDismiss={() => removeToast(toast.id)} />
+        ))}
+    </div>
+);
+
+const ToastItem: React.FC<ToastMessage & { onDismiss: () => void }> = ({ message, type, onDismiss }) => {
+    useEffect(() => {
+        const timer = setTimeout(onDismiss, 5000);
+        return () => clearTimeout(timer);
+    }, [onDismiss]);
+
+    const typeClasses = {
+        success: { bg: 'bg-green-500', icon: 'M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
+        error: { bg: 'bg-red-500', icon: 'M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z' },
+        info: { bg: 'bg-blue-500', icon: 'M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.852l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z' },
+    };
+
+    return (
+        <div className={`flex items-center p-4 rounded-lg shadow-lg text-white ${typeClasses[type].bg} animate-toast-in`}>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mr-3 flex-shrink-0">
+                <path strokeLinecap="round" strokeLinejoin="round" d={typeClasses[type].icon} />
+            </svg>
+            <p className="text-sm font-medium flex-grow">{message}</p>
+            <button onClick={onDismiss} className="ml-3 -mr-1 p-1 rounded-full hover:bg-black/20">
+                <Icon name="x-mark" className="w-4 h-4" />
+            </button>
+            <style>{`
+                @keyframes toast-in {
+                    from { opacity: 0; transform: translateX(100%); }
+                    to { opacity: 1; transform: translateX(0); }
+                }
+                .animate-toast-in { animation: toast-in 0.3s ease-out forwards; }
+            `}</style>
+        </div>
     );
 };
 
@@ -105,12 +160,15 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50" aria-modal="true" role="dialog">
-            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
-                <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-slate-700">
-                    <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">{title}</h3>
-                    <button onClick={onClose} className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700">
-                        <Icon name="x-mark" className="w-6 h-6 text-slate-500" />
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50" onClick={onClose}>
+            <div 
+                className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col"
+                onClick={e => e.stopPropagation()}
+            >
+                <div className="flex justify-between items-center p-4 border-b dark:border-slate-700">
+                    <h3 className="text-xl font-bold">{title}</h3>
+                    <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700">
+                        <Icon name="x-mark" className="w-6 h-6"/>
                     </button>
                 </div>
                 <div className="p-6 overflow-y-auto">
@@ -121,46 +179,18 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }
     );
 };
 
-
-// --- Toast Components ---
-const Toast: React.FC<{ message: ToastMessage, onRemove: (id: number) => void }> = ({ message, onRemove }) => {
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            onRemove(message.id);
-        }, 5000);
-
-        return () => {
-            clearTimeout(timer);
-        };
-    }, [message.id, onRemove]);
-
-    const baseClasses = 'flex items-center w-full max-w-xs p-4 space-x-4 text-slate-500 bg-white divide-x divide-slate-200 rounded-lg shadow-lg dark:text-slate-400 dark:divide-slate-700 dark:bg-slate-800';
-    
-    const icons = {
-        success: { icon: 'check-circle', color: 'text-green-500 dark:text-green-400' },
-        error: { icon: 'x-circle', color: 'text-red-500 dark:text-red-400' },
-        info: { icon: 'information-circle', color: 'text-blue-500 dark:text-blue-400' },
-    };
-    
-    const currentIcon = icons[message.type];
-
-    return (
-        <div className={baseClasses} role="alert">
-            <Icon name={currentIcon.icon} className={`w-6 h-6 ${currentIcon.color}`} />
-            <div className="pl-4 text-sm font-normal">{message.message}</div>
-            <button onClick={() => onRemove(message.id)} className="p-1.5 -m-1.5 ml-auto">
-                <Icon name="x-mark" className="w-5 h-5" />
-            </button>
+// --- EmptyState Component ---
+interface EmptyStateProps {
+    icon: React.ComponentProps<typeof Icon>['name'];
+    title: string;
+    message: string;
+}
+export const EmptyState: React.FC<EmptyStateProps> = ({ icon, title, message }) => (
+    <div className="text-center py-12 px-6">
+        <div className="mx-auto w-16 h-16 flex items-center justify-center bg-slate-100 dark:bg-slate-700/50 rounded-full text-slate-400 dark:text-slate-500">
+             <Icon name={icon} className="w-8 h-8"/>
         </div>
-    );
-};
-
-export const ToastContainer: React.FC<{ toasts: ToastMessage[], removeToast: (id: number) => void }> = ({ toasts, removeToast }) => {
-    return (
-        <div className="fixed top-5 right-5 z-[100] space-y-2">
-            {toasts.map(toast => (
-                <Toast key={toast.id} message={toast} onRemove={removeToast} />
-            ))}
-        </div>
-    );
-};
+        <h3 className="mt-4 text-xl font-semibold text-slate-800 dark:text-slate-100">{title}</h3>
+        <p className="mt-1 text-slate-500 dark:text-slate-400">{message}</p>
+    </div>
+);

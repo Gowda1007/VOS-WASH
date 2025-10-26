@@ -1,7 +1,9 @@
 import React from 'react';
 import type { Invoice } from '../types';
 import { calculateInvoiceTotal, calculateTotalPaid, calculateRemainingBalance } from '../hooks/useInvoices';
-import { Logo } from './Common';
+import { Logo, Button, Icon } from './Common';
+import { downloadPDF } from '../services/pdfService';
+import { useToast } from '../hooks/useToast';
 
 interface InvoicePreviewProps {
   invoiceData: Invoice;
@@ -10,6 +12,7 @@ interface InvoicePreviewProps {
 // FEATURE IMPLEMENTATION: The entire invoice preview is redesigned for financial clarity.
 export const InvoicePreview: React.FC<InvoicePreviewProps> = ({ invoiceData }) => {
   const { services, customerName, customerAddress, customerPhone, invoiceNumber, invoiceDate, payments, oldBalance, advancePaid } = invoiceData;
+  const toast = useToast();
 
   const serviceTotal = calculateInvoiceTotal(services);
   const totalPaid = calculateTotalPaid(payments);
@@ -19,10 +22,25 @@ export const InvoicePreview: React.FC<InvoicePreviewProps> = ({ invoiceData }) =
   const subtotal = services.reduce((sum, s) => sum + (s.price * s.quantity), 0);
   const tax = subtotal * 0.18;
   const discount = tax;
+  
+  const handlePrint = () => {
+    window.print();
+  };
+  
+  const handleDownload = async () => {
+      await downloadPDF(invoiceData, document.getElementById('invoice-preview-content'));
+      toast.success('Invoice saved to your Downloads folder.');
+  };
+
+  const handleWhatsAppShare = () => {
+      const message = `Hello ${customerName},\n\nHere is a summary of your invoice from VOS WASH:\n\nInvoice #: ${invoiceNumber}\nTotal Amount: ₹${serviceTotal.toFixed(2)}\nBalance Due: ₹${balanceDue.toFixed(2)}\n\nThank you for your business!`;
+      const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+      window.open(whatsappUrl, '_blank');
+  };
 
   return (
-    <div id="invoice-preview-container" className="print-container">
-      <div id="invoice-preview-content" className="p-6 bg-white dark:bg-slate-800 max-w-full shadow-lg rounded-lg border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200">
+    <div id="invoice-preview-container">
+      <div id="invoice-preview-content" className="p-6 bg-white dark:bg-slate-800 max-w-full shadow-lg rounded-lg border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 print-container">
         <header className="flex justify-between items-start pb-4 border-b dark:border-slate-600">
             <div className="flex items-center space-x-3">
                 <Logo className="w-16 h-16 text-blue-700 dark:text-blue-400" />
@@ -107,13 +125,29 @@ export const InvoicePreview: React.FC<InvoicePreviewProps> = ({ invoiceData }) =
             <p>Thank you for choosing VOS WASH! This is a computer-generated invoice.</p>
         </footer>
       </div>
+       <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mt-6 print-hidden">
+            <Button onClick={handlePrint} variant="secondary">
+                <Icon name="printer" className="w-5 h-5"/>
+                Print Invoice
+            </Button>
+            <Button onClick={handleDownload}>
+                Download PDF
+            </Button>
+            <Button onClick={handleWhatsAppShare} className="bg-green-500 hover:bg-green-600 focus:ring-green-500">
+                <Icon name="whatsapp" className="w-5 h-5"/>
+                Share on WhatsApp
+            </Button>
+        </div>
       <style>{`
         @media print {
             body * { visibility: hidden; }
+            .print-hidden { display: none; }
             .print-container, .print-container * { visibility: visible; }
             #invoice-preview-content {
                 color: #000 !important;
                 background-color: #fff !important;
+                box-shadow: none !important;
+                border: none !important;
             }
             .print-container {
                 position: absolute;
