@@ -8,7 +8,7 @@ export const calculateAnalytics = (invoices: Invoice[]): AnalyticsData => {
         unpaidBalance: 0,
         totalPayments: 0,
         topServices: [],
-        revenueByCustomerType: { customer: 0, garage: 0, dealer: 0 },
+        revenueByCustomerType: { customer: 0, garage_service_station: 0, dealer: 0 },
     };
 
     const serviceCounts: { [key: string]: number } = {};

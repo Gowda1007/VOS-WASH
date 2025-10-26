@@ -11,10 +11,12 @@ export const useCustomers = () => {
             if (existingCustomerIndex > -1) {
                 // Update existing customer, but don't overwrite with blank address
                 const updatedCustomers = [...prevCustomers];
+                const existingCustomer = updatedCustomers[existingCustomerIndex];
                 updatedCustomers[existingCustomerIndex] = {
-                    ...updatedCustomers[existingCustomerIndex],
+                    ...existingCustomer,
                     name: newCustomer.name,
-                    address: newCustomer.address || updatedCustomers[existingCustomerIndex].address
+                    // Only update address if a new one is provided
+                    address: newCustomer.address && newCustomer.address.trim() !== '' ? newCustomer.address : existingCustomer.address
                 };
                 return updatedCustomers;
             } else {
@@ -24,5 +26,13 @@ export const useCustomers = () => {
         });
     };
 
-    return { customers, addOrUpdateCustomer };
+    const addCustomer = (newCustomer: Customer) => {
+        setCustomers(prev => [...prev, newCustomer]);
+    };
+
+    const isCustomerExists = (phone: string): boolean => {
+        return customers.some(c => c.phone === phone);
+    };
+
+    return { customers, addOrUpdateCustomer, addCustomer, isCustomerExists };
 };

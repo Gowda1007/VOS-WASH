@@ -7,7 +7,7 @@ interface AuthContextType {
     user: User | null;
     loading: boolean;
     adminLogin: (password: string) => boolean;
-    customerLogin: (phone: string, otp: string) => boolean;
+    customerLogin: (phone: string) => boolean; // OTP removed
     logout: () => void;
 }
 
@@ -42,21 +42,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
             return false;
         },
-        customerLogin: (phone: string, otp: string): boolean => {
-            // This is a simulated OTP check. In a real app, you'd verify the OTP.
-            // For now, any 4-digit OTP is considered valid for an existing customer.
-            if (otp.length === 4) {
-                const customerUser: User = { role: 'customer', phone };
-                localStorage.setItem(AUTH_KEY, JSON.stringify(customerUser));
-                setUser(customerUser);
-                return true;
-            }
-            return false;
+        // FEATURE IMPLEMENTATION: Simplified customer login without OTP.
+        // It now only requires the phone number.
+        customerLogin: (phone: string): boolean => {
+            const customerUser: User = { role: 'customer', phone };
+            localStorage.setItem(AUTH_KEY, JSON.stringify(customerUser));
+            setUser(customerUser);
+            return true;
         },
         logout: () => {
             localStorage.removeItem(AUTH_KEY);
             localStorage.removeItem('selectedRole');
             setUser(null);
+            // Full page reload to reset all state cleanly.
+            window.location.reload();
         }
     }), [user, loading]);
 

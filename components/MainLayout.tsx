@@ -12,6 +12,8 @@ interface MainLayoutProps {
 const navItems: { view: View; label: string; icon: React.ComponentProps<typeof Icon>['name'] }[] = [
     { view: 'dashboard', label: 'Dashboard', icon: 'chart-pie' },
     { view: 'invoices', label: 'Invoices', icon: 'document-text' },
+    { view: 'orders', label: 'Orders', icon: 'shopping-cart' },
+    { view: 'products', label: 'Products', icon: 'tag' },
     { view: 'customers', label: 'Customers', icon: 'users' },
     { view: 'reports', label: 'Reports', icon: 'chart-bar-square' },
     { view: 'settings', label: 'Settings', icon: 'cog-6-tooth' },
@@ -100,7 +102,7 @@ const BottomNavItem: React.FC<{ label: string; icon: any; isActive: boolean; onC
      <a
         href="#"
         onClick={(e) => { e.preventDefault(); onClick(); }}
-        className={`flex flex-col items-center justify-center w-full pt-3 pb-2 transition ${
+        className={`flex flex-col items-center justify-center w-full pt-3 pb-2 transition text-center ${
             isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'
         }`}
     >

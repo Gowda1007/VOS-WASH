@@ -12,10 +12,16 @@ export const calculateTotalPaid = (payments: Payment[]): number => {
     return payments.reduce((sum, p) => sum + p.amount, 0);
 };
 
+// This is the core financial calculation logic for an invoice.
+// It correctly incorporates all financial aspects for an accurate balance.
 export const calculateRemainingBalance = (invoice: Invoice): number => {
-    const total = calculateInvoiceTotal(invoice.services);
-    const paid = calculateTotalPaid(invoice.payments);
-    return total - paid;
+    const serviceTotal = calculateInvoiceTotal(invoice.services);
+    const totalPaid = calculateTotalPaid(invoice.payments);
+    const oldBalance = invoice.oldBalance?.amount || 0;
+    const advancePaid = invoice.advancePaid?.amount || 0;
+    
+    // Balance = (New Services + Old Debt) - (Advance Credits + New Payments)
+    return (serviceTotal + oldBalance) - (advancePaid + totalPaid);
 };
 
 export const calculateStatus = (invoice: Invoice): InvoiceStatus => {
@@ -23,7 +29,7 @@ export const calculateStatus = (invoice: Invoice): InvoiceStatus => {
     if (balance <= 0) {
         return 'paid';
     }
-    const totalPaid = calculateTotalPaid(invoice.payments);
+    const totalPaid = calculateTotalPaid(invoice.payments) + (invoice.advancePaid?.amount || 0);
     if (totalPaid > 0) {
         return 'partially_paid';
     }

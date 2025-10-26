@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { ServiceSets, CustomerType, ManageableService } from '../types';
 import { PageHeader, Card, Button, Icon } from './Common';
 import { useAuth } from '../hooks/useAuth';
+import { CUSTOMER_TYPE_LABELS } from '../constants';
 
 interface SettingsPageProps {
   serviceSets: ServiceSets;
@@ -54,19 +55,20 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ serviceSets: initial
 
       <Card>
         <div className="border-b border-slate-200 dark:border-slate-700">
+           {/* UI FIX: The tab container is now scrollable on mobile to prevent overflow. */}
            <div className="overflow-x-auto">
-              <nav className="flex space-x-6 px-6" aria-label="Tabs">
-                {(['customer', 'garage', 'dealer'] as CustomerType[]).map(tab => (
+              <nav className="flex space-x-2 sm:space-x-6 px-4 sm:px-6" aria-label="Tabs">
+                {(Object.keys(CUSTOMER_TYPE_LABELS) as CustomerType[]).map(tab => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
-                    className={`flex-shrink-0 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition capitalize ${
+                    className={`flex-shrink-0 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition ${
                       activeTab === tab
                         ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
                         : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-500'
                     }`}
                   >
-                    {tab} Services
+                    {CUSTOMER_TYPE_LABELS[tab]}
                   </button>
                 ))}
               </nav>

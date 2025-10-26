@@ -6,10 +6,11 @@ interface InvoicePreviewProps {
   invoiceData: Invoice;
 }
 
+// FEATURE IMPLEMENTATION: The entire invoice preview is redesigned for financial clarity.
 export const InvoicePreview: React.FC<InvoicePreviewProps> = ({ invoiceData }) => {
-  const { services, customerName, customerAddress, customerPhone, invoiceNumber, invoiceDate, payments } = invoiceData;
+  const { services, customerName, customerAddress, customerPhone, invoiceNumber, invoiceDate, payments, oldBalance, advancePaid } = invoiceData;
 
-  const totalAmount = calculateInvoiceTotal(services);
+  const serviceTotal = calculateInvoiceTotal(services);
   const totalPaid = calculateTotalPaid(payments);
   const balanceDue = calculateRemainingBalance(invoiceData);
 
@@ -66,29 +67,34 @@ export const InvoicePreview: React.FC<InvoicePreviewProps> = ({ invoiceData }) =
           </tbody>
         </table>
 
-        <div className="flex flex-col md:flex-row justify-between gap-8">
-            <div className="w-full md:w-1/2">
-                {payments.length > 0 && (
-                    <div>
-                        <h4 className="font-semibold mb-2 text-slate-800 dark:text-slate-100">Payment History</h4>
-                        <div className="space-y-2 text-sm border dark:border-slate-700 rounded-lg p-3">
-                            {payments.map((p, i) => (
-                                <div key={i} className="flex justify-between items-center text-slate-600 dark:text-slate-300">
-                                    <span>{p.date} - <span className="capitalize font-medium">{p.method}</span></span>
-                                    <span className="font-semibold text-green-600 dark:text-green-400">₹{p.amount.toFixed(2)}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-            </div>
+        <div className="flex flex-col md:flex-row justify-end gap-8">
             <div className="w-full md:w-1/2 text-slate-700 dark:text-slate-300 space-y-2 text-sm">
+                {/* Service Breakdown */}
                 <div className="flex justify-between"><p>Subtotal:</p><p>₹{subtotal.toFixed(2)}</p></div>
                 <div className="flex justify-between"><p>GST (18%):</p><p>+ ₹{tax.toFixed(2)}</p></div>
                 <div className="flex justify-between pb-2 border-b dark:border-slate-600"><p>Discount:</p><p>- ₹{discount.toFixed(2)}</p></div>
                 
-                <div className="flex justify-between font-bold text-lg pt-2"><p>Grand Total:</p><p>₹{totalAmount.toFixed(2)}</p></div>
-                <div className="flex justify-between"><p>Total Paid:</p><p className="text-green-600 dark:text-green-400">- ₹{totalPaid.toFixed(2)}</p></div>
+                {/* Financial Summary */}
+                <div className="flex justify-between font-bold text-base pt-2"><p>New Service Total:</p><p>₹{serviceTotal.toFixed(2)}</p></div>
+
+                {oldBalance && oldBalance.amount > 0 && (
+                    <div className="flex justify-between text-red-600 dark:text-red-400"><p>Old Balance (Arrears):</p><p>+ ₹{oldBalance.amount.toFixed(2)}</p></div>
+                )}
+                {advancePaid && advancePaid.amount > 0 && (
+                    <div className="flex justify-between text-green-600 dark:text-green-400"><p>Advance Paid:</p><p>- ₹{advancePaid.amount.toFixed(2)}</p></div>
+                )}
+
+                {/* Payments Section */}
+                {payments.length > 0 && (
+                     <div className="pt-2">
+                        {payments.map((p, i) => (
+                           <div key={i} className="flex justify-between">
+                                <p>Payment ({p.method}):</p>
+                                <p className="text-green-600 dark:text-green-400">- ₹{p.amount.toFixed(2)}</p>
+                           </div>
+                        ))}
+                    </div>
+                )}
                 
                 <div className="flex justify-between font-extrabold text-2xl mt-4 pt-4 border-t-2 border-slate-800 dark:border-slate-300 text-slate-800 dark:text-slate-100">
                     <p>Balance Due:</p>

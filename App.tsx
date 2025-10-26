@@ -12,12 +12,17 @@ import { RoleSelectionPage } from './components/RoleSelectionPage';
 import { CustomerLoginPage } from './components/CustomerLoginPage';
 import { CustomerDashboard } from './components/CustomerDashboard';
 import { ReportsPage } from './components/ReportsPage';
+import { ProductManagementPage } from './components/ProductManagementPage';
+import { OrderManagementPage } from './components/OrderManagementPage';
 
-import type { Invoice, View, Payment, PaymentMethod } from './types';
+import type { Invoice, View, Payment, PaymentMethod, Customer, Product, Order, ShippingDetails } from './types';
 import { useInvoices } from './hooks/useInvoices';
 import { useCustomers } from './hooks/useCustomers';
 import { useServices } from './hooks/useServices';
 import { useAuth } from './hooks/useAuth';
+import { useProducts } from './hooks/useProducts';
+import { useOrders } from './hooks/useOrders';
+import { useAppSettings } from './hooks/useAppSettings';
 import { calculateAnalytics } from './services/analyticsService';
 
 const App: React.FC = () => {
@@ -27,8 +32,11 @@ const App: React.FC = () => {
 
     const [view, setView] = useState<View>('dashboard');
     const { invoices, addInvoice, updateInvoice, deleteInvoice } = useInvoices();
-    const { customers, addOrUpdateCustomer } = useCustomers();
+    const { customers, addCustomer, addOrUpdateCustomer, isCustomerExists } = useCustomers();
     const { serviceSets, saveServiceSets } = useServices();
+    const { products, addProduct, updateProduct, deleteProduct } = useProducts();
+    const { orders, addOrder, updateOrder } = useOrders();
+    const { settings, saveSettings } = useAppSettings();
 
     const [confirmModalState, setConfirmModalState] = useState<ConfirmModalState>({ isOpen: false });
     const [invoiceToEdit, setInvoiceToEdit] = useState<Invoice | null>(null);
@@ -36,7 +44,7 @@ const App: React.FC = () => {
     const analytics = useMemo(() => calculateAnalytics(invoices), [invoices]);
 
     useEffect(() => {
-        setTimeout(() => setLoading(false), 2500); // Simulate loading for splash screen
+        setTimeout(() => setLoading(false), 2500);
     }, []);
 
     const handleNavigate = (newView: View) => {
@@ -49,7 +57,7 @@ const App: React.FC = () => {
         setView('new-invoice');
     };
     
-    const handleSaveInvoice = (invoiceData: Omit<Invoice, 'id' | 'invoiceNumber' | 'invoiceDate'>, initialPayment?: { amount: number, method: PaymentMethod }) => {
+    const handleSaveInvoice = (invoiceData: Omit<Invoice, 'id' | 'invoiceNumber' | 'invoiceDate' | 'payments'>, initialPayment?: { amount: number, method: PaymentMethod }) => {
         addOrUpdateCustomer({
             phone: invoiceData.customerPhone,
             name: invoiceData.customerName,
@@ -115,8 +123,10 @@ const App: React.FC = () => {
         switch (view) {
             case 'dashboard': return <DashboardPage analytics={analytics} recentInvoices={invoices.slice(0, 5)} />;
             case 'invoices': return <InvoiceListPage invoices={invoices} onDelete={handleDeleteRequest} onCollect={handleCollectRequest} />;
-            case 'customers': return <CustomerListPage customers={customers} invoices={invoices} />;
-            case 'settings': return <SettingsPage serviceSets={serviceSets} onSave={saveServiceSets} />;
+            case 'customers': return <CustomerListPage customers={customers} invoices={invoices} onAddCustomer={addCustomer} isCustomerExists={isCustomerExists} />;
+            case 'products': return <ProductManagementPage products={products} onAdd={addProduct} onUpdate={updateProduct} onDelete={deleteProduct} />;
+            case 'orders': return <OrderManagementPage orders={orders} onUpdateOrder={updateOrder} />;
+            case 'settings': return <SettingsPage serviceSets={serviceSets} onSaveServices={saveServiceSets} appSettings={settings} onSaveSettings={saveSettings} />;
             case 'reports': return <ReportsPage invoices={invoices} />;
             case 'new-invoice': return <InvoiceFormPage onSave={handleSaveInvoice} existingInvoice={invoiceToEdit} customers={customers} serviceSets={serviceSets} />;
             default: return <DashboardPage analytics={analytics} recentInvoices={invoices.slice(0,5)} />;
@@ -131,8 +141,7 @@ const App: React.FC = () => {
         if (roleNotSelected) {
             return <RoleSelectionPage onSelectRole={() => setRoleNotSelected(false)} />;
         }
-        // This logic seems reversed, but if a role *was* selected, we determine which login to show.
-        // We use localStorage to remember the choice.
+        
         const selectedRole = localStorage.getItem('selectedRole');
         if (selectedRole === 'customer') {
             return <CustomerLoginPage customers={customers} />;
@@ -141,10 +150,18 @@ const App: React.FC = () => {
     }
 
     if (user.role === 'customer') {
-        return <CustomerDashboard customerPhone={user.phone!} allInvoices={invoices} />;
+        const customer = customers.find(c => c.phone === user.phone);
+        return <CustomerDashboard 
+            customer={customer!} 
+            allInvoices={invoices} 
+            products={products}
+            orders={orders.filter(o => o.customerPhone === user.phone)}
+            onPlaceOrder={addOrder}
+            onUpdateOrder={updateOrder}
+            settings={settings}
+        />;
     }
     
-    // User is Admin
     return (
         <>
             <MainLayout currentView={view} onNavigate={handleNavigate} onNewInvoice={handleStartNewInvoice}>

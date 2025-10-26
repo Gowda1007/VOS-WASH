@@ -1,8 +1,10 @@
-export type CustomerType = 'customer' | 'garage' | 'dealer';
+export type CustomerType = 'customer' | 'garage_service_station' | 'dealer';
 
 export type InvoiceStatus = 'paid' | 'partially_paid' | 'unpaid';
 
-export type View = 'dashboard' | 'invoices' | 'customers' | 'settings' | 'reports' | 'new-invoice';
+export type OrderStatus = 'pending_payment' | 'processing' | 'shipped' | 'cancelled';
+
+export type View = 'dashboard' | 'invoices' | 'customers' | 'settings' | 'reports' | 'new-invoice' | 'products' | 'orders';
 
 export type PaymentMethod = 'upi' | 'cash';
 
@@ -33,6 +35,8 @@ export interface Invoice {
   customerType: CustomerType;
   services: Service[];
   payments: Payment[];
+  oldBalance?: { amount: number; date?: string };
+  advancePaid?: { amount: number; date?: string };
 }
 
 export interface Customer {
@@ -54,5 +58,35 @@ export interface AnalyticsData {
     unpaidBalance: number;
     totalPayments: number;
     topServices: [string, number][];
-    revenueByCustomerType: { customer: number; garage: number; dealer: number };
+    revenueByCustomerType: { customer: number; garage_service_station: number; dealer: number };
+}
+
+export interface Product {
+  id: number;
+  name: string;
+  price: number;
+  description: string;
+  image: string; // base64 encoded image
+}
+
+export interface ShippingDetails {
+  courier: string;
+  trackingNumber: string;
+  photo: string; // base64 encoded image
+  date: string;
+}
+
+export interface Order {
+  id: number;
+  customerPhone: string;
+  customerName: string;
+  products: (Product & { quantity: number })[];
+  totalAmount: number;
+  status: OrderStatus;
+  orderDate: string;
+  shippingDetails?: ShippingDetails;
+}
+
+export interface AppSettings {
+  upiId: string;
 }

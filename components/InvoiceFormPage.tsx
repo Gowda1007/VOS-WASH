@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { Invoice, CustomerType, Service, Customer, ServiceSets, ManageableService, PaymentMethod } from '../types';
 import { PageHeader, Card, Button, Icon } from './Common';
 import { InvoicePreview } from './InvoicePreview';
+import { CUSTOMER_TYPE_LABELS } from '../constants';
 
 interface InvoiceFormPageProps {
     onSave: (invoiceData: Omit<Invoice, 'id' | 'invoiceNumber' | 'invoiceDate'>, initialPayment?: { amount: number, method: PaymentMethod }) => void;
@@ -17,11 +18,16 @@ export const InvoiceFormPage: React.FC<InvoiceFormPageProps> = (props) => {
     const [customer, setCustomer] = useState<{ name: string; phone: string; address: string }>({ name: '', phone: '', address: '' });
     const [customerType, setCustomerType] = useState<CustomerType>('customer');
     const [selectedServices, setSelectedServices] = useState<Service[]>([]);
+    
+    // FEATURE IMPLEMENTATION: State for new financial fields.
+    const [oldBalance, setOldBalance] = useState<{ amount: number; date?: string }>({ amount: 0 });
+    const [advancePaid, setAdvancePaid] = useState<{ amount: number; date?: string }>({ amount: 0 });
     const [initialPayment, setInitialPayment] = useState({ amount: 0, method: 'cash' as PaymentMethod });
 
     const [previewData, setPreviewData] = useState<Invoice | null>(null);
 
     const handleGeneratePreview = () => {
+        // Construct a temporary invoice object for preview purposes.
         const invoiceData: Omit<Invoice, 'id' | 'invoiceNumber' | 'invoiceDate' | 'payments'> & { payments: any[] } = {
             customerName: customer.name, 
             customerPhone: customer.phone, 
@@ -29,6 +35,8 @@ export const InvoiceFormPage: React.FC<InvoiceFormPageProps> = (props) => {
             customerType, 
             services: selectedServices,
             payments: [],
+            oldBalance: oldBalance.amount > 0 ? oldBalance : undefined,
+            advancePaid: advancePaid.amount > 0 ? advancePaid : undefined,
         };
 
         const finalInvoiceDataForPreview: Invoice = {
@@ -51,6 +59,8 @@ export const InvoiceFormPage: React.FC<InvoiceFormPageProps> = (props) => {
             customerType, 
             services: selectedServices,
             payments: [], // payments will be added by App.tsx
+            oldBalance: oldBalance.amount > 0 ? oldBalance : undefined,
+            advancePaid: advancePaid.amount > 0 ? advancePaid : undefined,
         };
         props.onSave(invoiceData, initialPayment);
     };
@@ -59,7 +69,7 @@ export const InvoiceFormPage: React.FC<InvoiceFormPageProps> = (props) => {
         switch (step) {
             case 1: return <CustomerStep customers={props.customers} customer={customer} setCustomer={setCustomer} setCustomerType={setCustomerType} customerType={customerType} nextStep={() => setStep(2)} />;
             case 2: return <ServicesStep serviceSets={props.serviceSets} customerType={customerType} selectedServices={selectedServices} setSelectedServices={setSelectedServices} prevStep={() => setStep(1)} nextStep={() => setStep(3)} />;
-            case 3: return <PaymentStep initialPayment={initialPayment} setInitialPayment={setInitialPayment} prevStep={() => setStep(2)} onGenerate={handleGeneratePreview} />;
+            case 3: return <PaymentStep oldBalance={oldBalance} setOldBalance={setOldBalance} advancePaid={advancePaid} setAdvancePaid={setAdvancePaid} initialPayment={initialPayment} setInitialPayment={setInitialPayment} prevStep={() => setStep(2)} onGenerate={handleGeneratePreview} />;
             case 4: return <PreviewStep invoice={previewData!} onSave={handleFinalSave} onEdit={() => setStep(1)} />;
             default: return null;
         }
@@ -81,6 +91,9 @@ export const InvoiceFormPage: React.FC<InvoiceFormPageProps> = (props) => {
 
 const CustomerStep = ({ customers, customer, setCustomer, setCustomerType, customerType, nextStep }: any) => {
 
+    // FEATURE IMPLEMENTATION: Intelligent customer auto-fill.
+    // When a 10-digit phone number is entered, it automatically populates the name and address
+    // if the customer already exists, removing the need for a search button.
     useEffect(() => {
         if (customer.phone.length === 10) {
             const existingCustomer = customers.find((c: Customer) => c.phone === customer.phone);
@@ -105,8 +118,11 @@ const CustomerStep = ({ customers, customer, setCustomer, setCustomerType, custo
                 <div>
                     <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Customer Type</p>
                     <div className="flex flex-wrap gap-4">
-                        {(['customer', 'garage', 'dealer'] as CustomerType[]).map(type => (
-                            <label key={type} className="flex items-center capitalize"><input type="radio" name="customerType" value={type} checked={customerType === type} onChange={() => setCustomerType(type)} className="mr-2 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:bg-slate-700 dark:border-slate-500"/>{type}</label>
+                        {(Object.keys(CUSTOMER_TYPE_LABELS) as CustomerType[]).map(type => (
+                            <label key={type} className="flex items-center">
+                                <input type="radio" name="customerType" value={type} checked={customerType === type} onChange={() => setCustomerType(type)} className="mr-2 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:bg-slate-700 dark:border-slate-500"/>
+                                {CUSTOMER_TYPE_LABELS[type]}
+                            </label>
                         ))}
                     </div>
                 </div>
@@ -129,7 +145,7 @@ const ServicesStep = ({ serviceSets, customerType, selectedServices, setSelected
 
     return (
          <Card className="p-6 md:p-8">
-            <h3 className="font-bold text-lg mb-4 text-slate-800 dark:text-slate-100">Select Services for <span className="capitalize text-indigo-600 dark:text-indigo-400">{customerType}</span></h3>
+            <h3 className="font-bold text-lg mb-4 text-slate-800 dark:text-slate-100">Select Services for <span className="text-indigo-600 dark:text-indigo-400">{CUSTOMER_TYPE_LABELS[customerType]}</span></h3>
             <div className="space-y-3">
                 {currentServiceSet.map((service: ManageableService) => {
                     const isSelected = selectedServices.some((s: Service) => s.name === service.name);
@@ -153,25 +169,50 @@ const ServicesStep = ({ serviceSets, customerType, selectedServices, setSelected
     );
 };
 
-const PaymentStep = ({ initialPayment, setInitialPayment, prevStep, onGenerate }: any) => {
+// FEATURE IMPLEMENTATION: The PaymentStep is now a full financial details form.
+const PaymentStep = ({ oldBalance, setOldBalance, advancePaid, setAdvancePaid, initialPayment, setInitialPayment, prevStep, onGenerate }: any) => {
+    const [showOldBalance, setShowOldBalance] = useState(oldBalance.amount > 0);
+    const [showAdvancePaid, setShowAdvancePaid] = useState(advancePaid.amount > 0);
+
     return (
         <Card className="p-6 md:p-8">
-             <h3 className="font-bold text-lg mb-4 text-slate-800 dark:text-slate-100">Initial Payment (Optional)</h3>
-             <div className="space-y-4">
-                 <p className="text-sm text-slate-500 dark:text-slate-400">If the customer is paying an amount right now, you can record it here.</p>
-                 <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Amount Paid Today (₹)</label>
-                    <input type="number" value={initialPayment.amount || ''} onChange={e => setInitialPayment({ ...initialPayment, amount: parseFloat(e.target.value) || 0 })} placeholder="0" className="form-input" />
+             <h3 className="font-bold text-lg mb-4 text-slate-800 dark:text-slate-100">Financial Details</h3>
+             <div className="space-y-6">
+                 {/* Old Balance Section */}
+                 <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border dark:border-slate-700">
+                    <label className="flex items-center font-medium"><input type="checkbox" checked={showOldBalance} onChange={e => setShowOldBalance(e.target.checked)} className="mr-2 h-4 w-4 rounded text-red-600 focus:ring-red-500" /> Add Old Balance (Arrears)</label>
+                    {showOldBalance && (
+                        <div className="mt-3 space-y-2">
+                             <input type="number" value={oldBalance.amount || ''} onChange={e => setOldBalance({ ...oldBalance, amount: parseFloat(e.target.value) || 0 })} placeholder="Amount (₹)" className="form-input" />
+                             <input type="text" value={oldBalance.date || ''} onChange={e => setOldBalance({ ...oldBalance, date: e.target.value })} placeholder="Date / Reference (Optional)" className="form-input" />
+                        </div>
+                    )}
                  </div>
-                 {initialPayment.amount > 0 && (
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Payment Method</label>
-                        <select value={initialPayment.method} onChange={e => setInitialPayment({ ...initialPayment, method: e.target.value as PaymentMethod })} className="form-input">
-                            <option value="cash">Cash</option>
-                            <option value="upi">UPI</option>
-                        </select>
-                      </div>
-                 )}
+
+                 {/* Advance Paid Section */}
+                 <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border dark:border-slate-700">
+                    <label className="flex items-center font-medium"><input type="checkbox" checked={showAdvancePaid} onChange={e => setShowAdvancePaid(e.target.checked)} className="mr-2 h-4 w-4 rounded text-green-600 focus:ring-green-500"/> Add Advance Paid</label>
+                    {showAdvancePaid && (
+                        <div className="mt-3 space-y-2">
+                            <input type="number" value={advancePaid.amount || ''} onChange={e => setAdvancePaid({ ...advancePaid, amount: parseFloat(e.target.value) || 0 })} placeholder="Amount (₹)" className="form-input" />
+                            <input type="text" value={advancePaid.date || ''} onChange={e => setAdvancePaid({ ...advancePaid, date: e.target.value })} placeholder="Date / Reference (Optional)" className="form-input" />
+                        </div>
+                    )}
+                 </div>
+
+                 {/* Initial Payment Section */}
+                 <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border dark:border-slate-700">
+                     <p className="font-medium mb-2">Now Paid (Today)</p>
+                     <div className="space-y-2">
+                        <input type="number" value={initialPayment.amount || ''} onChange={e => setInitialPayment({ ...initialPayment, amount: parseFloat(e.target.value) || 0 })} placeholder="Amount (₹)" className="form-input" />
+                        {initialPayment.amount > 0 && (
+                            <select value={initialPayment.method} onChange={e => setInitialPayment({ ...initialPayment, method: e.target.value as PaymentMethod })} className="form-input">
+                                <option value="cash">Cash</option>
+                                <option value="upi">UPI</option>
+                            </select>
+                        )}
+                     </div>
+                 </div>
              </div>
              <div className="flex gap-4 mt-6">
                  <Button onClick={prevStep} variant="secondary" className="w-full">Back</Button>

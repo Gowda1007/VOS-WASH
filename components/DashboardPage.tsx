@@ -3,6 +3,7 @@ import type { AnalyticsData, Invoice } from '../types';
 import { filterAndGroupInvoicesForChart } from '../services/analyticsService';
 import { Card, PageHeader, Badge, Icon } from './Common';
 import { calculateInvoiceTotal, calculateStatus } from '../hooks/useInvoices';
+import { CUSTOMER_TYPE_LABELS } from '../constants';
 
 declare global {
     interface Window { Chart: any; }
@@ -102,9 +103,9 @@ export const DashboardPage: React.FC<{ analytics: AnalyticsData, recentInvoices:
         pieChartInstanceRef.current = new window.Chart(ctx, {
             type: 'doughnut',
             data: {
-                labels: ['Customer', 'Garage', 'Dealer'],
+                labels: [CUSTOMER_TYPE_LABELS.customer, CUSTOMER_TYPE_LABELS.garage_service_station, CUSTOMER_TYPE_LABELS.dealer],
                 datasets: [{
-                    data: [data.customer, data.garage, data.dealer],
+                    data: [data.customer, data.garage_service_station, data.dealer],
                     backgroundColor: ['#6366f1', '#38bdf8', '#fbbf24'],
                     borderColor: chartColors.border,
                     borderWidth: 2,
