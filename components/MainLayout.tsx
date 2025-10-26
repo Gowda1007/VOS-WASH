@@ -15,6 +15,7 @@ const navItems: { view: View; label: string; icon: React.ComponentProps<typeof I
     { view: 'dashboard', label: 'Dashboard', icon: 'chart-pie' },
     { view: 'invoices', label: 'Invoices', icon: 'document-text' },
     { view: 'customers', label: 'Customers', icon: 'users' },
+    { view: 'day-book', label: 'Day Book', icon: 'calendar-days' },
     { view: 'orders', label: 'Orders', icon: 'shopping-cart' },
     { view: 'products', label: 'Products', icon: 'tag' },
     { view: 'reports', label: 'Reports', icon: 'chart-bar-square' },

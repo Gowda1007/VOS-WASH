@@ -1,8 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import type { Invoice, InvoiceStatus } from '../types';
 import { PageHeader, Card, Badge, Button, Icon, EmptyState } from './Common';
-import { InvoicePreview } from './InvoicePreview';
-import { downloadPDF } from '../services/pdfService';
 import { calculateInvoiceTotal, calculateStatus, calculateRemainingBalance, calculateTotalPaid } from '../hooks/useInvoices';
 import { exportToCSV } from '../services/exportService';
 import { useToast } from '../hooks/useToast';
@@ -11,6 +9,7 @@ interface InvoiceListPageProps {
   invoices: Invoice[];
   onDelete: (id: number) => void;
   onCollect: (id: number) => void;
+  onPreview: (invoice: Invoice) => void;
 }
 
 type FilterStatus = 'all' | InvoiceStatus;
@@ -24,11 +23,10 @@ const parseDate = (dateString: string): Date | null => {
     return null;
 };
 
-export const InvoiceListPage: React.FC<InvoiceListPageProps> = ({ invoices, onDelete, onCollect }) => {
+export const InvoiceListPage: React.FC<InvoiceListPageProps> = ({ invoices, onDelete, onCollect, onPreview }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
-  const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
   const toast = useToast();
 
   const processedInvoices = useMemo(() => {
@@ -85,18 +83,6 @@ export const InvoiceListPage: React.FC<InvoiceListPageProps> = ({ invoices, onDe
     toast.success('Invoice data saved to your Downloads folder.');
   };
 
-  if (previewInvoice) {
-    return (
-        <div>
-            <Button onClick={() => setPreviewInvoice(null)} variant="secondary" className="mb-4">
-                <Icon name="arrow-left" className="w-5 h-5"/>
-                Back to Invoices
-            </Button>
-            <InvoicePreview invoiceData={previewInvoice} />
-        </div>
-    )
-  }
-
   return (
     <div>
       <PageHeader title="Invoices" subtitle={`You have ${invoices.length} total invoices.`}>
@@ -136,7 +122,7 @@ export const InvoiceListPage: React.FC<InvoiceListPageProps> = ({ invoices, onDe
           <div className="p-4 space-y-4">
             {filteredInvoices.length > 0 ? (
               filteredInvoices.map(inv => (
-                <InvoiceCard key={inv.id} invoice={inv} onDelete={onDelete} onCollect={onCollect} onPreview={setPreviewInvoice}/>
+                <InvoiceCard key={inv.id} invoice={inv} onDelete={onDelete} onCollect={onCollect} onPreview={onPreview}/>
               ))
             ) : (
                 <EmptyState icon="document-text" title="No Invoices Found" message="Try adjusting your search, filter, or date range." />
@@ -159,7 +145,7 @@ export const InvoiceListPage: React.FC<InvoiceListPageProps> = ({ invoices, onDe
                 <tbody>
                     {filteredInvoices.length > 0 ? (
                         filteredInvoices.map(inv => (
-                            <InvoiceRow key={inv.id} invoice={inv} onDelete={onDelete} onCollect={onCollect} onPreview={setPreviewInvoice}/>
+                            <InvoiceRow key={inv.id} invoice={inv} onDelete={onDelete} onCollect={onCollect} onPreview={onPreview}/>
                         ))
                     ) : (
                         <tr><td colSpan={5}>

@@ -15,6 +15,8 @@ import { CustomerDashboard } from './components/CustomerDashboard';
 import { ReportsPage } from './components/ReportsPage';
 import { ProductManagementPage } from './components/ProductManagementPage';
 import { OrderManagementPage } from './components/OrderManagementPage';
+import { DayBookPage } from './components/DayBookPage';
+import { InvoicePreviewOverlay } from './components/InvoicePreviewOverlay';
 
 import type { Invoice, View, Payment, PaymentMethod, Customer } from './types';
 import { useInvoices } from './hooks/useInvoices';
@@ -42,6 +44,7 @@ const App: React.FC = () => {
     const [confirmModalState, setConfirmModalState] = useState<ConfirmModalState>({ isOpen: false });
     const [invoiceToEdit, setInvoiceToEdit] = useState<Invoice | null>(null);
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+    const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
 
     const analytics = useMemo(() => calculateAnalytics(invoices), [invoices]);
 
@@ -65,6 +68,10 @@ const App: React.FC = () => {
         setView('customer-detail');
     };
     
+    const handlePreviewInvoice = (invoice: Invoice) => {
+        setPreviewInvoice(invoice);
+    };
+
     const handleSaveInvoice = (invoiceData: Omit<Invoice, 'id' | 'invoiceNumber' | 'invoiceDate' | 'payments'>, initialPayment?: { amount: number, method: PaymentMethod }) => {
         addOrUpdateCustomer({
             phone: invoiceData.customerPhone,
@@ -122,6 +129,10 @@ const App: React.FC = () => {
                     const updatedPayments = [...invoice.payments, newPayment];
                     updateInvoice(invoiceId, { payments: updatedPayments });
                     setConfirmModalState({ isOpen: false });
+                    // Refresh previewed invoice if it's open
+                    if (previewInvoice && previewInvoice.id === invoiceId) {
+                        setPreviewInvoice({ ...invoice, payments: updatedPayments });
+                    }
                 },
             });
         }
@@ -129,8 +140,8 @@ const App: React.FC = () => {
 
     const renderAdminContent = () => {
         switch (view) {
-            case 'dashboard': return <DashboardPage analytics={analytics} recentInvoices={invoices.slice(0, 5)} />;
-            case 'invoices': return <InvoiceListPage invoices={invoices} onDelete={handleDeleteRequest} onCollect={handleCollectRequest} />;
+            case 'dashboard': return <DashboardPage analytics={analytics} recentInvoices={invoices.slice(0, 5)} onPreviewInvoice={handlePreviewInvoice} />;
+            case 'invoices': return <InvoiceListPage invoices={invoices} onDelete={handleDeleteRequest} onCollect={handleCollectRequest} onPreview={handlePreviewInvoice} />;
             case 'customers': return <CustomerListPage customers={customers} invoices={invoices} onViewCustomer={handleViewCustomer} />;
             case 'customer-detail': 
                 if (!selectedCustomer) {
@@ -143,13 +154,15 @@ const App: React.FC = () => {
                     orders={orders.filter(o => o.customerPhone === selectedCustomer.phone)}
                     onNavigateBack={() => handleNavigate('customers')}
                     onCollectInvoice={handleCollectRequest}
+                    onPreviewInvoice={handlePreviewInvoice}
                 />;
             case 'products': return <ProductManagementPage products={products} onAdd={addProduct} onUpdate={updateProduct} onDelete={deleteProduct} />;
             case 'orders': return <OrderManagementPage orders={orders} onUpdateOrder={updateOrder} customers={customers} />;
+            case 'day-book': return <DayBookPage invoices={invoices} onPreviewInvoice={handlePreviewInvoice} onCollectInvoice={handleCollectRequest} />;
             case 'settings': return <SettingsPage serviceSets={serviceSets} onSaveServices={saveServiceSets} appSettings={settings} onSaveSettings={saveSettings} />;
             case 'reports': return <ReportsPage invoices={invoices} />;
             case 'new-invoice': return <InvoiceFormPage onSave={handleSaveInvoice} existingInvoice={invoiceToEdit} customers={customers} serviceSets={serviceSets} />;
-            default: return <DashboardPage analytics={analytics} recentInvoices={invoices.slice(0,5)} />;
+            default: return <DashboardPage analytics={analytics} recentInvoices={invoices.slice(0,5)} onPreviewInvoice={handlePreviewInvoice} />;
         }
     };
 
@@ -191,6 +204,13 @@ const App: React.FC = () => {
                 {renderAdminContent()}
             </MainLayout>
             <ConfirmationModal state={confirmModalState} setState={setConfirmModalState} />
+            {previewInvoice && (
+                <InvoicePreviewOverlay 
+                    invoice={previewInvoice} 
+                    onClose={() => setPreviewInvoice(null)} 
+                    onCollect={handleCollectRequest} 
+                />
+            )}
         </>
     );
 };

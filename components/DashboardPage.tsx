@@ -25,7 +25,13 @@ const KpiCard: React.FC<{ title: string; value: string | number; icon: React.Com
 
 type ChartPeriod = 'day' | 'week' | 'month';
 
-export const DashboardPage: React.FC<{ analytics: AnalyticsData, recentInvoices: Invoice[] }> = ({ analytics, recentInvoices }) => {
+interface DashboardPageProps {
+    analytics: AnalyticsData;
+    recentInvoices: Invoice[];
+    onPreviewInvoice: (invoice: Invoice) => void;
+}
+
+export const DashboardPage: React.FC<DashboardPageProps> = ({ analytics, recentInvoices, onPreviewInvoice }) => {
     const barChartRef = useRef<HTMLCanvasElement>(null);
     const barChartInstanceRef = useRef<any>(null);
     const pieChartRef = useRef<HTMLCanvasElement>(null);
@@ -170,7 +176,7 @@ export const DashboardPage: React.FC<{ analytics: AnalyticsData, recentInvoices:
                     <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">Recent Invoices</h3>
                 </div>
                  <ul className="divide-y divide-slate-200 dark:divide-slate-700">
-                     {recentInvoices.length > 0 ? recentInvoices.map(inv => <InvoiceListItem key={inv.id} invoice={inv} />)
+                     {recentInvoices.length > 0 ? recentInvoices.map(inv => <InvoiceListItem key={inv.id} invoice={inv} onPreview={onPreviewInvoice} />)
                      : <p className="text-slate-500 dark:text-slate-400 text-center py-8">No recent invoices.</p>
                      }
                 </ul>
@@ -180,22 +186,24 @@ export const DashboardPage: React.FC<{ analytics: AnalyticsData, recentInvoices:
 };
 
 
-const InvoiceListItem: React.FC<{ invoice: Invoice }> = ({ invoice }) => {
+const InvoiceListItem: React.FC<{ invoice: Invoice; onPreview: (invoice: Invoice) => void; }> = ({ invoice, onPreview }) => {
     const totalAmount = calculateInvoiceTotal(invoice.services);
     const status = calculateStatus(invoice);
     
     return (
-        <li className="px-6 py-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50">
-            <div>
-                <p className="font-semibold text-indigo-600 dark:text-indigo-400">{invoice.customerName}</p>
-                <p className="text-sm text-slate-500 dark:text-slate-400">#{invoice.invoiceNumber} &bull; {invoice.invoiceDate}</p>
-            </div>
-            <div className="text-right">
-                 <p className="font-bold text-slate-800 dark:text-slate-100">₹{totalAmount.toLocaleString('en-IN')}</p>
-                {status === 'paid' && <Badge color="green">Paid</Badge>}
-                {status === 'partially_paid' && <Badge color="amber">Partial</Badge>}
-                {status === 'unpaid' && <Badge color="red">Unpaid</Badge>}
-            </div>
+        <li>
+            <button onClick={() => onPreview(invoice)} className="w-full text-left px-6 py-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                <div>
+                    <p className="font-semibold text-indigo-600 dark:text-indigo-400">{invoice.customerName}</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">#{invoice.invoiceNumber} &bull; {invoice.invoiceDate}</p>
+                </div>
+                <div className="text-right">
+                     <p className="font-bold text-slate-800 dark:text-slate-100">₹{totalAmount.toLocaleString('en-IN')}</p>
+                    {status === 'paid' && <Badge color="green">Paid</Badge>}
+                    {status === 'partially_paid' && <Badge color="amber">Partial</Badge>}
+                    {status === 'unpaid' && <Badge color="red">Unpaid</Badge>}
+                </div>
+            </button>
         </li>
     );
 }

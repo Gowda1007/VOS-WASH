@@ -1,8 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import type { Customer, Invoice, Order, OrderStatus, InvoiceStatus } from '../types';
 import { PageHeader, Card, Button, Icon, Badge } from './Common';
-import { InvoicePreview } from './InvoicePreview';
-import { calculateInvoiceTotal, calculateStatus, calculateRemainingBalance } from '../hooks/useInvoices';
+import { calculateInvoiceTotal, calculateStatus } from '../hooks/useInvoices';
 
 interface CustomerDetailPageProps {
     customer: Customer;
@@ -10,6 +9,7 @@ interface CustomerDetailPageProps {
     orders: Order[];
     onNavigateBack: () => void;
     onCollectInvoice: (invoiceId: number) => void;
+    onPreviewInvoice: (invoice: Invoice) => void;
 }
 
 const KpiCard: React.FC<{ title: string; value: string | number; }> = ({ title, value }) => (
@@ -19,9 +19,8 @@ const KpiCard: React.FC<{ title: string; value: string | number; }> = ({ title, 
     </Card>
 );
 
-export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({ customer, invoices, orders, onNavigateBack, onCollectInvoice }) => {
+export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({ customer, invoices, orders, onNavigateBack, onCollectInvoice, onPreviewInvoice }) => {
     const [activeTab, setActiveTab] = useState<'invoices' | 'orders'>('invoices');
-    const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
 
     const stats = useMemo(() => {
         const totalSpent = invoices.reduce((sum, inv) => sum + calculateInvoiceTotal(inv.services), 0);
@@ -33,18 +32,6 @@ export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({ customer
             avgInvoiceValue: `₹${avgInvoiceValue.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
         };
     }, [invoices, orders]);
-    
-    if (previewInvoice) {
-        return (
-            <div>
-                <Button onClick={() => setPreviewInvoice(null)} variant="secondary" className="mb-4">
-                    <Icon name="arrow-left" className="w-5 h-5"/>
-                    Back to Customer Details
-                </Button>
-                <InvoicePreview invoiceData={previewInvoice} />
-            </div>
-        )
-    }
 
     return (
         <div>
@@ -72,7 +59,7 @@ export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({ customer
                     </nav>
                 </div>
                 <div>
-                    {activeTab === 'invoices' && <InvoicesTab invoices={invoices} onPreview={setPreviewInvoice} onCollect={onCollectInvoice}/>}
+                    {activeTab === 'invoices' && <InvoicesTab invoices={invoices} onPreview={onPreviewInvoice} onCollect={onCollectInvoice}/>}
                     {activeTab === 'orders' && <OrdersTab orders={orders} />}
                 </div>
             </Card>

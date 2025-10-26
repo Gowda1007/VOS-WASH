@@ -22,17 +22,13 @@ export const downloadPDF = async (invoiceData: Pick<Invoice, 'invoiceNumber' | '
     const customerName = invoiceData.customerName.trim().replace(/\s+/g, "_") || "invoice";
     const filename = `VOS-WASH-${invoiceData.invoiceNumber}-${customerName}.pdf`;
 
-    // Temporarily set a specific width for consistent PDF output
-    const originalWidth = elementToPrint.style.width;
-    elementToPrint.style.width = "800px";
-
     try {
         const { jsPDF } = window.jspdf;
         const canvas = await window.html2canvas(elementToPrint, {
             scale: 2,
             logging: false,
             useCORS: true,
-            backgroundColor: null, // Use transparent background to respect dark mode
+            backgroundColor: '#ffffff', // Ensure a white background for consistency
         });
 
         const imgData = canvas.toDataURL("image/png");
@@ -52,8 +48,5 @@ export const downloadPDF = async (invoiceData: Pick<Invoice, 'invoiceNumber' | '
     } catch (error) {
         console.error("Error generating PDF:", error);
         alert("Could not generate PDF. Check console for details.");
-    } finally {
-        // Restore original width
-        elementToPrint.style.width = originalWidth;
     }
 };
