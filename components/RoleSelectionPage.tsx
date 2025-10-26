@@ -1,4 +1,5 @@
 import React from 'react';
+import { Logo } from './Common';
 
 interface RoleSelectionPageProps {
   onSelectRole: () => void;
@@ -15,7 +16,7 @@ export const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelectRo
         <div className="flex flex-col items-center justify-center min-h-screen bg-slate-100 dark:bg-slate-900 p-4">
             <div className="w-full max-w-sm text-center">
                 <div className="flex items-center justify-center space-x-3 mb-8">
-                    <img src="/logo-sm.png" alt="VOS WASH Logo" className="w-16 h-16" />
+                    <Logo className="w-16 h-16 text-blue-700 dark:text-blue-400" />
                     <div>
                         <h1 className="text-2xl font-bold text-blue-700 dark:text-blue-400">VOS WASH Pro</h1>
                         <p className="text-slate-600 dark:text-slate-400">Welcome!</p>

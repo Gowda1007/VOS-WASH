@@ -63,7 +63,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ state, set
                 id="confirmAmountInput" 
                 value={amount || ''}
                 onChange={(e) => setAmount(parseFloat(e.target.value) || 0)}
-                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
+                className="w-full px-3 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
               />
             </div>
              <div>
@@ -72,7 +72,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ state, set
                 id="paymentMethod" 
                 value={method}
                 onChange={(e) => setMethod(e.target.value as PaymentMethod)}
-                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
+                className="w-full px-3 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
               >
                   <option value="cash">Cash</option>
                   <option value="upi">UPI</option>

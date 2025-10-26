@@ -1,6 +1,6 @@
 import React from 'react';
 import type { View } from '../types';
-import { Icon } from './Common';
+import { Icon, Logo } from './Common';
 
 interface MainLayoutProps {
     children: React.ReactNode;
@@ -26,7 +26,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children, currentView, o
             <aside className="hidden md:flex w-64 flex-col bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700">
                 <div className="flex items-center justify-center h-20 border-b border-slate-200 dark:border-slate-700">
                     <div className="flex items-center space-x-2">
-                        <img src="/logo-sm.png" alt="VOS WASH Logo" className="w-12 h-12" />
+                        <Logo className="w-12 h-12 text-blue-700 dark:text-blue-400" />
                         <h1 className="text-xl font-bold text-blue-700 dark:text-blue-400">VOS WASH Pro</h1>
                     </div>
                 </div>

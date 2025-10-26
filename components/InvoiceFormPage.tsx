@@ -82,7 +82,7 @@ export const InvoiceFormPage: React.FC<InvoiceFormPageProps> = (props) => {
         <div>
             <PageHeader title={pageTitle} subtitle={pageSubtitle} />
             <div className="max-w-3xl mx-auto">{renderStep()}</div>
-             <style>{`.form-input { @apply block w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900; }`}</style>
+             <style>{`.form-input { @apply block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900; }`}</style>
         </div>
     );
 };
@@ -155,7 +155,7 @@ const ServicesStep = ({ serviceSets, customerType, selectedServices, setSelected
                             <label className="flex items-center font-medium"><input type="checkbox" checked={isSelected} onChange={() => handleToggle(service)} className="mr-3 h-5 w-5 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:bg-slate-700 dark:border-slate-500"/>{service.name}</label>
                             <div className="flex items-center gap-2 self-end sm:self-center">
                                <span className="text-slate-600 dark:text-slate-300">₹{service.price}</span>
-                               {isSelected && <input type="number" value={currentService?.quantity} onChange={e => handleQuantityChange(service.name, parseInt(e.target.value) || 1)} className="w-16 text-center border-slate-300 dark:border-slate-600 rounded-md p-1 bg-white dark:bg-slate-700" />}
+                               {isSelected && <input type="number" value={currentService?.quantity} onChange={e => handleQuantityChange(service.name, parseInt(e.target.value) || 1)} className="w-24 text-center border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2.5 text-base bg-white dark:bg-slate-700" />}
                             </div>
                         </div>
                     );

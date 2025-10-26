@@ -66,7 +66,7 @@ export const InvoiceListPage: React.FC<InvoiceListPageProps> = ({ invoices, onDe
               placeholder="Search by name, phone, or invoice #"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full md:flex-1 px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
+              className="w-full md:flex-1 px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
             />
             <div className="flex items-center gap-2 flex-wrap">
                 {(['all', 'unpaid', 'partially_paid', 'paid'] as FilterStatus[]).map(status => (

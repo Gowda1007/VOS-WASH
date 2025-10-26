@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import type { Customer } from '../types';
+import { Logo } from './Common';
 
 interface CustomerLoginPageProps {
   customers: Customer[];
@@ -43,7 +44,7 @@ export const CustomerLoginPage: React.FC<CustomerLoginPageProps> = ({ customers 
         <div className="flex flex-col items-center justify-center min-h-screen bg-slate-100 dark:bg-slate-900 p-4">
             <div className="w-full max-w-sm">
                 <div className="flex items-center justify-center space-x-3 mb-8">
-                    <img src="/logo-sm.png" alt="VOS WASH Logo" className="w-16 h-16" />
+                    <Logo className="w-16 h-16 text-blue-700 dark:text-blue-400" />
                     <div>
                         <h1 className="text-2xl font-bold text-blue-700 dark:text-blue-400">VOS WASH Pro</h1>
                         <p className="text-slate-600 dark:text-slate-400">Customer Portal</p>
@@ -55,7 +56,7 @@ export const CustomerLoginPage: React.FC<CustomerLoginPageProps> = ({ customers 
                          <h3 className="text-lg font-semibold text-center text-slate-800 dark:text-slate-100">Sign in with your phone</h3>
                         <div>
                             <label htmlFor="phone" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Registered Phone Number</label>
-                            <input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))} maxLength={10} required className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-md" />
+                            <input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))} maxLength={10} required className="mt-1 block w-full px-4 py-3 text-base bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg" />
                         </div>
                         {error && <p className="text-sm text-red-500">{error}</p>}
                         <button type="submit" className="w-full flex justify-center py-3 px-4 bg-indigo-600 text-white rounded-lg">

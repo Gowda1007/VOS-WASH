@@ -6,6 +6,7 @@ import { calculateInvoiceTotal } from '../hooks/useInvoices';
 interface CustomerListPageProps {
     customers: Customer[];
     invoices: Invoice[];
+    onViewCustomer: (customer: Customer) => void;
 }
 
 interface CustomerWithStats extends Customer {
@@ -13,7 +14,7 @@ interface CustomerWithStats extends Customer {
     totalSpent: number;
 }
 
-export const CustomerListPage: React.FC<CustomerListPageProps> = ({ customers, invoices }) => {
+export const CustomerListPage: React.FC<CustomerListPageProps> = ({ customers, invoices, onViewCustomer }) => {
     const [searchQuery, setSearchQuery] = useState('');
 
     const customersWithStats = useMemo(() => {
@@ -50,7 +51,7 @@ export const CustomerListPage: React.FC<CustomerListPageProps> = ({ customers, i
                         placeholder="Search by name or phone..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full md:w-1/3 px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
+                        className="w-full md:w-1/3 px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
                     />
                 </div>
                 
@@ -58,7 +59,7 @@ export const CustomerListPage: React.FC<CustomerListPageProps> = ({ customers, i
                 <div className="md:hidden">
                     <div className="p-4 space-y-4">
                         {filteredCustomers.length > 0 ? (
-                           filteredCustomers.map(customer => <CustomerCard key={customer.phone} customer={customer} />)
+                           filteredCustomers.map(customer => <CustomerCard key={customer.phone} customer={customer} onView={onViewCustomer} />)
                         ) : (
                            <p className="text-center py-12 text-slate-500 dark:text-slate-400">No customers found.</p>
                         )}
@@ -79,7 +80,7 @@ export const CustomerListPage: React.FC<CustomerListPageProps> = ({ customers, i
                         <tbody>
                             {filteredCustomers.length > 0 ? (
                                 filteredCustomers.map(customer => (
-                                    <CustomerRow key={customer.phone} customer={customer} />
+                                    <CustomerRow key={customer.phone} customer={customer} onView={onViewCustomer} />
                                 ))
                             ) : (
                                 <tr><td colSpan={4} className="text-center py-12 text-slate-500 dark:text-slate-400">No customers found.</td></tr>
@@ -92,8 +93,8 @@ export const CustomerListPage: React.FC<CustomerListPageProps> = ({ customers, i
     );
 };
 
-const CustomerRow: React.FC<{ customer: CustomerWithStats }> = ({ customer }) => (
-    <tr className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+const CustomerRow: React.FC<{ customer: CustomerWithStats; onView: (c: Customer) => void }> = ({ customer, onView }) => (
+    <tr onClick={() => onView(customer)} className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer">
         <td className="p-4">
             <div className="font-semibold text-slate-800 dark:text-slate-100">{customer.name}</div>
         </td>
@@ -106,8 +107,8 @@ const CustomerRow: React.FC<{ customer: CustomerWithStats }> = ({ customer }) =>
     </tr>
 );
 
-const CustomerCard: React.FC<{ customer: CustomerWithStats }> = ({ customer }) => (
-    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg border border-slate-200 dark:border-slate-700">
+const CustomerCard: React.FC<{ customer: CustomerWithStats; onView: (c: Customer) => void }> = ({ customer, onView }) => (
+    <div onClick={() => onView(customer)} className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer active:bg-slate-100 dark:active:bg-slate-700/50">
         <div className="flex justify-between items-start">
             <div>
                 <p className="font-bold text-slate-800 dark:text-slate-100">{customer.name}</p>

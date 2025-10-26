@@ -3,6 +3,7 @@ import { MainLayout } from './components/MainLayout';
 import { DashboardPage } from './components/DashboardPage';
 import { InvoiceListPage } from './components/InvoiceListPage';
 import { CustomerListPage } from './components/CustomerListPage';
+import { CustomerDetailPage } from './components/CustomerDetailPage';
 import { SettingsPage } from './components/SettingsPage';
 import { InvoiceFormPage } from './components/InvoiceFormPage';
 import { ConfirmationModal, ConfirmModalState } from './components/ConfirmationModal';
@@ -15,7 +16,7 @@ import { ReportsPage } from './components/ReportsPage';
 import { ProductManagementPage } from './components/ProductManagementPage';
 import { OrderManagementPage } from './components/OrderManagementPage';
 
-import type { Invoice, View, Payment, PaymentMethod, Customer, Product, Order, ShippingDetails } from './types';
+import type { Invoice, View, Payment, PaymentMethod, Customer } from './types';
 import { useInvoices } from './hooks/useInvoices';
 import { useCustomers } from './hooks/useCustomers';
 import { useServices } from './hooks/useServices';
@@ -28,7 +29,7 @@ import { calculateAnalytics } from './services/analyticsService';
 const App: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const { user, loading: authLoading } = useAuth();
-    const [roleNotSelected, setRoleNotSelected] = useState(true);
+    const [roleNotSelected, setRoleNotSelected] = useState(!localStorage.getItem('selectedRole'));
 
     const [view, setView] = useState<View>('dashboard');
     const { invoices, addInvoice, updateInvoice, deleteInvoice } = useInvoices();
@@ -40,6 +41,7 @@ const App: React.FC = () => {
 
     const [confirmModalState, setConfirmModalState] = useState<ConfirmModalState>({ isOpen: false });
     const [invoiceToEdit, setInvoiceToEdit] = useState<Invoice | null>(null);
+    const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
     const analytics = useMemo(() => calculateAnalytics(invoices), [invoices]);
 
@@ -49,12 +51,18 @@ const App: React.FC = () => {
 
     const handleNavigate = (newView: View) => {
         setInvoiceToEdit(null);
+        setSelectedCustomer(null);
         setView(newView);
     };
 
     const handleStartNewInvoice = () => {
         setInvoiceToEdit(null);
         setView('new-invoice');
+    };
+
+    const handleViewCustomer = (customer: Customer) => {
+        setSelectedCustomer(customer);
+        setView('customer-detail');
     };
     
     const handleSaveInvoice = (invoiceData: Omit<Invoice, 'id' | 'invoiceNumber' | 'invoiceDate' | 'payments'>, initialPayment?: { amount: number, method: PaymentMethod }) => {
@@ -123,9 +131,21 @@ const App: React.FC = () => {
         switch (view) {
             case 'dashboard': return <DashboardPage analytics={analytics} recentInvoices={invoices.slice(0, 5)} />;
             case 'invoices': return <InvoiceListPage invoices={invoices} onDelete={handleDeleteRequest} onCollect={handleCollectRequest} />;
-            case 'customers': return <CustomerListPage customers={customers} invoices={invoices} onAddCustomer={addCustomer} isCustomerExists={isCustomerExists} />;
+            case 'customers': return <CustomerListPage customers={customers} invoices={invoices} onViewCustomer={handleViewCustomer} />;
+            case 'customer-detail': 
+                if (!selectedCustomer) {
+                    setView('customers');
+                    return null;
+                }
+                return <CustomerDetailPage 
+                    customer={selectedCustomer} 
+                    invoices={invoices.filter(i => i.customerPhone === selectedCustomer.phone)}
+                    orders={orders.filter(o => o.customerPhone === selectedCustomer.phone)}
+                    onNavigateBack={() => handleNavigate('customers')}
+                    onCollectInvoice={handleCollectRequest}
+                />;
             case 'products': return <ProductManagementPage products={products} onAdd={addProduct} onUpdate={updateProduct} onDelete={deleteProduct} />;
-            case 'orders': return <OrderManagementPage orders={orders} onUpdateOrder={updateOrder} />;
+            case 'orders': return <OrderManagementPage orders={orders} onUpdateOrder={updateOrder} customers={customers} />;
             case 'settings': return <SettingsPage serviceSets={serviceSets} onSaveServices={saveServiceSets} appSettings={settings} onSaveSettings={saveSettings} />;
             case 'reports': return <ReportsPage invoices={invoices} />;
             case 'new-invoice': return <InvoiceFormPage onSave={handleSaveInvoice} existingInvoice={invoiceToEdit} customers={customers} serviceSets={serviceSets} />;
@@ -151,13 +171,16 @@ const App: React.FC = () => {
 
     if (user.role === 'customer') {
         const customer = customers.find(c => c.phone === user.phone);
+        if (!customer) {
+             // This case handles if a customer was deleted but their login persists
+             return <CustomerLoginPage customers={customers} />;
+        }
         return <CustomerDashboard 
-            customer={customer!} 
+            customer={customer}
             allInvoices={invoices} 
             products={products}
             orders={orders.filter(o => o.customerPhone === user.phone)}
             onPlaceOrder={addOrder}
-            onUpdateOrder={updateOrder}
             settings={settings}
         />;
     }

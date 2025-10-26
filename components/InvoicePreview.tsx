@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Invoice } from '../types';
 import { calculateInvoiceTotal, calculateTotalPaid, calculateRemainingBalance } from '../hooks/useInvoices';
+import { Logo } from './Common';
 
 interface InvoicePreviewProps {
   invoiceData: Invoice;
@@ -24,7 +25,7 @@ export const InvoicePreview: React.FC<InvoicePreviewProps> = ({ invoiceData }) =
       <div id="invoice-preview-content" className="p-6 bg-white dark:bg-slate-800 max-w-full shadow-lg rounded-lg border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200">
         <header className="flex justify-between items-start pb-4 border-b dark:border-slate-600">
             <div className="flex items-center space-x-3">
-                <img src="/logo-sm.png" alt="VOS WASH Logo" className="w-16 h-16" />
+                <Logo className="w-16 h-16 text-blue-700 dark:text-blue-400" />
                 <div>
                     <h1 className="text-2xl font-bold text-blue-700 dark:text-blue-400">VOS WASH</h1>
                     <p className="text-sm text-slate-500 dark:text-slate-400">(Clean Everything)</p>

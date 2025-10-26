@@ -4,7 +4,7 @@ export type InvoiceStatus = 'paid' | 'partially_paid' | 'unpaid';
 
 export type OrderStatus = 'pending_payment' | 'processing' | 'shipped' | 'cancelled';
 
-export type View = 'dashboard' | 'invoices' | 'customers' | 'settings' | 'reports' | 'new-invoice' | 'products' | 'orders';
+export type View = 'dashboard' | 'invoices' | 'customers' | 'settings' | 'reports' | 'new-invoice' | 'products' | 'orders' | 'customer-detail';
 
 export type PaymentMethod = 'upi' | 'cash';
 

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { Logo } from './Common';
 
 export const LoginPage: React.FC = () => {
     const [password, setPassword] = useState('');
@@ -23,7 +24,7 @@ export const LoginPage: React.FC = () => {
         <div className="flex flex-col items-center justify-center min-h-screen bg-slate-100 dark:bg-slate-900 p-4">
             <div className="w-full max-w-sm">
                 <div className="flex items-center justify-center space-x-3 mb-8">
-                    <img src="/logo-sm.png" alt="VOS WASH Logo" className="w-16 h-16" />
+                    <Logo className="w-16 h-16 text-blue-700 dark:text-blue-400" />
                     <div>
                         <h1 className="text-2xl font-bold text-blue-700 dark:text-blue-400">VOS WASH Pro</h1>
                         <p className="text-slate-600 dark:text-slate-400">Admin Login</p>
@@ -45,7 +46,7 @@ export const LoginPage: React.FC = () => {
                                     required
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="block w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-slate-800 dark:text-slate-200"
+                                    className="block w-full px-4 py-3 text-base bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg shadow-sm placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-slate-800 dark:text-slate-200"
                                 />
                             </div>
                         </div>

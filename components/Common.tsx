@@ -1,4 +1,13 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import type { ToastMessage } from '../hooks/useToast';
+
+// --- Logo Component ---
+export const Logo: React.FC<{ className?: string }> = ({ className = 'w-12 h-12' }) => (
+    <svg className={className} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+        <path d="M50 0 C22.38 0 0 22.38 0 50 C0 71.21 13.97 89.28 33.33 96.67 C33.33 80 40 66.67 50 50 C60 66.67 66.67 80 66.67 96.67 C86.03 89.28 100 71.21 100 50 C100 22.38 77.62 0 50 0 Z M50 20 L58.66 35 L50 50 L41.34 35 Z" />
+    </svg>
+);
+
 
 // --- Icon Component ---
 // A wrapper for using SVG icons from a library like Heroicons.
@@ -19,4 +28,139 @@ export const Icon: React.FC<{ name: string, className?: string }> = ({ name, cla
         'chart-bar-square': 'M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0020.25 18V5.25A2.25 2.25 0 0018 3H6A2.25 2.25 0 003.75 5.25v12.75A2.25 2.25 0 006 20.25z',
         'eye': 'M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.432 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z M15 12a3 3 0 11-6 0 3 3 0 016 0z',
         'banknotes': 'M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6-2.292m0 0v14.25',
-        'shopping-cart': 'M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75
+        'shopping-cart': 'M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c.51 0 .962-.328 1.125-.824l2.853-6.846A1.125 1.125 0 0018.04 8.25H5.25',
+        'tag': 'M5.25 7.5A2.25 2.25 0 017.5 5.25h9a2.25 2.25 0 012.25 2.25v9a2.25 2.25 0 01-2.25-2.25h-9a2.25 2.25 0 01-2.25-2.25v-9z M1.5 15a.75.75 0 01-.75-.75V7.5a.75.75 0 01.75-.75H3v8.25H1.5z M4.5 15V6.75H3V15h1.5z',
+        'x-mark': 'M6 18L18 6M6 6l12 12',
+        'check-circle': 'M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+        'x-circle': 'M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+    };
+    const path = icons[name] || '';
+    return (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+            <path strokeLinecap="round" strokeLinejoin="round" d={path} />
+        </svg>
+    );
+};
+
+// --- PageHeader Component ---
+export const PageHeader: React.FC<{ title: string, subtitle?: string, children?: React.ReactNode }> = ({ title, subtitle, children }) => (
+    <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+        <div>
+            <h2 className="text-3xl font-bold text-slate-800 dark:text-slate-100">{title}</h2>
+            {subtitle && <p className="mt-1 text-slate-500 dark:text-slate-400">{subtitle}</p>}
+        </div>
+        {children && <div className="mt-4 md:mt-0">{children}</div>}
+    </div>
+);
+
+// --- Card Component ---
+export const Card: React.FC<{ children: React.ReactNode, className?: string }> = ({ children, className }) => (
+    <div className={`bg-white dark:bg-slate-800 shadow-lg rounded-lg border border-slate-200 dark:border-slate-700 ${className}`}>
+        {children}
+    </div>
+);
+
+// --- Badge Component ---
+export const Badge: React.FC<{ children: React.ReactNode, color: 'green' | 'amber' | 'red' | 'blue' | 'slate' }> = ({ children, color }) => {
+    const colors = {
+        green: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300',
+        amber: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300',
+        red: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300',
+        blue: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300',
+        slate: 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300',
+    };
+    return (
+        <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full ${colors[color]}`}>
+            {children}
+        </span>
+    );
+};
+
+// --- Button Component ---
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+    variant?: 'primary' | 'secondary' | 'danger';
+}
+export const Button: React.FC<ButtonProps> = ({ children, className, variant = 'primary', ...props }) => {
+    const baseClasses = 'inline-flex items-center justify-center gap-2 px-4 py-2 font-semibold rounded-lg shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed';
+    const variants = {
+        primary: 'bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500',
+        secondary: 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 focus:ring-2 focus:ring-offset-2 focus:ring-slate-500',
+        danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-2 focus:ring-offset-2 focus:ring-red-500',
+    };
+    return (
+        <button className={`${baseClasses} ${variants[variant]} ${className}`} {...props}>
+            {children}
+        </button>
+    );
+};
+
+// --- Modal Component ---
+interface ModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    title: string;
+    children: React.ReactNode;
+}
+export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50" aria-modal="true" role="dialog">
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
+                <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-slate-700">
+                    <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">{title}</h3>
+                    <button onClick={onClose} className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700">
+                        <Icon name="x-mark" className="w-6 h-6 text-slate-500" />
+                    </button>
+                </div>
+                <div className="p-6 overflow-y-auto">
+                    {children}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
+// --- Toast Components ---
+const Toast: React.FC<{ message: ToastMessage, onRemove: (id: number) => void }> = ({ message, onRemove }) => {
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            onRemove(message.id);
+        }, 5000);
+
+        return () => {
+            clearTimeout(timer);
+        };
+    }, [message.id, onRemove]);
+
+    const baseClasses = 'flex items-center w-full max-w-xs p-4 space-x-4 text-slate-500 bg-white divide-x divide-slate-200 rounded-lg shadow-lg dark:text-slate-400 dark:divide-slate-700 dark:bg-slate-800';
+    
+    const icons = {
+        success: { icon: 'check-circle', color: 'text-green-500 dark:text-green-400' },
+        error: { icon: 'x-circle', color: 'text-red-500 dark:text-red-400' },
+        info: { icon: 'information-circle', color: 'text-blue-500 dark:text-blue-400' },
+    };
+    
+    const currentIcon = icons[message.type];
+
+    return (
+        <div className={baseClasses} role="alert">
+            <Icon name={currentIcon.icon} className={`w-6 h-6 ${currentIcon.color}`} />
+            <div className="pl-4 text-sm font-normal">{message.message}</div>
+            <button onClick={() => onRemove(message.id)} className="p-1.5 -m-1.5 ml-auto">
+                <Icon name="x-mark" className="w-5 h-5" />
+            </button>
+        </div>
+    );
+};
+
+export const ToastContainer: React.FC<{ toasts: ToastMessage[], removeToast: (id: number) => void }> = ({ toasts, removeToast }) => {
+    return (
+        <div className="fixed top-5 right-5 z-[100] space-y-2">
+            {toasts.map(toast => (
+                <Toast key={toast.id} message={toast} onRemove={removeToast} />
+            ))}
+        </div>
+    );
+};
