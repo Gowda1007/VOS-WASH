@@ -47,7 +47,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children, currentView, p
             <div className="flex items-center justify-center h-20 border-b border-slate-200 dark:border-slate-700">
                 <div className="flex items-center space-x-2">
                     <Logo className="w-10 h-10 text-blue-700 dark:text-blue-400" />
-                    <h1 className="text-xl font-bold text-blue-700 dark:text-blue-400">VOS WASH Pro</h1>
+                    <h1 className="text-xl font-bold text-blue-700 dark:text-blue-400">VOS WASH</h1>
                 </div>
             </div>
             <nav className="flex-1 px-4 py-4 space-y-2">

@@ -46,7 +46,7 @@ export const CustomerLoginPage: React.FC<CustomerLoginPageProps> = ({ customers 
                 <div className="flex items-center justify-center space-x-3 mb-8">
                     <Logo className="w-16 h-16 text-blue-700 dark:text-blue-400" />
                     <div>
-                        <h1 className="text-2xl font-bold text-blue-700 dark:text-blue-400">VOS WASH Pro</h1>
+                        <h1 className="text-2xl font-bold text-blue-700 dark:text-blue-400">VOS WASH</h1>
                         <p className="text-slate-600 dark:text-slate-400">Customer Portal</p>
                     </div>
                 </div>

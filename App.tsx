@@ -218,7 +218,7 @@ const App: React.FC = () => {
                 currentView={view} 
                 onNavigate={handleNavigate} 
                 onNewInvoice={handleStartNewInvoice}
-                pageTitle={viewTitles[view] || 'VOS WASH Pro'}
+                pageTitle={viewTitles[view] || 'VOS WASH'}
             >
                 {renderAdminContent()}
             </MainLayout>
