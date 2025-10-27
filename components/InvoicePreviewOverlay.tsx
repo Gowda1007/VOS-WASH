@@ -19,14 +19,13 @@ export const InvoicePreviewOverlay: React.FC<InvoicePreviewOverlayProps> = ({ in
     const handlePrint = () => window.print();
   
     const handleDownload = async () => {
-        await downloadPDF(invoice, document.getElementById('invoice-preview-content'));
-        toast.success('Invoice saved to your Downloads folder.');
-    };
-
-    const handleWhatsAppShare = () => {
-        const message = `Hello ${invoice.customerName},\n\nHere is a summary of your invoice from VOS WASH:\n\nInvoice #: ${invoice.invoiceNumber}\nBalance Due: ₹${balanceDue.toFixed(2)}\n\nThank you!`;
-        const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
-        window.open(whatsappUrl, '_blank');
+        const elementToPrint = document.getElementById('invoice-preview-content');
+        if (elementToPrint) {
+            await downloadPDF(invoice, elementToPrint);
+            toast.success('Invoice saved to your Downloads folder.');
+        } else {
+            toast.error('Could not find invoice content to download.');
+        }
     };
 
     return (
@@ -54,11 +53,8 @@ export const InvoicePreviewOverlay: React.FC<InvoicePreviewOverlayProps> = ({ in
                          <Icon name="document-duplicate" className="w-5 h-5"/>
                         Download PDF
                     </Button>
-                    <Button onClick={handleWhatsAppShare} className="bg-green-500 hover:bg-green-600 focus:ring-green-500">
-                        <Icon name="whatsapp" className="w-5 h-5"/> Share
-                    </Button>
                     {balanceDue > 0 && (
-                        <Button onClick={() => onCollect(invoice.id)} className="bg-blue-600 hover:bg-blue-700 focus:ring-blue-500">
+                        <Button onClick={() => onCollect(invoice.id)} className="bg-green-600 hover:bg-green-700 focus:ring-green-500">
                             <Icon name="banknotes" className="w-5 h-5"/> Collect Payment
                         </Button>
                     )}
