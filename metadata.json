@@ -1,5 +1,5 @@
 {
   "name": "VOS WASH",
-  "description": "A secure, professional-grade application for VOS WASH featuring a modern, mobile-first design with automatic dark mode. Includes a login system, invoice generation, customer management, customizable services, and an analytics dashboard.",
+  "description": "A streamlined, admin-only financial management application for VOS WASH. Core features include invoice generation, customer management, order taking, customizable services, a day book, and an analytics dashboard. Designed as a standalone tool with a modern, mobile-first interface and automatic dark mode.",
   "requestFramePermissions": []
 }

@@ -69,37 +69,3 @@ export interface AnalyticsData {
 export interface AppSettings {
   upiId: string;
 }
-// Fix: Added missing type definitions for User, Product, and Order related entities.
-export interface User {
-  role: 'admin' | 'customer';
-  phone?: string;
-  name?: string;
-}
-
-export interface Product {
-  id: number;
-  name: string;
-  price: number;
-  description: string;
-  image: string; // base64 data URL
-}
-
-export type OrderStatus = 'pending_payment' | 'processing' | 'shipped' | 'cancelled';
-
-export interface ShippingDetails {
-    courier: string;
-    trackingNumber: string;
-    photo: string; // base64 data URL
-    date: string;
-}
-
-export interface Order {
-    id: number;
-    orderDate: string;
-    customerPhone: string;
-    customerName: string;
-    products: (Product & { quantity: number })[];
-    totalAmount: number;
-    status: OrderStatus;
-    shippingDetails?: ShippingDetails;
-}

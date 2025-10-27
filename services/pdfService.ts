@@ -19,9 +19,6 @@ export const downloadPDF = async (invoiceData: Pick<Invoice, 'invoiceNumber' | '
         return;
     }
 
-    const customerName = invoiceData.customerName.trim().replace(/\s+/g, "_") || "invoice";
-    const filename = `VOS-WASH-${invoiceData.invoiceNumber}-${customerName}.pdf`;
-
     try {
         const { jsPDF } = window.jspdf;
         const canvas = await window.html2canvas(elementToPrint, {
@@ -43,7 +40,12 @@ export const downloadPDF = async (invoiceData: Pick<Invoice, 'invoiceNumber' | '
         const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
         pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-        pdf.save(filename);
+        
+        // Instead of pdf.save(), generate a data URI.
+        // In a browser, this will also trigger a download (though filename may be generic).
+        // In our Android WebView, this specific action will be intercepted for native file saving.
+        const pdfDataUri = pdf.output('datauristring');
+        window.location.href = pdfDataUri;
 
     } catch (error) {
         console.error("Error generating PDF:", error);
