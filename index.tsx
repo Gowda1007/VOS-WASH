@@ -1,7 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
-import { AuthProvider } from './hooks/useAuth';
 import { ToastProvider } from './hooks/useToast';
 import { ThemeProvider } from './hooks/useTheme';
 
@@ -15,9 +14,7 @@ root.render(
   <React.StrictMode>
     <ThemeProvider>
       <ToastProvider>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
+        <App />
       </ToastProvider>
     </ThemeProvider>
   </React.StrictMode>

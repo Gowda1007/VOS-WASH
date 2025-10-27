@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import type { View } from '../types';
 import { Icon, Logo } from './Common';
 import { useTheme } from '../hooks/useTheme';
-import { useAuth } from '../hooks/useAuth';
 
 interface MainLayoutProps {
     children: React.ReactNode;
@@ -18,8 +17,6 @@ const navItems: { view: View; label: string; icon: React.ComponentProps<typeof I
     { view: 'invoices', label: 'Invoices', icon: 'document-text' },
     { view: 'customers', label: 'Customers', icon: 'users' },
     { view: 'day-book', label: 'Day Book', icon: 'calendar-days' },
-    { view: 'orders', label: 'Orders', icon: 'shopping-cart' },
-    { view: 'products', label: 'Products', icon: 'tag' },
     { view: 'reports', label: 'Reports', icon: 'chart-bar-square' },
     { view: 'settings', label: 'Settings', icon: 'cog-6-tooth' },
 ];
@@ -62,7 +59,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children, currentView, p
                 ))}
             </nav>
             <div className="px-4 py-4 space-y-4">
-                <UserMenu />
+                <ThemeToggle />
                 <div className="space-y-2">
                     <Button fullWidth onClick={onTakeOrder} variant="secondary" className="!bg-teal-500 hover:!bg-teal-600 !text-white">
                         <Icon name="clipboard-document-list" className="w-6 h-6" />
@@ -145,67 +142,31 @@ const NavItem: React.FC<{ label: string; icon: any; isActive: boolean; onClick: 
     </a>
 );
 
-const UserMenu: React.FC = () => {
+const ThemeToggle: React.FC = () => {
     const { theme, setTheme } = useTheme();
-    const { logout } = useAuth();
-    const [isOpen, setIsOpen] = useState(false);
-    const menuRef = useRef<HTMLDivElement>(null);
-
+    
     const themeOptions = [
         { name: 'Light', value: 'light', icon: 'sun' },
         { name: 'Dark', value: 'dark', icon: 'moon' },
         { name: 'System', value: 'system', icon: 'computer-desktop' },
     ] as const;
 
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-                setIsOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
-
-
     return (
-        <div className="relative" ref={menuRef}>
-            <button
-                onClick={() => setIsOpen(!isOpen)}
-                className="w-full flex items-center justify-between px-3 py-2 bg-slate-100 dark:bg-slate-700 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition"
-            >
-                <div className="flex items-center gap-2">
-                    <Icon name="cog-6-tooth" className="w-5 h-5" />
-                    <span className="text-sm font-medium">Options</span>
-                </div>
-                <Icon name="arrow-left" className={`w-4 h-4 transition-transform duration-200 ${isOpen ? '-rotate-90' : 'rotate-90'}`}/>
-            </button>
-            {isOpen && (
-                <div className="absolute bottom-full left-0 right-0 mb-2 w-full bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 p-1 z-10">
-                     <p className="px-3 py-1 text-xs text-slate-400 dark:text-slate-500">Theme</p>
-                    {themeOptions.map(opt => (
-                        <button
-                            key={opt.value}
-                            onClick={() => { setTheme(opt.value); setIsOpen(false); }}
-                            className={`w-full text-left flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 ${theme === opt.value ? 'font-semibold text-indigo-600 dark:text-indigo-400' : ''}`}
-                        >
-                            <Icon name={opt.icon} className="w-5 h-5" />
-                            {opt.name}
-                        </button>
-                    ))}
-                    <div className="my-1 h-px bg-slate-200 dark:bg-slate-700"></div>
-                     <button
-                        onClick={logout}
-                        className="w-full text-left flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400"
-                    >
-                        <Icon name="logout" className="w-5 h-5" />
-                        Logout
-                    </button>
-                </div>
-            )}
+         <div className="flex items-center justify-center p-1 bg-slate-100 dark:bg-slate-700 rounded-lg">
+            {themeOptions.map(opt => (
+                <button
+                    key={opt.value}
+                    onClick={() => setTheme(opt.value)}
+                    className={`flex-1 flex justify-center items-center gap-2 p-2 text-sm rounded-md transition-colors ${theme === opt.value ? 'bg-white dark:bg-slate-800 shadow-sm' : 'text-slate-500'}`}
+                    aria-label={`Switch to ${opt.name} theme`}
+                >
+                    <Icon name={opt.icon} className="w-5 h-5" />
+                </button>
+            ))}
         </div>
     );
 };
+
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     children: React.ReactNode;

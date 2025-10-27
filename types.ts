@@ -2,16 +2,9 @@ export type CustomerType = 'customer' | 'garage_service_station' | 'dealer';
 
 export type InvoiceStatus = 'paid' | 'partially_paid' | 'unpaid';
 
-export type OrderStatus = 'pending_payment' | 'processing' | 'shipped' | 'cancelled';
-
-export type View = 'dashboard' | 'invoices' | 'customers' | 'settings' | 'reports' | 'new-invoice' | 'products' | 'orders' | 'customer-detail' | 'day-book' | 'take-order';
+export type View = 'dashboard' | 'invoices' | 'customers' | 'settings' | 'reports' | 'new-invoice' | 'customer-detail' | 'day-book' | 'take-order';
 
 export type PaymentMethod = 'upi' | 'cash';
-
-export interface User {
-  role: 'admin' | 'customer';
-  phone?: string; // For customer identification
-}
 
 export interface Payment {
   amount: number;
@@ -73,32 +66,40 @@ export interface AnalyticsData {
     revenueByCustomerType: { customer: number; garage_service_station: number; dealer: number };
 }
 
+export interface AppSettings {
+  upiId: string;
+}
+// Fix: Added missing type definitions for User, Product, and Order related entities.
+export interface User {
+  role: 'admin' | 'customer';
+  phone?: string;
+  name?: string;
+}
+
 export interface Product {
   id: number;
   name: string;
   price: number;
   description: string;
-  image: string; // base64 encoded image
+  image: string; // base64 data URL
 }
 
+export type OrderStatus = 'pending_payment' | 'processing' | 'shipped' | 'cancelled';
+
 export interface ShippingDetails {
-  courier: string;
-  trackingNumber: string;
-  photo: string; // base64 encoded image
-  date: string;
+    courier: string;
+    trackingNumber: string;
+    photo: string; // base64 data URL
+    date: string;
 }
 
 export interface Order {
-  id: number;
-  customerPhone: string;
-  customerName: string;
-  products: (Product & { quantity: number })[];
-  totalAmount: number;
-  status: OrderStatus;
-  orderDate: string;
-  shippingDetails?: ShippingDetails;
-}
-
-export interface AppSettings {
-  upiId: string;
+    id: number;
+    orderDate: string;
+    customerPhone: string;
+    customerName: string;
+    products: (Product & { quantity: number })[];
+    totalAmount: number;
+    status: OrderStatus;
+    shippingDetails?: ShippingDetails;
 }

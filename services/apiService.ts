@@ -2,25 +2,24 @@ import type {
     Invoice, 
     Customer, 
     ServiceSets, 
-    Product, 
-    Order, 
     AppSettings,
+    PendingOrder,
     User,
-    PendingOrder
+    Product,
+    Order
 } from '../types';
 import { 
     INVOICE_STORAGE_KEY, 
     CUSTOMERS_STORAGE_KEY, 
     SERVICES_STORAGE_KEY, 
-    PRODUCTS_STORAGE_KEY, 
-    ORDERS_STORAGE_KEY, 
     APP_SETTINGS_STORAGE_KEY,
     PENDING_ORDERS_STORAGE_KEY,
-    ADMIN_PASSWORD_STORAGE_KEY,
-    DEFAULT_SERVICE_SETS
+    DEFAULT_SERVICE_SETS,
+    AUTH_SESSION_KEY,
+    PRODUCTS_STORAGE_KEY,
+    ORDERS_STORAGE_KEY
 } from '../constants';
 
-const AUTH_KEY = 'vosWashProUser';
 
 // --- Utility Functions ---
 
@@ -48,45 +47,11 @@ const saveToStorage = <T>(key: string, value: T): void => {
 
 // --- Mock API Functions ---
 
-// Authentication
-export const getCurrentUser = async (): Promise<User | null> => {
-    await new Promise(resolve => setTimeout(resolve, MOCK_API_DELAY));
-    return getFromStorage<User | null>(AUTH_KEY, null);
-};
-
-export const adminLogin = async (password: string): Promise<User | null> => {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    const storedPassword = getFromStorage<string>(ADMIN_PASSWORD_STORAGE_KEY, 'admin');
-    if (password === storedPassword) {
-        const adminUser: User = { role: 'admin' };
-        saveToStorage(AUTH_KEY, adminUser);
-        return adminUser;
-    }
-    return null;
-};
-
-export const updateAdminPassword = async (newPassword: string): Promise<void> => {
-    await new Promise(resolve => setTimeout(resolve, MOCK_API_DELAY));
-    saveToStorage(ADMIN_PASSWORD_STORAGE_KEY, newPassword);
-};
-
-export const customerLogin = async (phone: string): Promise<User | null> => {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    // In a real app, you'd validate the customer exists in the DB
-    const customerUser: User = { role: 'customer', phone };
-    saveToStorage(AUTH_KEY, customerUser);
-    return customerUser;
-};
-
-export const logout = (): void => {
-    localStorage.removeItem(AUTH_KEY);
-    localStorage.removeItem('selectedRole');
-};
-
 // Invoices
 export const getInvoices = async (): Promise<Invoice[]> => {
     await new Promise(resolve => setTimeout(resolve, MOCK_API_DELAY));
-    return getFromStorage<Invoice[]>(INVOICE_STORAGE_KEY, []);
+    const invoices = getFromStorage<Invoice[]>(INVOICE_STORAGE_KEY, []);
+    return invoices.sort((a, b) => b.id - a.id);
 };
 
 export const addInvoice = async (invoiceData: Omit<Invoice, 'id'>): Promise<Invoice> => {
@@ -167,76 +132,6 @@ export const saveServiceSets = async (newServiceSets: ServiceSets): Promise<Serv
     return newServiceSets;
 };
 
-// Products
-const initialProducts: Product[] = [
-    { id: 1, name: "Premium Car Shampoo", price: 500, description: "A high-quality, pH-neutral car shampoo that provides a thick lather.", image: "/shampoo.png" },
-    { id: 2, name: "Microfiber Towel Set", price: 800, description: "Set of 3 ultra-soft, absorbent microfiber towels for drying and polishing.", image: "/towel.png" },
-    { id: 3, name: "All-Purpose Cleaner", price: 450, description: "Versatile cleaner for both interior and exterior surfaces.", image: "/cleaner.png" },
-];
-
-export const getProducts = async (): Promise<Product[]> => {
-    await new Promise(resolve => setTimeout(resolve, MOCK_API_DELAY));
-    return getFromStorage<Product[]>(PRODUCTS_STORAGE_KEY, initialProducts);
-};
-
-export const addProduct = async (productData: Omit<Product, 'id'>): Promise<Product> => {
-    await new Promise(resolve => setTimeout(resolve, MOCK_API_DELAY));
-    const products = getFromStorage<Product[]>(PRODUCTS_STORAGE_KEY, initialProducts);
-    const newProduct: Product = { ...productData, id: Date.now() };
-    saveToStorage(PRODUCTS_STORAGE_KEY, [newProduct, ...products]);
-    return newProduct;
-};
-
-export const updateProduct = async (productId: number, updatedData: Partial<Product>): Promise<Product | null> => {
-    await new Promise(resolve => setTimeout(resolve, MOCK_API_DELAY));
-    const products = getFromStorage<Product[]>(PRODUCTS_STORAGE_KEY, initialProducts);
-    let updatedProduct: Product | null = null;
-    const newProducts = products.map(p => {
-        if (p.id === productId) {
-            updatedProduct = { ...p, ...updatedData };
-            return updatedProduct;
-        }
-        return p;
-    });
-    saveToStorage(PRODUCTS_STORAGE_KEY, newProducts);
-    return updatedProduct;
-};
-
-export const deleteProduct = async (productId: number): Promise<void> => {
-    await new Promise(resolve => setTimeout(resolve, MOCK_API_DELAY));
-    const products = getFromStorage<Product[]>(PRODUCTS_STORAGE_KEY, initialProducts);
-    saveToStorage(PRODUCTS_STORAGE_KEY, products.filter(p => p.id !== productId));
-};
-
-// Orders
-export const getOrders = async (): Promise<Order[]> => {
-    await new Promise(resolve => setTimeout(resolve, MOCK_API_DELAY));
-    return getFromStorage<Order[]>(ORDERS_STORAGE_KEY, []);
-};
-
-export const addOrder = async (orderData: Omit<Order, 'id'>): Promise<Order> => {
-    await new Promise(resolve => setTimeout(resolve, MOCK_API_DELAY));
-    const orders = getFromStorage<Order[]>(ORDERS_STORAGE_KEY, []);
-    const newOrder: Order = { ...orderData, id: Date.now() };
-    saveToStorage(ORDERS_STORAGE_KEY, [newOrder, ...orders]);
-    return newOrder;
-};
-
-export const updateOrder = async (orderId: number, updatedData: Partial<Order>): Promise<Order | null> => {
-    await new Promise(resolve => setTimeout(resolve, MOCK_API_DELAY));
-    const orders = getFromStorage<Order[]>(ORDERS_STORAGE_KEY, []);
-    let updatedOrder: Order | null = null;
-    const newOrders = orders.map(o => {
-        if (o.id === orderId) {
-            updatedOrder = { ...o, ...updatedData };
-            return updatedOrder;
-        }
-        return o;
-    });
-    saveToStorage(ORDERS_STORAGE_KEY, newOrders);
-    return updatedOrder;
-};
-
 // App Settings
 export const getSettings = async (): Promise<AppSettings> => {
     await new Promise(resolve => setTimeout(resolve, MOCK_API_DELAY));
@@ -267,4 +162,108 @@ export const deletePendingOrder = async (orderId: number): Promise<void> => {
     await new Promise(resolve => setTimeout(resolve, MOCK_API_DELAY));
     const orders = await getPendingOrders();
     saveToStorage(PENDING_ORDERS_STORAGE_KEY, orders.filter(o => o.id !== orderId));
+};
+
+// Fix: Implement missing mock API functions for auth, products, and orders.
+// Auth
+const ADMIN_PASSWORD = 'admin'; // For mock purposes
+
+export const getCurrentUser = async (): Promise<User | null> => {
+    await new Promise(resolve => setTimeout(resolve, MOCK_API_DELAY / 2));
+    return getFromStorage<User | null>(AUTH_SESSION_KEY, null);
+};
+
+export const adminLogin = async (password: string): Promise<User | null> => {
+    await new Promise(resolve => setTimeout(resolve, MOCK_API_DELAY * 2));
+    if (password === ADMIN_PASSWORD) {
+        const user: User = { role: 'admin' };
+        saveToStorage(AUTH_SESSION_KEY, user);
+        return user;
+    }
+    return null;
+};
+
+export const customerLogin = async (phone: string): Promise<User | null> => {
+    await new Promise(resolve => setTimeout(resolve, MOCK_API_DELAY));
+    const customers = await getCustomers();
+    const customer = customers.find(c => c.phone === phone);
+    if (customer) {
+        const user: User = { role: 'customer', phone: customer.phone, name: customer.name };
+        saveToStorage(AUTH_SESSION_KEY, user);
+        return user;
+    }
+    return null;
+};
+
+export const logout = async (): Promise<void> => {
+    await new Promise(resolve => setTimeout(resolve, MOCK_API_DELAY / 2));
+    localStorage.removeItem(AUTH_SESSION_KEY);
+};
+
+
+// Products
+export const getProducts = async (): Promise<Product[]> => {
+    await new Promise(resolve => setTimeout(resolve, MOCK_API_DELAY));
+    const products = getFromStorage<Product[]>(PRODUCTS_STORAGE_KEY, []);
+    return products.sort((a,b) => b.id - a.id);
+};
+
+export const addProduct = async (productData: Omit<Product, 'id'>): Promise<Product> => {
+    await new Promise(resolve => setTimeout(resolve, MOCK_API_DELAY));
+    const products = await getProducts();
+    const newProduct: Product = { ...productData, id: Date.now() };
+    saveToStorage(PRODUCTS_STORAGE_KEY, [newProduct, ...products]);
+    return newProduct;
+};
+
+export const updateProduct = async (productId: number, updatedData: Partial<Omit<Product, 'id'>>): Promise<Product | null> => {
+    await new Promise(resolve => setTimeout(resolve, MOCK_API_DELAY));
+    const products = await getProducts();
+    let updatedProduct: Product | null = null;
+    const newProducts = products.map(p => {
+        if (p.id === productId) {
+            updatedProduct = { ...p, ...updatedData };
+            return updatedProduct;
+        }
+        return p;
+    });
+    saveToStorage(PRODUCTS_STORAGE_KEY, newProducts);
+    return updatedProduct;
+};
+
+export const deleteProduct = async (productId: number): Promise<void> => {
+    await new Promise(resolve => setTimeout(resolve, MOCK_API_DELAY));
+    const products = await getProducts();
+    saveToStorage(PRODUCTS_STORAGE_KEY, products.filter(p => p.id !== productId));
+};
+
+
+// Orders
+export const getOrders = async (): Promise<Order[]> => {
+    await new Promise(resolve => setTimeout(resolve, MOCK_API_DELAY));
+    const orders = getFromStorage<Order[]>(ORDERS_STORAGE_KEY, []);
+    return orders.sort((a,b) => b.id - a.id);
+};
+
+export const addOrder = async (orderData: Omit<Order, 'id'>): Promise<Order> => {
+    await new Promise(resolve => setTimeout(resolve, MOCK_API_DELAY));
+    const orders = await getOrders();
+    const newOrder: Order = { ...orderData, id: Date.now() };
+    saveToStorage(ORDERS_STORAGE_KEY, [newOrder, ...orders]);
+    return newOrder;
+};
+
+export const updateOrder = async (orderId: number, updatedData: Partial<Omit<Order, 'id'>>): Promise<Order | null> => {
+    await new Promise(resolve => setTimeout(resolve, MOCK_API_DELAY));
+    const orders = await getOrders();
+    let updatedOrder: Order | null = null;
+    const newOrders = orders.map(o => {
+        if (o.id === orderId) {
+            updatedOrder = { ...o, ...updatedData };
+            return updatedOrder;
+        }
+        return o;
+    });
+    saveToStorage(ORDERS_STORAGE_KEY, newOrders);
+    return updatedOrder;
 };

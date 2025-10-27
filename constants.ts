@@ -3,11 +3,13 @@ import type { ServiceSets, CustomerType } from './types';
 export const INVOICE_STORAGE_KEY = 'vosWashInvoices_v2';
 export const CUSTOMERS_STORAGE_KEY = 'vosWashCustomers_v2';
 export const SERVICES_STORAGE_KEY = 'vosWashServices_v2';
-export const PRODUCTS_STORAGE_KEY = 'vosWashProducts_v2';
-export const ORDERS_STORAGE_KEY = 'vosWashOrders_v2';
 export const APP_SETTINGS_STORAGE_KEY = 'vosWashAppSettings_v2';
 export const PENDING_ORDERS_STORAGE_KEY = 'vosWashPendingOrders_v1';
-export const ADMIN_PASSWORD_STORAGE_KEY = 'vosWashAdminPassword_v1';
+// Fix: Add storage keys for auth, products, and orders
+export const AUTH_SESSION_KEY = 'vosWashAuthSession_v1';
+export const PRODUCTS_STORAGE_KEY = 'vosWashProducts_v1';
+export const ORDERS_STORAGE_KEY = 'vosWashOrders_v1';
+
 
 export const CUSTOMER_TYPE_LABELS: Record<CustomerType, string> = {
   customer: 'Customer',

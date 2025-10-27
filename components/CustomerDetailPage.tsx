@@ -1,12 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import type { Customer, Invoice, Order, OrderStatus, InvoiceStatus } from '../types';
+import type { Customer, Invoice, InvoiceStatus } from '../types';
 import { Card, Button, Icon, Badge } from './Common';
 import { calculateInvoiceTotal, calculateStatus } from '../hooks/useInvoices';
 
 interface CustomerDetailPageProps {
     customer: Customer;
     invoices: Invoice[];
-    orders: Order[];
     onNavigateBack: () => void;
     onCollectInvoice: (invoiceId: number) => void;
     onPreviewInvoice: (invoice: Invoice) => void;
@@ -19,19 +18,17 @@ const KpiCard: React.FC<{ title: string; value: string | number; }> = ({ title, 
     </Card>
 );
 
-export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({ customer, invoices, orders, onNavigateBack, onCollectInvoice, onPreviewInvoice }) => {
-    const [activeTab, setActiveTab] = useState<'invoices' | 'orders'>('invoices');
-
+export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({ customer, invoices, onNavigateBack, onCollectInvoice, onPreviewInvoice }) => {
+    
     const stats = useMemo(() => {
         const totalSpent = invoices.reduce((sum, inv) => sum + calculateInvoiceTotal(inv.services), 0);
         const avgInvoiceValue = invoices.length > 0 ? totalSpent / invoices.length : 0;
         return {
             totalSpent: `₹${totalSpent.toLocaleString('en-IN')}`,
             totalInvoices: invoices.length,
-            totalOrders: orders.length,
             avgInvoiceValue: `₹${avgInvoiceValue.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
         };
-    }, [invoices, orders]);
+    }, [invoices]);
 
     return (
         <div className="space-y-6">
@@ -46,34 +43,23 @@ export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({ customer
                 </Button>
             </div>
             
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <KpiCard title="Total Spent" value={stats.totalSpent} />
                 <KpiCard title="Total Invoices" value={stats.totalInvoices} />
-                <KpiCard title="Total Orders" value={stats.totalOrders} />
                 <KpiCard title="Avg. Invoice Value" value={stats.avgInvoiceValue} />
             </div>
 
             <Card>
-                <div className="border-b border-slate-200 dark:border-slate-700">
-                    <nav className="flex space-x-6 px-6" aria-label="Tabs">
-                         <TabButton label="Invoices" isActive={activeTab === 'invoices'} onClick={() => setActiveTab('invoices')} />
-                         <TabButton label="Orders" isActive={activeTab === 'orders'} onClick={() => setActiveTab('orders')} />
-                    </nav>
+                <div className="p-4 border-b border-slate-200 dark:border-slate-700">
+                    <h3 className="font-bold text-lg">Invoice History</h3>
                 </div>
                 <div>
-                    {activeTab === 'invoices' && <InvoicesTab invoices={invoices} onPreview={onPreviewInvoice} onCollect={onCollectInvoice}/>}
-                    {activeTab === 'orders' && <OrdersTab orders={orders} />}
+                    <InvoicesTab invoices={invoices} onPreview={onPreviewInvoice} onCollect={onCollectInvoice}/>
                 </div>
             </Card>
         </div>
     );
 };
-
-const TabButton: React.FC<{label: string, isActive: boolean, onClick: () => void}> = ({label, isActive, onClick}) => (
-    <button onClick={onClick} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition ${isActive ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}>
-        {label}
-    </button>
-)
 
 const InvoicesTab: React.FC<{invoices: Invoice[], onPreview: (inv: Invoice) => void, onCollect: (id: number) => void}> = ({ invoices, onPreview, onCollect }) => (
     <div className="overflow-x-auto no-scrollbar">
@@ -114,47 +100,8 @@ const InvoiceRow: React.FC<{invoice: Invoice, onPreview: (inv: Invoice) => void,
     );
 }
 
-const OrdersTab: React.FC<{orders: Order[]}> = ({ orders }) => (
-     <div className="overflow-x-auto no-scrollbar">
-        <table className="w-full text-left">
-            <thead className="bg-slate-50 dark:bg-slate-800/50 text-sm text-slate-600 dark:text-slate-400">
-                <tr>
-                    <th className="p-4 font-semibold">Order #</th>
-                    <th className="p-4 font-semibold">Date</th>
-                    <th className="p-4 font-semibold">Products</th>
-                    <th className="p-4 font-semibold text-right">Amount</th>
-                    <th className="p-4 font-semibold text-center">Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                {orders.map(order => (
-                    <tr key={order.id} className="border-b border-slate-200 dark:border-slate-700">
-                         <td className="p-4 font-semibold">#{order.id.toString().slice(-6)}</td>
-                         <td className="p-4 text-sm">{order.orderDate}</td>
-                         <td className="p-4 text-sm">{order.products.map(p => `${p.name} (x${p.quantity})`).join(', ')}</td>
-                         <td className="p-4 text-right font-semibold">₹{order.totalAmount.toLocaleString('en-IN')}</td>
-                         <td className="p-4 text-center"><OrderStatusBadge status={order.status}/></td>
-                    </tr>
-                ))}
-            </tbody>
-        </table>
-         {orders.length === 0 && <p className="p-8 text-center text-slate-500">No orders found for this customer.</p>}
-    </div>
-);
-
-
 const StatusBadge: React.FC<{status: InvoiceStatus}> = ({ status }) => {
   if (status === 'paid') return <Badge color="green">Paid</Badge>;
   if (status === 'partially_paid') return <Badge color="amber">Partial</Badge>;
   return <Badge color="red">Unpaid</Badge>;
-};
-
-const OrderStatusBadge: React.FC<{status: OrderStatus}> = ({ status }) => {
-  switch(status) {
-    case 'pending_payment': return <Badge color="amber">Pending Payment</Badge>;
-    case 'processing': return <Badge color="blue">Processing</Badge>;
-    case 'shipped': return <Badge color="green">Shipped</Badge>;
-    case 'cancelled': return <Badge color="red">Cancelled</Badge>;
-    default: return <Badge color="slate">Unknown</Badge>;
-  }
 };

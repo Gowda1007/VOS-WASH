@@ -3,8 +3,6 @@ import type { ServiceSets, CustomerType, ManageableService, AppSettings } from '
 import { Card, Button, Icon } from './Common';
 import { useToast } from '../hooks/useToast';
 import { CUSTOMER_TYPE_LABELS } from '../constants';
-import { useAuth } from '../hooks/useAuth';
-import * as apiService from '../services/apiService';
 
 interface SettingsPageProps {
   serviceSets: ServiceSets;
@@ -13,55 +11,11 @@ interface SettingsPageProps {
   onSaveSettings: (newSettings: AppSettings) => void;
 }
 
-const PasswordCard = () => {
-    const toast = useToast();
-    const [newPassword, setNewPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
-
-    const canChange = newPassword && newPassword === confirmPassword;
-
-    const handleChangePassword = async () => {
-        if (!canChange) {
-            toast.error("Passwords do not match or are empty.");
-            return;
-        }
-        await apiService.updateAdminPassword(newPassword);
-        setNewPassword('');
-        setConfirmPassword('');
-        toast.success("Admin password changed successfully.");
-    };
-
-    return (
-        <Card className="p-6 space-y-4">
-            <h4 className="font-bold">Change Admin Password</h4>
-            <input 
-                type="password" 
-                placeholder="New Password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
-            />
-            <input 
-                type="password"
-                placeholder="Confirm New Password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
-            />
-            <Button onClick={handleChangePassword} disabled={!canChange} className="w-full">
-                Change Password
-            </Button>
-        </Card>
-    );
-};
-
-
 export const SettingsPage: React.FC<SettingsPageProps> = ({ serviceSets: initialServiceSets, onSaveServices, appSettings: initialAppSettings, onSaveSettings }) => {
   const [currentSets, setCurrentSets] = useState<ServiceSets>(initialServiceSets);
   const [currentAppSettings, setCurrentAppSettings] = useState<AppSettings>(initialAppSettings);
   const [activeTab, setActiveTab] = useState<CustomerType>('customer');
   const toast = useToast();
-  const { logout } = useAuth();
 
   const handleServiceChange = (type: CustomerType, index: number, field: 'name' | 'price', value: string | number) => {
     const newSets = { ...currentSets };
@@ -92,84 +46,66 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ serviceSets: initial
   };
 
   return (
-    <div className="space-y-6">
-        <p className="text-slate-500 dark:text-slate-400">Customize services, app settings, and manage your account.</p>
+    <div className="space-y-6 max-w-4xl mx-auto">
+        <p className="text-slate-500 dark:text-slate-400">Customize services and app settings.</p>
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Service Prices Section */}
-        <div>
-           <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">Service & App Settings</h3>
-            <Card>
-              <div className="p-6 space-y-4">
-                  <h4 className="font-bold">App Settings</h4>
-                  <label htmlFor="upiId" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">UPI ID for Customer Payments</label>
-                     <input 
-                        type="text" 
-                        id="upiId" 
-                        value={currentAppSettings.upiId}
-                        onChange={(e) => setCurrentAppSettings(prev => ({ ...prev, upiId: e.target.value }))}
-                        className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" 
-                    />
-              </div>
-              <div className="border-t border-slate-200 dark:border-slate-700">
-                  <h4 className="font-bold p-6 pb-2">Service Prices</h4>
-                  <nav className="flex space-x-1 p-2 pt-0" aria-label="Tabs">
-                      {(Object.keys(CUSTOMER_TYPE_LABELS) as CustomerType[]).map(type => (
-                          <button
-                              key={type}
-                              onClick={() => setActiveTab(type)}
-                              className={`capitalize px-3 py-2 text-sm font-medium rounded-md transition ${activeTab === type ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
-                          >
-                              {CUSTOMER_TYPE_LABELS[type]}
-                          </button>
-                      ))}
-                  </nav>
-              </div>
-              <div className="p-4 space-y-3">
-                  {currentSets[activeTab]?.map((service, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                          <input
-                              type="text"
-                              value={service.name}
-                              onChange={(e) => handleServiceChange(activeTab, index, 'name', e.target.value)}
-                              placeholder="Service Name"
-                              className="block w-0 flex-grow px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
-                          />
-                          <input
-                              type="number"
-                              value={service.price || ''}
-                              onChange={(e) => handleServiceChange(activeTab, index, 'price', parseFloat(e.target.value) || 0)}
-                              placeholder="Price"
-                              className="block w-24 px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
-                          />
-                          <button onClick={() => handleDeleteService(activeTab, index)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-full" aria-label="Delete service">
-                              <Icon name="trash" className="w-5 h-5" />
-                          </button>
-                      </div>
+        <Card>
+          <div className="p-6 space-y-4">
+              <h4 className="font-bold text-lg">App Settings</h4>
+              <label htmlFor="upiId" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">UPI ID for Customer Payments</label>
+                 <input 
+                    type="text" 
+                    id="upiId" 
+                    value={currentAppSettings.upiId}
+                    onChange={(e) => setCurrentAppSettings(prev => ({ ...prev, upiId: e.target.value }))}
+                    className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" 
+                />
+          </div>
+          <div className="border-t border-slate-200 dark:border-slate-700">
+              <h4 className="font-bold text-lg p-6 pb-2">Service Prices</h4>
+              <nav className="flex space-x-1 p-2 pt-0" aria-label="Tabs">
+                  {(Object.keys(CUSTOMER_TYPE_LABELS) as CustomerType[]).map(type => (
+                      <button
+                          key={type}
+                          onClick={() => setActiveTab(type)}
+                          className={`capitalize px-3 py-2 text-sm font-medium rounded-md transition ${activeTab === type ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                      >
+                          {CUSTOMER_TYPE_LABELS[type]}
+                      </button>
                   ))}
-                  <Button onClick={() => handleAddService(activeTab)} variant="secondary" className="w-full mt-2">
-                      <Icon name="plus" className="w-5 h-5" />
-                      Add Service for {CUSTOMER_TYPE_LABELS[activeTab]}
-                  </Button>
-              </div>
-              <div className="p-4 border-t border-slate-200 dark:border-slate-700 flex justify-end">
-                <Button onClick={handleSaveSettings}>Save Service & App Settings</Button>
-              </div>
-            </Card>
-        </div>
-        
-        {/* Account Settings Section */}
-        <div className="space-y-4">
-            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">Account</h3>
-            <PasswordCard />
-            <Card className="p-6">
-              <Button onClick={logout} variant="danger" className="w-full">
-                  <Icon name="logout" className="w-5 h-5"/>
-                  Logout from Admin Account
+              </nav>
+          </div>
+          <div className="p-4 space-y-3">
+              {currentSets[activeTab]?.map((service, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                      <input
+                          type="text"
+                          value={service.name}
+                          onChange={(e) => handleServiceChange(activeTab, index, 'name', e.target.value)}
+                          placeholder="Service Name"
+                          className="block w-0 flex-grow px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
+                      />
+                      <input
+                          type="number"
+                          value={service.price || ''}
+                          onChange={(e) => handleServiceChange(activeTab, index, 'price', parseFloat(e.target.value) || 0)}
+                          placeholder="Price"
+                          className="block w-24 px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
+                      />
+                      <button onClick={() => handleDeleteService(activeTab, index)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-full" aria-label="Delete service">
+                          <Icon name="trash" className="w-5 h-5" />
+                      </button>
+                  </div>
+              ))}
+              <Button onClick={() => handleAddService(activeTab)} variant="secondary" className="w-full mt-2">
+                  <Icon name="plus" className="w-5 h-5" />
+                  Add Service for {CUSTOMER_TYPE_LABELS[activeTab]}
               </Button>
-            </Card>
-        </div>
-      </div>
+          </div>
+          <div className="p-4 border-t border-slate-200 dark:border-slate-700 flex justify-end">
+            <Button onClick={handleSaveSettings}>Save Settings</Button>
+          </div>
+        </Card>
     </div>
   );
 };
