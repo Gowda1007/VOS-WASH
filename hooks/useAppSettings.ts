@@ -1,14 +1,25 @@
-import { useLocalStorage } from './useLocalStorage';
+import { useState, useEffect } from 'react';
 import type { AppSettings } from '../types';
-import { APP_SETTINGS_STORAGE_KEY } from '../constants';
+import * as apiService from '../services/apiService';
+
+const defaultSettings: AppSettings = {
+    upiId: 'your-upi-id@okhdfcbank',
+};
 
 export const useAppSettings = () => {
-    const [settings, setSettings] = useLocalStorage<AppSettings>(APP_SETTINGS_STORAGE_KEY, {
-        upiId: 'your-upi-id@okhdfcbank',
-    });
+    const [settings, setSettings] = useState<AppSettings>(defaultSettings);
 
-    const saveSettings = (newSettings: AppSettings) => {
-        setSettings(newSettings);
+    useEffect(() => {
+        const fetchSettings = async () => {
+            const data = await apiService.getSettings();
+            setSettings(data);
+        };
+        fetchSettings();
+    }, []);
+
+    const saveSettings = async (newSettings: AppSettings) => {
+        const savedSettings = await apiService.saveSettings(newSettings);
+        setSettings(savedSettings);
     };
 
     return { settings, saveSettings };

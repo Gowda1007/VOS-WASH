@@ -1,24 +1,32 @@
-import { useLocalStorage } from './useLocalStorage';
+import { useState, useEffect } from 'react';
 import type { Order } from '../types';
-import { ORDERS_STORAGE_KEY } from '../constants';
+import * as apiService from '../services/apiService';
 
 export const useOrders = () => {
-    const [orders, setOrders] = useLocalStorage<Order[]>(ORDERS_STORAGE_KEY, []);
+    const [orders, setOrders] = useState<Order[]>([]);
 
-    const addOrder = (orderData: Omit<Order, 'id'>) => {
-        const newOrder: Order = {
-            id: Date.now(),
-            ...orderData,
+    useEffect(() => {
+        const fetchOrders = async () => {
+            const data = await apiService.getOrders();
+            setOrders(data);
         };
+        fetchOrders();
+    }, []);
+
+    const addOrder = async (orderData: Omit<Order, 'id'>) => {
+        const newOrder = await apiService.addOrder(orderData);
         setOrders(prev => [newOrder, ...prev]);
     };
 
-    const updateOrder = (orderId: number, updatedData: Partial<Omit<Order, 'id'>>) => {
-        setOrders(prev => 
-            prev.map(o => 
-                o.id === orderId ? { ...o, ...updatedData } : o
-            )
-        );
+    const updateOrder = async (orderId: number, updatedData: Partial<Omit<Order, 'id'>>) => {
+        const updatedOrder = await apiService.updateOrder(orderId, updatedData);
+        if (updatedOrder) {
+            setOrders(prev => 
+                prev.map(o => 
+                    o.id === orderId ? updatedOrder : o
+                )
+            );
+        }
     };
 
     return { orders, addOrder, updateOrder };

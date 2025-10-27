@@ -5,14 +5,18 @@ import { Logo } from './Common';
 export const LoginPage: React.FC = () => {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
     const { adminLogin } = useAuth();
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const success = adminLogin(password);
+        setIsLoading(true);
+        setError('');
+        const success = await adminLogin(password);
         if (!success) {
             setError('Invalid password. Please try again.');
         }
+        setIsLoading(false);
     };
     
     const goBack = () => {
@@ -56,9 +60,10 @@ export const LoginPage: React.FC = () => {
                         <div>
                             <button
                                 type="submit"
-                                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-slate-800 transition"
+                                disabled={isLoading}
+                                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-slate-800 transition disabled:opacity-50"
                             >
-                                Sign in
+                                {isLoading ? 'Signing in...' : 'Sign in'}
                             </button>
                         </div>
                     </form>

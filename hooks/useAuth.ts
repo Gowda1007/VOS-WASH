@@ -1,13 +1,12 @@
 import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
 import type { User } from '../types';
-
-const AUTH_KEY = 'vosWashProUser';
+import * as apiService from '../services/apiService';
 
 interface AuthContextType {
     user: User | null;
     loading: boolean;
-    adminLogin: (password: string) => boolean;
-    customerLogin: (phone: string) => boolean; // OTP removed
+    adminLogin: (password: string) => Promise<boolean>;
+    customerLogin: (phone: string) => Promise<boolean>;
     logout: () => void;
 }
 
@@ -18,41 +17,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        try {
-            const storedUser = localStorage.getItem(AUTH_KEY);
-            if (storedUser) {
-                setUser(JSON.parse(storedUser));
+        const checkUserSession = async () => {
+            setLoading(true);
+            try {
+                const sessionUser = await apiService.getCurrentUser();
+                if (sessionUser) {
+                    setUser(sessionUser);
+                }
+            } catch (error) {
+                console.error("Failed to get user session", error);
+            } finally {
+                setLoading(false);
             }
-        } catch (error) {
-            console.error("Failed to parse user from localStorage", error);
-        } finally {
-            setLoading(false);
-        }
+        };
+        checkUserSession();
     }, []);
 
     const authContextValue = useMemo(() => ({
         user,
         loading,
-        adminLogin: (password: string): boolean => {
-            if (password === 'admin') {
-                const adminUser: User = { role: 'admin' };
-                localStorage.setItem(AUTH_KEY, JSON.stringify(adminUser));
+        adminLogin: async (password: string): Promise<boolean> => {
+            const adminUser = await apiService.adminLogin(password);
+            if (adminUser) {
                 setUser(adminUser);
                 return true;
             }
             return false;
         },
-        // FEATURE IMPLEMENTATION: Simplified customer login without OTP.
-        // It now only requires the phone number.
-        customerLogin: (phone: string): boolean => {
-            const customerUser: User = { role: 'customer', phone };
-            localStorage.setItem(AUTH_KEY, JSON.stringify(customerUser));
-            setUser(customerUser);
-            return true;
+        customerLogin: async (phone: string): Promise<boolean> => {
+            const customerUser = await apiService.customerLogin(phone);
+            if (customerUser) {
+                setUser(customerUser);
+                return true;
+            }
+            return false;
         },
         logout: () => {
-            localStorage.removeItem(AUTH_KEY);
-            localStorage.removeItem('selectedRole');
+            apiService.logout();
             setUser(null);
             // Full page reload to reset all state cleanly.
             window.location.reload();

@@ -8,7 +8,7 @@ export const ORDERS_STORAGE_KEY = 'vosWashOrders_v2';
 export const APP_SETTINGS_STORAGE_KEY = 'vosWashAppSettings_v2';
 
 export const CUSTOMER_TYPE_LABELS: Record<CustomerType, string> = {
-  customer: 'Customer (Default)',
+  customer: 'Customer',
   garage_service_station: 'Garage / Service Station',
   dealer: 'Dealer',
 };

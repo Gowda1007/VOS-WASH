@@ -1,37 +1,39 @@
+import { useState, useEffect } from 'react';
 import type { Customer } from '../types';
-import { CUSTOMERS_STORAGE_KEY } from '../constants';
-import { useLocalStorage } from './useLocalStorage';
+import * as apiService from '../services/apiService';
 
 export const useCustomers = () => {
-    const [customers, setCustomers] = useLocalStorage<Customer[]>(CUSTOMERS_STORAGE_KEY, []);
+    const [customers, setCustomers] = useState<Customer[]>([]);
 
-    const addOrUpdateCustomer = (newCustomer: Customer) => {
+    useEffect(() => {
+        const fetchCustomers = async () => {
+            const data = await apiService.getCustomers();
+            setCustomers(data);
+        };
+        fetchCustomers();
+    }, []);
+
+    const addOrUpdateCustomer = async (newCustomer: Customer) => {
+        const updatedCustomer = await apiService.addOrUpdateCustomer(newCustomer);
         setCustomers(prevCustomers => {
-            const existingCustomerIndex = prevCustomers.findIndex(c => c.phone === newCustomer.phone);
+            const existingCustomerIndex = prevCustomers.findIndex(c => c.phone === updatedCustomer.phone);
             if (existingCustomerIndex > -1) {
-                // Update existing customer, but don't overwrite with blank address
                 const updatedCustomers = [...prevCustomers];
-                const existingCustomer = updatedCustomers[existingCustomerIndex];
-                updatedCustomers[existingCustomerIndex] = {
-                    ...existingCustomer,
-                    name: newCustomer.name,
-                    // Only update address if a new one is provided
-                    address: newCustomer.address && newCustomer.address.trim() !== '' ? newCustomer.address : existingCustomer.address
-                };
+                updatedCustomers[existingCustomerIndex] = updatedCustomer;
                 return updatedCustomers;
             } else {
-                // Add new customer
-                return [...prevCustomers, newCustomer];
+                return [...prevCustomers, updatedCustomer];
             }
         });
     };
 
-    const addCustomer = (newCustomer: Customer) => {
-        setCustomers(prev => [...prev, newCustomer]);
+    const addCustomer = async (newCustomer: Customer) => {
+        const addedCustomer = await apiService.addCustomer(newCustomer);
+        setCustomers(prev => [...prev, addedCustomer]);
     };
 
-    const isCustomerExists = (phone: string): boolean => {
-        return customers.some(c => c.phone === phone);
+    const isCustomerExists = async (phone: string): Promise<boolean> => {
+        return await apiService.isCustomerExists(phone);
     };
 
     return { customers, addOrUpdateCustomer, addCustomer, isCustomerExists };

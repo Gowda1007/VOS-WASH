@@ -1,33 +1,36 @@
-import { useLocalStorage } from './useLocalStorage';
+import { useState, useEffect } from 'react';
 import type { Product } from '../types';
-import { PRODUCTS_STORAGE_KEY } from '../constants';
-
-const initialProducts: Product[] = [
-    { id: 1, name: "Premium Car Shampoo", price: 500, description: "A high-quality, pH-neutral car shampoo that provides a thick lather.", image: "/shampoo.png" },
-    { id: 2, name: "Microfiber Towel Set", price: 800, description: "Set of 3 ultra-soft, absorbent microfiber towels for drying and polishing.", image: "/towel.png" },
-    { id: 3, name: "All-Purpose Cleaner", price: 450, description: "Versatile cleaner for both interior and exterior surfaces.", image: "/cleaner.png" },
-];
+import * as apiService from '../services/apiService';
 
 export const useProducts = () => {
-    const [products, setProducts] = useLocalStorage<Product[]>(PRODUCTS_STORAGE_KEY, initialProducts);
+    const [products, setProducts] = useState<Product[]>([]);
 
-    const addProduct = (productData: Omit<Product, 'id'>) => {
-        const newProduct: Product = {
-            id: Date.now(),
-            ...productData,
+    useEffect(() => {
+        const fetchProducts = async () => {
+            const data = await apiService.getProducts();
+            setProducts(data);
         };
+        fetchProducts();
+    }, []);
+
+    const addProduct = async (productData: Omit<Product, 'id'>) => {
+        const newProduct = await apiService.addProduct(productData);
         setProducts(prev => [newProduct, ...prev]);
     };
 
-    const updateProduct = (productId: number, updatedData: Partial<Omit<Product, 'id'>>) => {
-        setProducts(prev => 
-            prev.map(p => 
-                p.id === productId ? { ...p, ...updatedData } : p
-            )
-        );
+    const updateProduct = async (productId: number, updatedData: Partial<Omit<Product, 'id'>>) => {
+        const updatedProduct = await apiService.updateProduct(productId, updatedData);
+        if (updatedProduct) {
+            setProducts(prev => 
+                prev.map(p => 
+                    p.id === productId ? updatedProduct : p
+                )
+            );
+        }
     };
 
-    const deleteProduct = (productId: number) => {
+    const deleteProduct = async (productId: number) => {
+        await apiService.deleteProduct(productId);
         setProducts(prev => prev.filter(p => p.id !== productId));
     };
 

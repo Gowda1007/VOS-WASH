@@ -1,13 +1,25 @@
+import { useState, useEffect } from 'react';
 import type { ServiceSets } from '../types';
-import { SERVICES_STORAGE_KEY, DEFAULT_SERVICE_SETS } from '../constants';
-import { useLocalStorage } from './useLocalStorage';
+import * as apiService from '../services/apiService';
 
 export const useServices = () => {
-    const [serviceSets, setServiceSets] = useLocalStorage<ServiceSets>(SERVICES_STORAGE_KEY, DEFAULT_SERVICE_SETS);
+    const [serviceSets, setServiceSets] = useState<ServiceSets | null>(null);
 
-    const saveServiceSets = (newServiceSets: ServiceSets) => {
-        setServiceSets(newServiceSets);
+    useEffect(() => {
+        const fetchServiceSets = async () => {
+            const data = await apiService.getServiceSets();
+            setServiceSets(data);
+        };
+        fetchServiceSets();
+    }, []);
+
+    const saveServiceSets = async (newServiceSets: ServiceSets) => {
+        const savedSets = await apiService.saveServiceSets(newServiceSets);
+        setServiceSets(savedSets);
     };
+    
+    // Return a default structure while loading to prevent errors in components
+    const safeServiceSets = serviceSets || { customer: [], garage_service_station: [], dealer: [] };
 
-    return { serviceSets, saveServiceSets };
+    return { serviceSets: safeServiceSets, saveServiceSets };
 };

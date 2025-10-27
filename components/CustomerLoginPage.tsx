@@ -2,37 +2,43 @@ import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import type { Customer } from '../types';
 import { Logo } from './Common';
+import * as apiService from '../services/apiService';
+
 
 interface CustomerLoginPageProps {
-  customers: Customer[];
+  customers: Customer[]; // Keep for initial check, but apiService will be source of truth
 }
 
-// FEATURE IMPLEMENTATION: Simplified customer login without OTP.
 export const CustomerLoginPage: React.FC<CustomerLoginPageProps> = ({ customers }) => {
     const [phone, setPhone] = useState('');
     const [error, setError] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
     const { customerLogin } = useAuth();
 
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+        setIsLoading(true);
+
         if (phone.length !== 10) {
             setError('Please enter a valid 10-digit phone number.');
-            return;
-        }
-        // Check if customer exists in the database.
-        const customerExists = customers.some(c => c.phone === phone);
-        if (!customerExists) {
-            setError('This phone number is not registered with us. Please contact VOS WASH.');
+            setIsLoading(false);
             return;
         }
         
-        // If customer exists, log them in directly.
-        const success = customerLogin(phone);
+        // Check if customer exists via the API service
+        const customerExists = await apiService.isCustomerExists(phone);
+        if (!customerExists) {
+            setError('This phone number is not registered with us. Please contact VOS WASH.');
+            setIsLoading(false);
+            return;
+        }
+        
+        const success = await customerLogin(phone);
         if (!success) {
-            // This case should ideally not happen if the logic is sound
             setError('An unexpected error occurred during login.');
         }
+        setIsLoading(false);
     };
     
     const goBack = () => {
@@ -59,8 +65,8 @@ export const CustomerLoginPage: React.FC<CustomerLoginPageProps> = ({ customers 
                             <input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))} maxLength={10} required className="mt-1 block w-full px-4 py-3 text-base bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg" />
                         </div>
                         {error && <p className="text-sm text-red-500">{error}</p>}
-                        <button type="submit" className="w-full flex justify-center py-3 px-4 bg-indigo-600 text-white rounded-lg">
-                            Login
+                        <button type="submit" disabled={isLoading} className="w-full flex justify-center py-3 px-4 bg-indigo-600 text-white rounded-lg disabled:opacity-50">
+                            {isLoading ? 'Logging in...' : 'Login'}
                         </button>
                     </form>
                     <div className="mt-4 text-center">
