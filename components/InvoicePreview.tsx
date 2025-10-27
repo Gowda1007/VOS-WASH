@@ -22,6 +22,28 @@ const formatDateForDisplay = (dateStr: string | undefined): string => {
     return `(${dateStr})`;
 };
 
+// Component to render financial entries like Old Balance, Advance Paid, etc.
+const FinancialEntry: React.FC<{
+  label: string;
+  amount: number;
+  date?: string;
+  sign: '+' | '-';
+  color: 'red' | 'green' | 'blue';
+}> = ({ label, amount, date, sign, color }) => {
+  const colorClasses = {
+    red: 'text-red-600',
+    green: 'text-green-600',
+    blue: 'text-blue-600',
+  };
+
+  return (
+    <div className={`flex justify-between mb-2 ${colorClasses[color]}`}>
+      <span>{label} {formatDateForDisplay(date)}</span>
+      <span>{sign} ₹{amount.toFixed(2)}</span>
+    </div>
+  );
+};
+
 
 export const InvoicePreview: React.FC<InvoicePreviewProps> = ({ invoiceData }) => {
   const { services, customerName, customerAddress, customerPhone, invoiceNumber, invoiceDate, payments, oldBalance, advancePaid } = invoiceData;
@@ -38,9 +60,9 @@ export const InvoicePreview: React.FC<InvoicePreviewProps> = ({ invoiceData }) =
       {/* 
         This is the A4 container that will be captured for PDF.
         It uses w-full and an aspect ratio to maintain its shape.
-        Content inside uses responsive units (sm:, md:) to scale down gracefully.
+        Content inside uses responsive units to scale down gracefully.
       */}
-      <div id="invoice-preview-content" className="relative w-full mx-auto bg-white text-gray-800 shadow-lg font-sans aspect-[1/1.414] flex flex-col p-4 sm:p-6 md:p-8 text-[6pt] sm:text-[7pt] md:text-[8pt]">
+      <div id="invoice-preview-content" className="relative w-full mx-auto bg-white text-gray-800 shadow-xl font-sans aspect-[1/1.414] flex flex-col p-6 sm:p-8 text-sm">
         
         {/* Main Content Area */}
         <div className="flex-grow">
@@ -49,52 +71,52 @@ export const InvoicePreview: React.FC<InvoicePreviewProps> = ({ invoiceData }) =
               <Vari className="w-28 mx-auto mb-2" />
               <div className="flex items-center justify-center">
                   <Logo className="w-20" />
-                  <div className="ml-2">
-                      <h1 className="text-4xl sm:text-2xl md:text-3xl font-bold text-blue-700 tracking-normal">VOS WASH</h1>
-                      <p className="text-[6pt] sm:text-[7pt] md:text-[8pt] text-right text-gray-600">(Clean Everything)</p>
+                  <div className="flex flex-col">
+                      <h1 className="text-4xl font-bold text-blue-700">VOS WASH</h1>
+                      <p className="text-right">(Clean Everything)</p>
                   </div>
               </div>
           </header>
           
           {/* Bill To / Invoice Details */}
-          <section className="flex justify-between items-start mb-4 md:mb-6">
+          <section className="flex flex-col sm:flex-row justify-between items-start mb-6 text-sm">
             <div>
-              <h2 className="font-bold text-gray-500 mb-1">BILL TO:</h2>
-              <p className="font-semibold text-gray-800">{customerName}</p>
-              <p className="text-gray-600">{customerAddress && customerAddress !== 'N/A' ? customerAddress : ''}</p>
-              <p className="text-gray-600">{customerPhone}</p>
+              <h2 className="font-bold text-gray-700 mb-1">BILL TO:</h2>
+              <p>{customerName}</p>
+              <p>{customerAddress && customerAddress !== 'N/A' ? customerAddress : ''}</p>
+              <p>{customerPhone}</p>
             </div>
-            <div className="text-right">
-              <h2 className="text-base sm:text-lg font-bold text-gray-800">INVOICE</h2>
-              <p className="text-gray-600"><strong>Invoice #:</strong> {invoiceNumber}</p>
-              <p className="text-gray-600"><strong>Date:</strong> {invoiceDate}</p>
-              <div className="mt-1 pt-1 border-t border-dashed">
-                <p className="font-semibold text-gray-700">Uttarahalli, Bengaluru - 61</p>
-                <p className="text-gray-600">+919845418725 / 6363178431</p>
+            <div className="text-right mt-4 sm:mt-0">
+              <h2 className="text-xl font-bold uppercase text-gray-700">Invoice</h2>
+              <p className="text-gray-500 text-xs"><strong>Invoice #:</strong> {invoiceNumber}</p>
+              <p className="text-gray-500 text-xs"><strong>Date:</strong> {invoiceDate}</p>
+              <div className="mt-2 pt-2 border-t border-dashed">
+                <p className="font-semibold text-xs">Uttarahalli, Bengaluru - 61</p>
+                <p className="text-xs">+919845418725 / 6363178431</p>
               </div>
             </div>
           </section>
           
           {/* Services Table */}
-          <section>
-              <table className="w-full text-left">
-                  <thead className="border-b-2 border-blue-600 text-gray-500">
+          <section className="mb-8">
+              <table className="w-full text-left text-sm border border-blue-600 rounded-lg overflow-hidden">
+                  <thead className="bg-blue-600 text-white border-b-2 border-blue-800">
                       <tr>
-                          <th className="pb-1 font-semibold">Sl No.</th>
-                          <th className="pb-1 font-semibold">SERVICE</th>
-                          <th className="pb-1 font-semibold text-center">QTY</th>
-                          <th className="pb-1 font-semibold text-right">PRICE</th>
-                          <th className="pb-1 font-semibold text-right">TOTAL</th>
+                          <th className="p-2 font-semibold text-sm">Sl No.</th>
+                          <th className="p-2 font-semibold text-sm">SERVICE</th>
+                          <th className="p-2 font-semibold text-sm text-center">QTY</th>
+                          <th className="p-2 font-semibold text-sm text-right">PRICE</th>
+                          <th className="p-2 font-semibold text-sm text-right">TOTAL</th>
                       </tr>
                   </thead>
                   <tbody>
                       {services.map((s, i) => (
-                          <tr key={i} className="border-b border-gray-200">
-                              <td className="py-1">{i + 1}</td>
-                              <td className="py-1">{s.name}</td>
-                              <td className="py-1 text-center">{s.quantity}</td>
-                              <td className="py-1 text-right">₹{s.price.toFixed(2)}</td>
-                              <td className="py-1 text-right font-semibold">₹{(s.price * s.quantity).toFixed(2)}</td>
+                          <tr key={i} className={`border-b border-gray-200 ${i % 2 === 0 ? 'bg-white' : 'bg-blue-50'}`}>
+                              <td className="p-2 text-sm">{i + 1}</td>
+                              <td className="p-2 text-sm">{s.name}</td>
+                              <td className="p-2 text-center text-sm">{s.quantity}</td>
+                              <td className="p-2 text-right text-sm">₹{s.price.toFixed(2)}</td>
+                              <td className="p-2 text-right text-sm font-semibold text-gray-800">₹{(s.price * s.quantity).toFixed(2)}</td>
                           </tr>
                       ))}
                   </tbody>
@@ -102,34 +124,36 @@ export const InvoicePreview: React.FC<InvoicePreviewProps> = ({ invoiceData }) =
           </section>
 
           {/* Totals Section */}
-          <section className="flex justify-end mt-2 md:mt-4">
-              <div className="w-1/2 sm:w-2/3 md:w-1/2 max-w-[280px] space-y-1">
-                  <div className="flex justify-between"><span>Subtotal:</span> <span>₹{subtotal.toFixed(2)}</span></div>
-                  <div className="flex justify-between"><span>GST (18%):</span> <span>+ ₹{tax.toFixed(2)}</span></div>
-                  <div className="flex justify-between border-b border-dashed pb-1"><span>Discount (GST):</span> <span>- ₹{discount.toFixed(2)}</span></div>
+          <section className="flex justify-end mt-auto">
+              <div className="w-full sm:w-1/2 text-sm">
+                  <div className="flex justify-between text-gray-700 mb-1"><p>Subtotal (Service Cost):</p><p>₹{subtotal.toFixed(2)}</p></div>
+                  <div className="flex justify-between text-gray-700 mb-2"><p>GST (18%):</p><p>+ ₹{tax.toFixed(2)}</p></div>
+                  <div className="flex justify-between text-gray-700 mb-2 border-b border-dashed pb-2"><p>Discount (Equal to GST):</p><p>- ₹{discount.toFixed(2)}</p></div>
                   
-                  <div className="flex justify-between font-bold text-xs sm:text-sm pt-1 border-b-2 border-dashed border-gray-400 pb-1">
-                      <span className="text-blue-700">NEW TOTAL:</span>
-                      <span className="text-blue-700">₹{serviceTotal.toFixed(2)}</span>
+                  <div className="flex justify-between text-lg mt-2 pt-2 border-b-2 border-dashed border-gray-400 font-extrabold text-blue-700">
+                      <p>SERVICE TOTAL:</p>
+                      <p>₹{serviceTotal.toFixed(2)}</p>
                   </div>
                   
-                  {oldBalance && oldBalance.amount > 0 && <div className="flex justify-between pt-1"><span>Old Balance:</span> <span>+ ₹{oldBalance.amount.toFixed(2)} {formatDateForDisplay(oldBalance.date)}</span></div>}
-                  {advancePaid && advancePaid.amount > 0 && <div className="flex justify-between"><span>Advance Paid:</span> <span>- ₹{advancePaid.amount.toFixed(2)} {formatDateForDisplay(advancePaid.date)}</span></div>}
-                  {payments.map((p, i) => <div key={i} className="flex justify-between"><span>Now Paid:</span> <span>- ₹{p.amount.toFixed(2)}</span></div>)}
+                  <div className="mt-4 pt-2 border-b-2 border-dashed border-gray-400 pb-2">
+                    {oldBalance && oldBalance.amount > 0 && 
+                        <FinancialEntry label="Old Balance (Arrears)" amount={oldBalance.amount} date={oldBalance.date} sign="+" color="red" />}
+                    {advancePaid && advancePaid.amount > 0 &&
+                        <FinancialEntry label="Advance Paid (Earlier)" amount={advancePaid.amount} date={advancePaid.date} sign="-" color="green" />}
+                    {payments.map((p, i) => 
+                        <FinancialEntry key={i} label="Now Paid (Today)" amount={p.amount} date={p.date} sign="-" color="blue" />)}
+                  </div>
                   
-                  <div className="border-t-2 border-dashed border-gray-400 mt-2 pt-2">
-                       <div className="bg-blue-100 dark:bg-blue-900/50 rounded p-1 sm:p-2 flex justify-between items-center font-bold text-sm sm:text-base text-blue-800 dark:text-blue-300">
-                          <span>BALANCE:</span>
-                          <span>₹{balanceDue.toFixed(2)}</span>
-                      </div>
+                  <div className="flex justify-between font-extrabold text-2xl mt-4 pt-2 border-t-4 border-blue-600 bg-blue-50 p-2 rounded-lg shadow-inner">
+                      <p className="text-blue-800">BALANCE DUE:</p>
+                      <p className="text-blue-800">₹{balanceDue.toFixed(2)}</p>
                   </div>
               </div>
           </section>
         </div>
         
         {/* Footer */}
-        <footer className="w-full text-center text-[5pt] sm:text-[6pt] md:text-[7pt] text-gray-500 pt-2">
-             <hr className="mb-2"/>
+        <footer className="w-full text-center text-xs text-gray-500 mt-8 pt-4 border-t">
             <p>This is a computer-generated invoice and does not require a signature.</p>
             <p>Thank you for choosing VOS WASH!</p>
         </footer>
