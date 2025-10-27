@@ -23,6 +23,7 @@ export interface Service {
   name: string;
   price: number;
   quantity: number;
+  isCustom?: boolean;
 }
 
 export interface Invoice {

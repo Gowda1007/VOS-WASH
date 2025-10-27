@@ -77,7 +77,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ serviceSets: initial
                               value={service.name}
                               onChange={(e) => handleServiceChange(activeTab, index, 'name', e.target.value)}
                               placeholder="Service Name"
-                              className="block flex-grow px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
+                              className="block w-0 flex-grow px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
                           />
                           <input
                               type="number"
