@@ -1,46 +1,39 @@
-# VOS WASH: Resilient Web App to Android APK Deployment Guide
+# VOS WASH Web App to Android APK Deployment Guide
 
-**ATTENTION AGENT:** This is a stateful, resumable guide. It is broken into distinct phases. Each phase ends with a **Checkpoint**. If you are interrupted for any reason (timeout, quota, etc.), you can resume by checking the last completed checkpoint and continuing from the next phase.
+This guide provides instructions for the Gemini agent in Android Studio to wrap the VOS WASH web application into a native Android app using a WebView.
 
-**To Resume:** Check the project's file structure against the checkpoints below. Find the last successfully completed checkpoint and begin execution at the start of the next phase. If a checkpoint for a file fails because the file is incomplete, the instructions for that phase will guide you to delete and rewrite it.
-
----
-
-### **Phase 1: Project Initialization**
-
-**Goal:** Create the basic Android project structure.
-
-1.  **Action:** Create a new Android Studio project with the following settings:
-    *   Template: "Empty Views Activity"
-    *   Name: `VOS WASH`
-    *   Package name: `com.voswash.app`
-    *   Language: `Kotlin`
-    *   Minimum SDK: `API 24: Android 7.0 (Nougat)`
-2.  **Action:** In the project view, right-click on the `app/` module -> `New` -> `Folder` -> `Assets Folder`. This will create `app/src/main/assets`.
-
-**Checkpoint 1:** The folder `app/src/main/assets` exists. If it exists, Phase 1 is complete.
+**Objective:** Create a deployable APK that provides a seamless, app-like experience, including offline access, native PDF downloads to a specific folder, and system notifications upon download completion.
 
 ---
 
-### **Phase 2: Web Asset Integration**
+### Step 1: Project Setup in Android Studio
 
-**Goal:** Copy the web application files into the Android project.
+1.  **Create a New Project:**
+    *   Open Android Studio and select "New Project".
+    *   Choose the "Empty Views Activity" template.
+    *   **Name:** `VOS WASH`
+    *   **Package name:** `com.voswash.app`
+    *   **Language:** `Kotlin`
+    *   **Minimum SDK:** `API 24: Android 7.0 (Nougat)`
 
-1.  **Action:** Copy all web application files (`index.html`, `index.tsx`, `metadata.json`, etc.) and folders (`components`, `hooks`, `services`) directly into the `app/src/main/assets` directory.
+2.  **Add WebView to Layout:**
+    *   Open `res/layout/activity_main.xml`.
+    *   Replace the default `TextView` with a `WebView`.
 
-**Checkpoint 2:** The file `app/src/main/assets/index.html` exists. If it exists, Phase 2 is complete.
+    ```xml
+    <?xml version="1.0" encoding="utf-8"?>
+    <WebView xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:tools="http://schemas.android.com/tools"
+        android:id="@+id/webview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        tools:context=".MainActivity" />
+    ```
 
----
-
-### **Phase 3: Android Manifest Configuration**
-
-**Goal:** Configure app permissions and settings.
-
-1.  **Action:** Open `app/src/main/AndroidManifest.xml`. Before writing, verify if it is complete by checking for the `<!-- END AndroidManifest.xml -->` marker. If the file exists but is incomplete, **DELETE IT**.
-2.  **Action:** Create or overwrite `app/src/main/AndroidManifest.xml`.
-3.  **Action:** Write the following line to the file first: `<!-- START AndroidManifest.xml -->`
-4.  **Action:** Append the entire content below to the file.
-5.  **Action:** Write the following line to the file last: `<!-- END AndroidManifest.xml -->`
+3.  **Update Manifest for Permissions & Storage:**
+    *   Open `AndroidManifest.xml`.
+    *   Add permissions for internet, storage, and notifications **before** the `<application>` tag.
+    *   Add `android:requestLegacyExternalStorage="true"` to the `<application>` tag to ensure file saving works on Android 10 and 11.
 
     ```xml
     <?xml version="1.0" encoding="utf-8"?>
@@ -71,46 +64,18 @@
                 </intent-filter>
             </activity>
         </application>
+
     </manifest>
     ```
 
-**Checkpoint 3:** The file `app/src/main/AndroidManifest.xml` exists and contains BOTH `<!-- START AndroidManifest.xml -->` and `<!-- END AndroidManifest.xml -->`. If true, Phase 3 is complete.
+### Step 2: Configure the WebView
 
----
+1.  **Asset Setup:**
+    *   In the project view, right-click on the `app/` module -> `New` -> `Folder` -> `Assets Folder`.
+    *   Copy all the web app files and folders (`index.html`, `index.tsx`, `components/`, etc.) into this newly created `assets` directory.
 
-### **Phase 4: Layout Configuration**
-
-**Goal:** Set up the WebView as the main UI element.
-
-1.  **Action:** Open `app/src/main/res/layout/activity_main.xml`. Before writing, verify if it is complete by checking for the `<!-- END activity_main.xml -->` marker. If the file exists but is incomplete, **DELETE IT**.
-2.  **Action:** Create or overwrite `app/src/main/res/layout/activity_main.xml`.
-3.  **Action:** Write the following line to the file first: `<!-- START activity_main.xml -->`
-4.  **Action:** Append the entire content below to the file.
-5.  **Action:** Write the following line to the file last: `<!-- END activity_main.xml -->`
-
-    ```xml
-    <?xml version="1.0" encoding="utf-8"?>
-    <WebView xmlns:android="http://schemas.android.com/apk/res/android"
-        xmlns:tools="http://schemas.android.com/tools"
-        android:id="@+id/webview"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        tools:context=".MainActivity" />
-    ```
-
-**Checkpoint 4:** The file `app/src/main/res/layout/activity_main.xml` exists and contains BOTH `<!-- START activity_main.xml -->` and `<!-- END activity_main.xml -->`. If true, Phase 4 is complete.
-
----
-
-### **Phase 5: MainActivity.kt Implementation**
-
-**Goal:** Write the core logic in `MainActivity.kt`.
-
-1.  **Action:** Open `app/src/main/java/com/voswash/app/MainActivity.kt`. Before writing, verify if it is complete by checking for the `// END MainActivity.kt` marker. If the file exists but is incomplete, **DELETE IT**.
-2.  **Action:** Create or overwrite `app/src/main/java/com/voswash/app/MainActivity.kt`.
-3.  **Action:** Write the following line to the file first: `// START MainActivity.kt`
-4.  **Action:** Append the entire content below to the file.
-5.  **Action:** Write the following line to the file last: `// END MainActivity.kt`
+2.  **Load the Web App & Handle PDF Interception in `MainActivity.kt`:**
+    *   Modify `MainActivity.kt` with the following code. This sets up the WebView, intercepts the special `data:application/pdf` URL, and handles native file saving and notifications.
 
     ```kotlin
     package com.voswash.app
@@ -154,23 +119,27 @@
 
             webView = findViewById(R.id.webview)
 
+            // Configure WebView settings
             webView.settings.javaScriptEnabled = true
-            webView.settings.domStorageEnabled = true
+            webView.settings.domStorageEnabled = true // Crucial for localStorage
             webView.settings.allowFileAccess = true
             
+            // Set a custom WebViewClient to intercept PDF downloads
             webView.webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
                     if (url != null && url.startsWith("data:application/pdf;base64,")) {
                         val base64Pdf = url.substring("data:application/pdf;base64,".length)
                         savePdfFromBase64(base64Pdf)
-                        return true
+                        return true // Indicate we've handled the URL
                     }
-                    return false
+                    return false // Let the WebView handle other URLs
                 }
             }
             
+            // Load the local HTML file from assets
             webView.loadUrl("file:///android_asset/index.html")
             
+            // Handle back press using the modern dispatcher
             onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
                     if (webView.canGoBack()) {
@@ -183,20 +152,23 @@
         }
 
         private fun savePdfFromBase64(base64Pdf: String) {
-            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P && ContextCompat.checkSelfPermission(this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED && Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
                  Toast.makeText(this, "Storage permission is required to save PDFs.", Toast.LENGTH_LONG).show()
                  return
             }
             try {
+                // Define the target folder in the public Documents directory
                 val folder = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), "VOSWASH Invoices")
                 if (!folder.exists()) {
                     folder.mkdirs()
                 }
 
+                // Create a unique filename
                 val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
                 val fileName = "VOSWASH_Invoice_$timeStamp.pdf"
                 val file = File(folder, fileName)
 
+                // Decode Base64 and write to the file
                 val pdfAsBytes = Base64.decode(base64Pdf, Base64.DEFAULT)
                 FileOutputStream(file).use { os ->
                     os.write(pdfAsBytes)
@@ -214,8 +186,9 @@
         }
 
         private fun showDownloadNotification(title: String, content: String) {
-             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                return
+             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                return // Don't show notification if permission is not granted
             }
 
             val channelId = "VOSWASH_DOWNLOAD_CHANNEL"
@@ -231,7 +204,7 @@
             }
 
             val builder = NotificationCompat.Builder(this, channelId)
-                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setSmallIcon(R.drawable.ic_launcher_foreground) // Use a default icon
                 .setContentTitle(title)
                 .setContentText(content)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -246,11 +219,13 @@
         }
 
         private fun checkPermissions() {
+            // Storage permission for Android versions up to Pie (API 28)
             if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
                 if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
                     ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.WRITE_EXTERNAL_STORAGE), STORAGE_PERMISSION_CODE)
                 }
             }
+            // Notification permission for Android 13 (API 33) and above
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                     ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), NOTIFICATION_PERMISSION_CODE)
@@ -259,29 +234,15 @@
         }
     }
     ```
-**Checkpoint 5:** The file `app/src/main/java/com/voswash/app/MainActivity.kt` exists and contains BOTH `// START MainActivity.kt` and `// END MainActivity.kt`. If true, Phase 5 is complete.
+
+### Step 3: Final Checks and Build
+
+1.  **App Icon:** Replace the default launcher icons in `res/mipmap-*` with the VOS WASH logo.
+2.  **Theme:** Adjust the app theme in `res/values/themes.xml` to match the app's color scheme and ensure the status bar looks good. A no-action-bar theme is recommended.
+3.  **Build APK:**
+    *   Go to `Build` -> `Build Bundle(s) / APK(s)` -> `Build APK(s)`.
+    *   Once the build is complete, Android Studio will show a notification with a "locate" link. Click this to find the generated APK file, which can be installed on an Android device.
 
 ---
 
-### **Phase 6: Final Build**
-
-**Goal:** Compile the app into a shareable APK.
-
-1.  **Action:** From the Android Studio menu, go to `Build` -> `Build Bundle(s) / APK(s)` -> `Build APK(s)`.
-2.  **Action:** Wait for the build to complete. A notification will appear.
-3.  **Action:** Click the "locate" link in the notification to find the generated `app-debug.apk` file.
-
-**Checkpoint 6:** The file `app/build/outputs/apk/debug/app-debug.apk` exists. If it exists, the process is complete.
-
----
-
-### **Phase 7: Cleanup**
-
-**Goal:** Remove this instruction file.
-
-1.  **Action:** Delete this `instructions.txt` file from the project.
-2.  **Report Completion:** Inform the user that the APK has been successfully built.
-
----
-END OF INSTRUCTIONS
----
+This completes the process of wrapping the web application into a native Android APK with the required native features.
