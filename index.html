@@ -53,6 +53,30 @@
       ::-webkit-scrollbar-thumb:hover {
         background: #64748b;
       }
+
+      /* Make date input calendar picker clickable over the whole input */
+      input[type="date"] {
+        position: relative;
+      }
+      input[type="date"]::-webkit-calendar-picker-indicator {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        height: 100%;
+        color: transparent;
+        background: transparent;
+        cursor: pointer;
+      }
+      /* Style date input text to look like a placeholder when empty */
+      input[type="date"]:not(:valid) {
+        color: #94a3b8; /* text-slate-400 */
+      }
+      .dark input[type="date"]:not(:valid) {
+        color: #64748b; /* text-slate-500 */
+      }
     </style>
 </head>
   <body class="bg-slate-100 dark:bg-slate-900">

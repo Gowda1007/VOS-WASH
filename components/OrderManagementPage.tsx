@@ -142,7 +142,7 @@ const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, onSave, order 
 
                 <div>
                     <label htmlFor="status" className="block text-sm font-medium mb-1">Order Status</label>
-                    <select id="status" value={status} onChange={e => setStatus(e.target.value as OrderStatus)} className="form-input">
+                    <select id="status" value={status} onChange={e => setStatus(e.target.value as OrderStatus)} className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900">
                         <option value="pending_payment">Pending Payment</option>
                         <option value="processing">Processing</option>
                         <option value="shipped">Shipped</option>
@@ -153,11 +153,11 @@ const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, onSave, order 
                 {status === 'shipped' && (
                     <div className="p-4 border dark:border-slate-600 rounded-lg space-y-4 bg-slate-50 dark:bg-slate-900/50">
                         <h4 className="font-semibold">Shipping Details</h4>
-                        <input type="text" placeholder="Courier Name" value={shippingDetails.courier} onChange={e => setShippingDetails(p => ({...p, courier: e.target.value}))} className="form-input" />
-                        <input type="text" placeholder="Tracking Number" value={shippingDetails.trackingNumber} onChange={e => setShippingDetails(p => ({...p, trackingNumber: e.target.value}))} className="form-input" />
+                        <input type="text" placeholder="Courier Name" value={shippingDetails.courier} onChange={e => setShippingDetails(p => ({...p, courier: e.target.value}))} className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" />
+                        <input type="text" placeholder="Tracking Number" value={shippingDetails.trackingNumber} onChange={e => setShippingDetails(p => ({...p, trackingNumber: e.target.value}))} className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" />
                         <div>
                              <label className="block text-sm font-medium mb-1">Shipping Photo</label>
-                             <input type="file" accept="image/*" onChange={handleImageChange} className="form-input file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"/>
+                             <input type="file" accept="image/*" onChange={handleImageChange} className="block w-full text-sm text-slate-500 border border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 file:mr-4 file:py-3 file:px-4 file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 dark:file:bg-slate-700 file:text-indigo-700 dark:file:text-indigo-300 hover:file:bg-indigo-100 dark:hover:file:bg-slate-600"/>
                              {shippingDetails.photo && <img src={shippingDetails.photo} alt="Preview" className="mt-4 rounded-lg h-32 w-32 object-cover"/>}
                         </div>
                     </div>
@@ -167,7 +167,6 @@ const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, onSave, order 
                     <Button type="button" onClick={handleSubmit}>Update Order</Button>
                 </div>
             </div>
-             <style>{`.form-input { @apply block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900; }`}</style>
         </Modal>
     );
 };

@@ -66,7 +66,7 @@ export const DayBookPage: React.FC<DayBookPageProps> = ({ invoices, onPreviewInv
                     type="date" 
                     value={selectedDate} 
                     onChange={e => setSelectedDate(e.target.value)}
-                    className="px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" 
+                    className="block w-full sm:w-auto px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" 
                 />
             </div>
 

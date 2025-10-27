@@ -62,7 +62,7 @@ export const CustomerLoginPage: React.FC<CustomerLoginPageProps> = ({ customers 
                          <h3 className="text-lg font-semibold text-center text-slate-800 dark:text-slate-100">Sign in with your phone</h3>
                         <div>
                             <label htmlFor="phone" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Registered Phone Number</label>
-                            <input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))} maxLength={10} required className="mt-1 block w-full px-4 py-3 text-base bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg" />
+                            <input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))} maxLength={10} required className="mt-1 block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" />
                         </div>
                         {error && <p className="text-sm text-red-500">{error}</p>}
                         <button type="submit" disabled={isLoading} className="w-full flex justify-center py-3 px-4 bg-indigo-600 text-white rounded-lg disabled:opacity-50">

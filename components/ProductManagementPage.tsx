@@ -122,19 +122,19 @@ const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose, onSave, pr
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                     <label htmlFor="name" className="block text-sm font-medium mb-1">Product Name</label>
-                    <input type="text" name="name" id="name" value={formData.name} onChange={handleChange} required className="form-input" />
+                    <input type="text" name="name" id="name" value={formData.name} onChange={handleChange} required className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" />
                 </div>
                  <div>
                     <label htmlFor="price" className="block text-sm font-medium mb-1">Price (₹)</label>
-                    <input type="number" name="price" id="price" value={formData.price || ''} onChange={handleChange} required className="form-input" />
+                    <input type="number" name="price" id="price" value={formData.price || ''} onChange={handleChange} required className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" />
                 </div>
                  <div>
                     <label htmlFor="description" className="block text-sm font-medium mb-1">Description</label>
-                    <textarea name="description" id="description" value={formData.description} onChange={handleChange} rows={3} className="form-input" />
+                    <textarea name="description" id="description" value={formData.description} onChange={handleChange} rows={3} className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" />
                 </div>
                 <div>
                      <label htmlFor="image" className="block text-sm font-medium mb-1">Product Image</label>
-                     <input type="file" name="image" id="image" accept="image/*" onChange={handleImageChange} className="form-input file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"/>
+                     <input type="file" name="image" id="image" accept="image/*" onChange={handleImageChange} className="block w-full text-sm text-slate-500 border border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 file:mr-4 file:py-3 file:px-4 file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 dark:file:bg-slate-700 file:text-indigo-700 dark:file:text-indigo-300 hover:file:bg-indigo-100 dark:hover:file:bg-slate-600"/>
                      {formData.image && <img src={formData.image} alt="Preview" className="mt-4 rounded-lg h-32 w-32 object-cover"/>}
                 </div>
                 <div className="flex justify-end gap-3 pt-4">
@@ -142,7 +142,6 @@ const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose, onSave, pr
                     <Button type="submit">Save Product</Button>
                 </div>
             </form>
-             <style>{`.form-input { @apply block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900; }`}</style>
         </Modal>
     );
 }

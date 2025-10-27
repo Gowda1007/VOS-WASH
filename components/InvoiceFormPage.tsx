@@ -104,10 +104,10 @@ export const InvoiceFormPage: React.FC<InvoiceFormPageProps> = ({ onSave, custom
                 {/* Customer Details */}
                 <h3 className="font-bold text-lg mb-4 text-slate-800 dark:text-slate-100 border-b pb-2 dark:border-slate-700">Customer Details</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <input type="tel" placeholder="Customer Phone (10 digits)" value={customer.phone} onChange={e => setCustomer({ ...customer, phone: e.target.value.replace(/\D/g, '') })} maxLength={10} className="form-input" />
-                    <input type="text" placeholder="Customer Name" value={customer.name} onChange={e => setCustomer({ ...customer, name: e.target.value })} className="form-input" />
+                    <input type="tel" placeholder="Customer Phone (10 digits)" value={customer.phone} onChange={e => setCustomer({ ...customer, phone: e.target.value.replace(/\D/g, '') })} maxLength={10} className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" />
+                    <input type="text" placeholder="Customer Name" value={customer.name} onChange={e => setCustomer({ ...customer, name: e.target.value })} className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" />
                     <div className="md:col-span-2">
-                        <input type="text" placeholder="Customer Address (Optional)" value={customer.address} onChange={e => setCustomer({ ...customer, address: e.target.value })} className="form-input" />
+                        <input type="text" placeholder="Customer Address (Optional)" value={customer.address} onChange={e => setCustomer({ ...customer, address: e.target.value })} className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" />
                     </div>
                     <div className="md:col-span-2">
                         <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Customer Type</p>
@@ -136,7 +136,7 @@ export const InvoiceFormPage: React.FC<InvoiceFormPageProps> = ({ onSave, custom
                                 </label>
                                 <div className="flex items-center gap-2 self-end sm:self-center">
                                    <span className="text-slate-600 dark:text-slate-300">₹{service.price}</span>
-                                   {isSelected && <input type="number" value={currentService?.quantity} onChange={e => handleQuantityChange(service.name, parseInt(e.target.value) || 1)} className="w-24 text-center border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2.5 text-base bg-white dark:bg-slate-700" />}
+                                   {isSelected && <input type="number" value={currentService?.quantity} onChange={e => handleQuantityChange(service.name, parseInt(e.target.value) || 1)} className="block w-24 text-center px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" />}
                                 </div>
                             </div>
                         );
@@ -149,17 +149,17 @@ export const InvoiceFormPage: React.FC<InvoiceFormPageProps> = ({ onSave, custom
                     {/* Old Balance */}
                     <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border dark:border-slate-700">
                        <label className="flex items-center font-medium mb-3"><input type="checkbox" checked={showOldBalance} onChange={e => setShowOldBalance(e.target.checked)} className="mr-2 h-4 w-4 rounded text-red-600 focus:ring-red-500" /> Old Balance (Arrears)</label>
-                       {showOldBalance && <div className="space-y-2"><input type="number" value={oldBalance.amount || ''} onChange={e => setOldBalance({ ...oldBalance, amount: parseFloat(e.target.value) || 0 })} placeholder="Amount (₹)" className="form-input" /><input type="date" value={oldBalance.date} onChange={e => setOldBalance({ ...oldBalance, date: e.target.value })} className="form-input" /></div>}
+                       {showOldBalance && <div className="space-y-2"><input type="number" value={oldBalance.amount || ''} onChange={e => setOldBalance({ ...oldBalance, amount: parseFloat(e.target.value) || 0 })} placeholder="Amount (₹)" className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" /><input type="date" value={oldBalance.date} onChange={e => setOldBalance({ ...oldBalance, date: e.target.value })} className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" /></div>}
                     </div>
                     {/* Advance Paid */}
                     <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border dark:border-slate-700">
                        <label className="flex items-center font-medium mb-3"><input type="checkbox" checked={showAdvancePaid} onChange={e => setShowAdvancePaid(e.target.checked)} className="mr-2 h-4 w-4 rounded text-green-600 focus:ring-green-500"/> Advance Paid</label>
-                       {showAdvancePaid && <div className="space-y-2"><input type="number" value={advancePaid.amount || ''} onChange={e => setAdvancePaid({ ...advancePaid, amount: parseFloat(e.target.value) || 0 })} placeholder="Amount (₹)" className="form-input" /><input type="date" value={advancePaid.date} onChange={e => setAdvancePaid({ ...advancePaid, date: e.target.value })} className="form-input" /></div>}
+                       {showAdvancePaid && <div className="space-y-2"><input type="number" value={advancePaid.amount || ''} onChange={e => setAdvancePaid({ ...advancePaid, amount: parseFloat(e.target.value) || 0 })} placeholder="Amount (₹)" className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" /><input type="date" value={advancePaid.date} onChange={e => setAdvancePaid({ ...advancePaid, date: e.target.value })} className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" /></div>}
                     </div>
                     {/* Now Paid */}
                     <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border dark:border-slate-700">
                        <label className="flex items-center font-medium mb-3"><input type="checkbox" checked={showNowPaid} onChange={e => setShowNowPaid(e.target.checked)} className="mr-2 h-4 w-4 rounded text-blue-600 focus:ring-blue-500"/> Now Paid (Today)</label>
-                       {showNowPaid && <div className="space-y-2"><input type="number" value={nowPaid.amount || ''} onChange={e => setNowPaid({ ...nowPaid, amount: parseFloat(e.target.value) || 0 })} placeholder="Amount (₹)" className="form-input" /><select value={nowPaid.method} onChange={e => setNowPaid({ ...nowPaid, method: e.target.value as PaymentMethod })} className="form-input"><option value="cash">Cash</option><option value="upi">UPI</option></select></div>}
+                       {showNowPaid && <div className="space-y-2"><input type="number" value={nowPaid.amount || ''} onChange={e => setNowPaid({ ...nowPaid, amount: parseFloat(e.target.value) || 0 })} placeholder="Amount (₹)" className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" /><select value={nowPaid.method} onChange={e => setNowPaid({ ...nowPaid, method: e.target.value as PaymentMethod })} className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"><option value="cash">Cash</option><option value="upi">UPI</option></select></div>}
                     </div>
                 </div>
 
@@ -188,7 +188,6 @@ export const InvoiceFormPage: React.FC<InvoiceFormPageProps> = ({ onSave, custom
                     </div>
                 </div>
             )}
-             <style>{`.form-input { @apply block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900; }`}</style>
         </div>
     );
 };
