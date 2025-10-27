@@ -82,7 +82,7 @@ export const DayBookPage: React.FC<DayBookPageProps> = ({ invoices, onPreviewInv
                     <div className="p-4 border-b dark:border-slate-700">
                         <h3 className="font-bold text-lg">Invoices Created</h3>
                     </div>
-                     <div className="overflow-x-auto">
+                     <div className="overflow-x-auto no-scrollbar">
                         <table className="w-full text-left">
                             <thead className="text-sm text-slate-500 dark:text-slate-400"><tr><th className="p-3 font-semibold">Customer</th><th className="p-3 font-semibold text-right">Amount</th><th></th></tr></thead>
                             <tbody>
@@ -102,7 +102,7 @@ export const DayBookPage: React.FC<DayBookPageProps> = ({ invoices, onPreviewInv
                     <div className="p-4 border-b dark:border-slate-700">
                         <h3 className="font-bold text-lg">Payments Collected</h3>
                     </div>
-                     <div className="overflow-x-auto">
+                     <div className="overflow-x-auto no-scrollbar">
                         <table className="w-full text-left">
                            <thead className="text-sm text-slate-500 dark:text-slate-400"><tr><th className="p-3 font-semibold">From</th><th className="p-3 font-semibold text-right">Amount</th><th className="p-3 font-semibold text-center">Method</th></tr></thead>
                            <tbody>

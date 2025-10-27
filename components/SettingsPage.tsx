@@ -4,6 +4,7 @@ import { Card, Button, Icon } from './Common';
 import { useToast } from '../hooks/useToast';
 import { CUSTOMER_TYPE_LABELS } from '../constants';
 import { useAuth } from '../hooks/useAuth';
+import * as apiService from '../services/apiService';
 
 interface SettingsPageProps {
   serviceSets: ServiceSets;
@@ -11,6 +12,49 @@ interface SettingsPageProps {
   appSettings: AppSettings;
   onSaveSettings: (newSettings: AppSettings) => void;
 }
+
+const PasswordCard = () => {
+    const toast = useToast();
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+
+    const canChange = newPassword && newPassword === confirmPassword;
+
+    const handleChangePassword = async () => {
+        if (!canChange) {
+            toast.error("Passwords do not match or are empty.");
+            return;
+        }
+        await apiService.updateAdminPassword(newPassword);
+        setNewPassword('');
+        setConfirmPassword('');
+        toast.success("Admin password changed successfully.");
+    };
+
+    return (
+        <Card className="p-6 space-y-4">
+            <h4 className="font-bold">Change Admin Password</h4>
+            <input 
+                type="password" 
+                placeholder="New Password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
+            />
+            <input 
+                type="password"
+                placeholder="Confirm New Password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
+            />
+            <Button onClick={handleChangePassword} disabled={!canChange} className="w-full">
+                Change Password
+            </Button>
+        </Card>
+    );
+};
+
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({ serviceSets: initialServiceSets, onSaveServices, appSettings: initialAppSettings, onSaveSettings }) => {
   const [currentSets, setCurrentSets] = useState<ServiceSets>(initialServiceSets);
@@ -41,10 +85,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ serviceSets: initial
     setCurrentSets(newSets);
   };
 
-  const handleSaveChanges = () => {
+  const handleSaveSettings = () => {
     onSaveServices(currentSets);
     onSaveSettings(currentAppSettings);
-    toast.success('Settings saved successfully!');
+    toast.success('Service & App settings saved successfully!');
   };
 
   return (
@@ -54,10 +98,22 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ serviceSets: initial
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Service Prices Section */}
         <div>
-           <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">Service Prices</h3>
+           <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">Service & App Settings</h3>
             <Card>
-              <div className="border-b border-slate-200 dark:border-slate-700">
-                  <nav className="flex space-x-1 p-2" aria-label="Tabs">
+              <div className="p-6 space-y-4">
+                  <h4 className="font-bold">App Settings</h4>
+                  <label htmlFor="upiId" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">UPI ID for Customer Payments</label>
+                     <input 
+                        type="text" 
+                        id="upiId" 
+                        value={currentAppSettings.upiId}
+                        onChange={(e) => setCurrentAppSettings(prev => ({ ...prev, upiId: e.target.value }))}
+                        className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" 
+                    />
+              </div>
+              <div className="border-t border-slate-200 dark:border-slate-700">
+                  <h4 className="font-bold p-6 pb-2">Service Prices</h4>
+                  <nav className="flex space-x-1 p-2 pt-0" aria-label="Tabs">
                       {(Object.keys(CUSTOMER_TYPE_LABELS) as CustomerType[]).map(type => (
                           <button
                               key={type}
@@ -96,39 +152,23 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ serviceSets: initial
                       Add Service for {CUSTOMER_TYPE_LABELS[activeTab]}
                   </Button>
               </div>
+              <div className="p-4 border-t border-slate-200 dark:border-slate-700 flex justify-end">
+                <Button onClick={handleSaveSettings}>Save Service & App Settings</Button>
+              </div>
             </Card>
         </div>
         
-        {/* App & Account Settings Section */}
-        <div className="space-y-8">
-             <div>
-                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">App Settings</h3>
-                <Card className="p-6">
-                     <label htmlFor="upiId" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">UPI ID for Customer Payments</label>
-                     <input 
-                        type="text" 
-                        id="upiId" 
-                        value={currentAppSettings.upiId}
-                        onChange={(e) => setCurrentAppSettings(prev => ({ ...prev, upiId: e.target.value }))}
-                        className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" 
-                    />
-                </Card>
-            </div>
-             <div>
-                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">Account</h3>
-                 <Card className="p-6">
-                    <Button onClick={logout} variant="danger" className="w-full">
-                        <Icon name="logout" className="w-5 h-5"/>
-                        Logout from Admin Account
-                    </Button>
-                 </Card>
-             </div>
+        {/* Account Settings Section */}
+        <div className="space-y-4">
+            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">Account</h3>
+            <PasswordCard />
+            <Card className="p-6">
+              <Button onClick={logout} variant="danger" className="w-full">
+                  <Icon name="logout" className="w-5 h-5"/>
+                  Logout from Admin Account
+              </Button>
+            </Card>
         </div>
-      </div>
-      <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-700 flex justify-end">
-          <Button onClick={handleSaveChanges}>
-              Save All Changes
-          </Button>
       </div>
     </div>
   );

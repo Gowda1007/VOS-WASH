@@ -5,7 +5,8 @@ import type {
     Product, 
     Order, 
     AppSettings,
-    User
+    User,
+    PendingOrder
 } from '../types';
 import { 
     INVOICE_STORAGE_KEY, 
@@ -14,6 +15,8 @@ import {
     PRODUCTS_STORAGE_KEY, 
     ORDERS_STORAGE_KEY, 
     APP_SETTINGS_STORAGE_KEY,
+    PENDING_ORDERS_STORAGE_KEY,
+    ADMIN_PASSWORD_STORAGE_KEY,
     DEFAULT_SERVICE_SETS
 } from '../constants';
 
@@ -53,12 +56,18 @@ export const getCurrentUser = async (): Promise<User | null> => {
 
 export const adminLogin = async (password: string): Promise<User | null> => {
     await new Promise(resolve => setTimeout(resolve, 500));
-    if (password === 'admin') {
+    const storedPassword = getFromStorage<string>(ADMIN_PASSWORD_STORAGE_KEY, 'admin');
+    if (password === storedPassword) {
         const adminUser: User = { role: 'admin' };
         saveToStorage(AUTH_KEY, adminUser);
         return adminUser;
     }
     return null;
+};
+
+export const updateAdminPassword = async (newPassword: string): Promise<void> => {
+    await new Promise(resolve => setTimeout(resolve, MOCK_API_DELAY));
+    saveToStorage(ADMIN_PASSWORD_STORAGE_KEY, newPassword);
 };
 
 export const customerLogin = async (phone: string): Promise<User | null> => {
@@ -238,4 +247,24 @@ export const saveSettings = async (newSettings: AppSettings): Promise<AppSetting
     await new Promise(resolve => setTimeout(resolve, MOCK_API_DELAY));
     saveToStorage(APP_SETTINGS_STORAGE_KEY, newSettings);
     return newSettings;
+};
+
+// Pending Orders
+export const getPendingOrders = async (): Promise<PendingOrder[]> => {
+    await new Promise(resolve => setTimeout(resolve, MOCK_API_DELAY));
+    return getFromStorage<PendingOrder[]>(PENDING_ORDERS_STORAGE_KEY, []);
+};
+
+export const addPendingOrder = async (orderData: Omit<PendingOrder, 'id'>): Promise<PendingOrder> => {
+    await new Promise(resolve => setTimeout(resolve, MOCK_API_DELAY));
+    const orders = await getPendingOrders();
+    const newOrder: PendingOrder = { ...orderData, id: Date.now() };
+    saveToStorage(PENDING_ORDERS_STORAGE_KEY, [newOrder, ...orders]);
+    return newOrder;
+};
+
+export const deletePendingOrder = async (orderId: number): Promise<void> => {
+    await new Promise(resolve => setTimeout(resolve, MOCK_API_DELAY));
+    const orders = await getPendingOrders();
+    saveToStorage(PENDING_ORDERS_STORAGE_KEY, orders.filter(o => o.id !== orderId));
 };

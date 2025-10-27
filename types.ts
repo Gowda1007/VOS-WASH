@@ -4,7 +4,7 @@ export type InvoiceStatus = 'paid' | 'partially_paid' | 'unpaid';
 
 export type OrderStatus = 'pending_payment' | 'processing' | 'shipped' | 'cancelled';
 
-export type View = 'dashboard' | 'invoices' | 'customers' | 'settings' | 'reports' | 'new-invoice' | 'products' | 'orders' | 'customer-detail' | 'day-book';
+export type View = 'dashboard' | 'invoices' | 'customers' | 'settings' | 'reports' | 'new-invoice' | 'products' | 'orders' | 'customer-detail' | 'day-book' | 'take-order';
 
 export type PaymentMethod = 'upi' | 'cash';
 
@@ -38,6 +38,17 @@ export interface Invoice {
   payments: Payment[];
   oldBalance?: { amount: number; date?: string };
   advancePaid?: { amount: number; date?: string };
+}
+
+export interface PendingOrder {
+  id: number;
+  orderDate: string;
+  customerName: string;
+  customerPhone: string;
+  customerAddress: string;
+  customerType: CustomerType;
+  services: Service[];
+  advancePaid: { amount: number };
 }
 
 export interface Customer {

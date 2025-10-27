@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import type { AnalyticsData, Invoice } from '../types';
+import type { AnalyticsData, Invoice, PendingOrder } from '../types';
 import { filterAndGroupInvoicesForChart } from '../services/analyticsService';
-import { Card, Badge, Icon } from './Common';
+import { Card, Badge, Icon, Button, EmptyState } from './Common';
 import { calculateInvoiceTotal, calculateStatus } from '../hooks/useInvoices';
 import { CUSTOMER_TYPE_LABELS } from '../constants';
 
@@ -28,10 +28,12 @@ type ChartPeriod = 'day' | 'week' | 'month';
 interface DashboardPageProps {
     analytics: AnalyticsData;
     recentInvoices: Invoice[];
+    pendingOrders: PendingOrder[];
     onPreviewInvoice: (invoice: Invoice) => void;
+    onGenerateInvoice: (order: PendingOrder) => void;
 }
 
-export const DashboardPage: React.FC<DashboardPageProps> = ({ analytics, recentInvoices, onPreviewInvoice }) => {
+export const DashboardPage: React.FC<DashboardPageProps> = ({ analytics, recentInvoices, pendingOrders, onPreviewInvoice, onGenerateInvoice }) => {
     const barChartRef = useRef<HTMLCanvasElement>(null);
     const barChartInstanceRef = useRef<any>(null);
     const pieChartRef = useRef<HTMLCanvasElement>(null);
@@ -142,6 +144,34 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ analytics, recentI
                 <KpiCard title="Total Invoices" value={analytics.totalInvoices} icon="document-duplicate" color="text-slate-600 dark:text-slate-400" />
             </div>
 
+            {pendingOrders.length > 0 && (
+                <Card>
+                    <div className="p-6 border-b dark:border-slate-700">
+                        <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">Pending Orders</h3>
+                    </div>
+                    <ul className="divide-y divide-slate-200 dark:divide-slate-700">
+                        {pendingOrders.map(order => (
+                             <li key={order.id} className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                <div>
+                                    <p className="font-semibold text-indigo-600 dark:text-indigo-400">{order.customerName}</p>
+                                    <p className="text-sm text-slate-500 dark:text-slate-400">{order.customerPhone} &bull; {order.orderDate}</p>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{order.services.map(s => s.name).join(', ')}</p>
+                                </div>
+                                <div className="flex items-center gap-4 self-end sm:self-auto">
+                                    <div className='text-right'>
+                                        <p className="text-xs">Advance</p>
+                                        <p className="font-semibold">₹{order.advancePaid.amount}</p>
+                                    </div>
+                                    <Button onClick={() => onGenerateInvoice(order)} variant="primary">
+                                        Generate Invoice
+                                    </Button>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                </Card>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <Card className="lg:col-span-2 p-4 md:p-6">
                     <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">Revenue Trend</h3>
@@ -177,8 +207,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ analytics, recentI
                 </div>
                  <ul className="divide-y divide-slate-200 dark:divide-slate-700">
                      {recentInvoices.length > 0 ? recentInvoices.map(inv => <InvoiceListItem key={inv.id} invoice={inv} onPreview={onPreviewInvoice} />)
-                     : <p className="text-slate-500 dark:text-slate-400 text-center py-8">No recent invoices.</p>
-                     }
+                     : (
+                        <div className='p-4'>
+                            <EmptyState icon="document-text" title="No Recent Invoices" message="Your latest invoices will appear here once created." />
+                        </div>
+                     )}
                 </ul>
             </Card>
         </div>

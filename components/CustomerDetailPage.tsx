@@ -76,7 +76,7 @@ const TabButton: React.FC<{label: string, isActive: boolean, onClick: () => void
 )
 
 const InvoicesTab: React.FC<{invoices: Invoice[], onPreview: (inv: Invoice) => void, onCollect: (id: number) => void}> = ({ invoices, onPreview, onCollect }) => (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto no-scrollbar">
         <table className="w-full text-left">
              <thead className="bg-slate-50 dark:bg-slate-800/50 text-sm text-slate-600 dark:text-slate-400">
                 <tr>
@@ -115,7 +115,7 @@ const InvoiceRow: React.FC<{invoice: Invoice, onPreview: (inv: Invoice) => void,
 }
 
 const OrdersTab: React.FC<{orders: Order[]}> = ({ orders }) => (
-     <div className="overflow-x-auto">
+     <div className="overflow-x-auto no-scrollbar">
         <table className="w-full text-left">
             <thead className="bg-slate-50 dark:bg-slate-800/50 text-sm text-slate-600 dark:text-slate-400">
                 <tr>

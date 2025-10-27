@@ -95,7 +95,7 @@ export const CustomerListPage: React.FC<CustomerListPageProps> = ({ customers, i
                 </div>
 
                 {/* Desktop Table View */}
-                <div className="hidden md:block overflow-x-auto">
+                <div className="hidden md:block overflow-x-auto no-scrollbar">
                     {hasCustomers ? (
                         <table className="w-full text-left">
                             <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-400">

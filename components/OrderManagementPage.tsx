@@ -31,7 +31,7 @@ export const OrderManagementPage: React.FC<OrderManagementPageProps> = ({ orders
             <p className="text-slate-500 dark:text-slate-400">{`There are ${orders.length} total orders.`}</p>
 
             <Card>
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto no-scrollbar">
                     <table className="w-full text-left">
                         <thead className="bg-slate-50 dark:bg-slate-800/50">
                             <tr>

@@ -10,6 +10,7 @@ interface MainLayoutProps {
     pageTitle: string;
     onNavigate: (view: View) => void;
     onNewInvoice: () => void;
+    onTakeOrder: () => void;
 }
 
 const navItems: { view: View; label: string; icon: React.ComponentProps<typeof Icon>['name'] }[] = [
@@ -23,7 +24,7 @@ const navItems: { view: View; label: string; icon: React.ComponentProps<typeof I
     { view: 'settings', label: 'Settings', icon: 'cog-6-tooth' },
 ];
 
-export const MainLayout: React.FC<MainLayoutProps> = ({ children, currentView, pageTitle, onNavigate, onNewInvoice }) => {
+export const MainLayout: React.FC<MainLayoutProps> = ({ children, currentView, pageTitle, onNavigate, onNewInvoice, onTakeOrder }) => {
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const drawerRef = useRef<HTMLDivElement>(null);
 
@@ -62,10 +63,16 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children, currentView, p
             </nav>
             <div className="px-4 py-4 space-y-4">
                 <UserMenu />
-                <Button fullWidth onClick={onNewInvoice}>
-                    <Icon name="plus-circle" className="w-6 h-6" />
-                    New Invoice
-                </Button>
+                <div className="space-y-2">
+                    <Button fullWidth onClick={onTakeOrder} variant="secondary" className="!bg-teal-500 hover:!bg-teal-600 !text-white">
+                        <Icon name="clipboard-document-list" className="w-6 h-6" />
+                        Take Order
+                    </Button>
+                    <Button fullWidth onClick={onNewInvoice}>
+                        <Icon name="plus-circle" className="w-6 h-6" />
+                        New Invoice
+                    </Button>
+                </div>
             </div>
         </div>
     );
@@ -97,13 +104,20 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children, currentView, p
                     <div className="w-6"></div> {/* Spacer */}
                 </header>
                 
-                <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-8 pb-24 lg:pb-8">
+                <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-8 pb-24 lg:pb-8 no-scrollbar">
                     {children}
                 </main>
             </div>
             
             {/* --- FAB for New Invoice on Mobile --- */}
-            <div className="lg:hidden fixed bottom-6 right-6 z-30">
+            <div className="lg:hidden fixed bottom-6 right-6 z-30 flex flex-col gap-4">
+                <button
+                    onClick={onTakeOrder}
+                    className="w-14 h-14 flex items-center justify-center bg-teal-500 text-white rounded-full shadow-xl hover:bg-teal-600 transition transform hover:scale-105"
+                    aria-label="Take Order"
+                >
+                    <Icon name="clipboard-document-list" className="w-7 h-7" />
+                </button>
                 <button
                     onClick={onNewInvoice}
                     className="w-16 h-16 flex items-center justify-center bg-indigo-600 text-white rounded-full shadow-xl hover:bg-indigo-700 transition transform hover:scale-105"
@@ -193,15 +207,23 @@ const UserMenu: React.FC = () => {
     );
 };
 
-const Button: React.FC<{ 
-    onClick?: () => void;
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     children: React.ReactNode;
     fullWidth?: boolean;
-}> = ({ onClick, children, fullWidth }) => (
-    <button
-        onClick={onClick}
-        className={`flex items-center justify-center gap-2 bg-indigo-600 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:bg-indigo-700 transition ${fullWidth ? 'w-full' : ''}`}
-    >
-        {children}
-    </button>
-);
+    variant?: 'primary' | 'secondary' | 'danger';
+}
+const Button: React.FC<ButtonProps> = ({ children, fullWidth, variant = 'primary', ...props }) => {
+    const variantClasses = {
+        primary: 'bg-indigo-600 text-white font-semibold shadow-md hover:bg-indigo-700',
+        secondary: 'bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold hover:bg-slate-300 dark:hover:bg-slate-600',
+        danger: 'bg-red-600 text-white font-semibold shadow-md hover:bg-red-700',
+    };
+    return (
+        <button
+            {...props}
+            className={`flex items-center justify-center gap-2 py-3 px-4 rounded-lg transition ${fullWidth ? 'w-full' : ''} ${variantClasses[variant]} ${props.className || ''}`}
+        >
+            {children}
+        </button>
+    );
+};

@@ -54,6 +54,15 @@
         background: #64748b;
       }
 
+      /* Hide scrollbar but allow scrolling */
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
+      }
+
       /* Make date input calendar picker clickable over the whole input */
       input[type="date"] {
         position: relative;

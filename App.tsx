@@ -6,6 +6,7 @@ import { CustomerListPage } from './components/CustomerListPage';
 import { CustomerDetailPage } from './components/CustomerDetailPage';
 import { SettingsPage } from './components/SettingsPage';
 import { InvoiceFormPage } from './components/InvoiceFormPage';
+import { OrderFormPage } from './components/OrderFormPage';
 import { ConfirmationModal, ConfirmModalState } from './components/ConfirmationModal';
 import { SplashScreen } from './components/SplashScreen';
 import { LoginPage } from './components/LoginPage';
@@ -18,7 +19,7 @@ import { OrderManagementPage } from './components/OrderManagementPage';
 import { DayBookPage } from './components/DayBookPage';
 import { InvoicePreviewOverlay } from './components/InvoicePreviewOverlay';
 
-import type { Invoice, View, Payment, PaymentMethod, Customer } from './types';
+import type { Invoice, View, Payment, Customer, PendingOrder } from './types';
 import { useInvoices } from './hooks/useInvoices';
 import { useCustomers } from './hooks/useCustomers';
 import { useServices } from './hooks/useServices';
@@ -26,6 +27,7 @@ import { useAuth } from './hooks/useAuth';
 import { useProducts } from './hooks/useProducts';
 import { useOrders } from './hooks/useOrders';
 import { useAppSettings } from './hooks/useAppSettings';
+import { usePendingOrders } from './hooks/usePendingOrders';
 import { calculateAnalytics } from './services/analyticsService';
 
 const viewTitles: Record<View, string> = {
@@ -35,6 +37,7 @@ const viewTitles: Record<View, string> = {
     settings: 'Settings',
     reports: 'Financial Reports',
     'new-invoice': 'New Invoice',
+    'take-order': 'Take Order',
     products: 'Product Management',
     orders: 'Order Management',
     'customer-detail': 'Customer Details',
@@ -48,17 +51,19 @@ const App: React.FC = () => {
 
     const [view, setView] = useState<View>('dashboard');
     const { invoices, addInvoice, updateInvoice, deleteInvoice } = useInvoices();
-    const { customers, addCustomer, addOrUpdateCustomer, isCustomerExists } = useCustomers();
+    const { customers, addOrUpdateCustomer } = useCustomers();
     const { serviceSets, saveServiceSets } = useServices();
     const { products, addProduct, updateProduct, deleteProduct } = useProducts();
     const { orders, addOrder, updateOrder } = useOrders();
+    const { pendingOrders, addPendingOrder, deletePendingOrder } = usePendingOrders();
     const { settings, saveSettings } = useAppSettings();
 
     const [confirmModalState, setConfirmModalState] = useState<ConfirmModalState>({ isOpen: false });
     const [invoiceToEdit, setInvoiceToEdit] = useState<Invoice | null>(null);
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
-
+    const [orderToConvert, setOrderToConvert] = useState<PendingOrder | null>(null);
+    
     const analytics = useMemo(() => calculateAnalytics(invoices), [invoices]);
 
     useEffect(() => {
@@ -68,11 +73,24 @@ const App: React.FC = () => {
     const handleNavigate = (newView: View) => {
         setInvoiceToEdit(null);
         setSelectedCustomer(null);
+        setOrderToConvert(null);
         setView(newView);
     };
 
     const handleStartNewInvoice = () => {
+        setOrderToConvert(null);
         setInvoiceToEdit(null);
+        setView('new-invoice');
+    };
+    
+    const handleStartTakeOrder = () => {
+        setOrderToConvert(null);
+        setInvoiceToEdit(null);
+        setView('take-order');
+    }
+
+    const handleGenerateInvoiceFromOrder = (order: PendingOrder) => {
+        setOrderToConvert(order);
         setView('new-invoice');
     };
 
@@ -100,9 +118,25 @@ const App: React.FC = () => {
         
         addInvoice(newInvoice);
         
+        // If this invoice was generated from a pending order, delete the pending order
+        if (orderToConvert) {
+            deletePendingOrder(orderToConvert.id);
+            setOrderToConvert(null);
+        }
+        
         setInvoiceToEdit(null);
         setView('invoices');
     };
+
+    const handleSaveOrder = (orderData: Omit<PendingOrder, 'id'>) => {
+        addOrUpdateCustomer({
+            phone: orderData.customerPhone,
+            name: orderData.customerName,
+            address: orderData.customerAddress
+        });
+        addPendingOrder(orderData);
+        setView('dashboard');
+    }
 
 
     const handleDeleteRequest = (invoiceId: number) => {
@@ -151,7 +185,7 @@ const App: React.FC = () => {
 
     const renderAdminContent = () => {
         switch (view) {
-            case 'dashboard': return <DashboardPage analytics={analytics} recentInvoices={invoices.slice(0, 5)} onPreviewInvoice={handlePreviewInvoice} />;
+            case 'dashboard': return <DashboardPage analytics={analytics} recentInvoices={invoices.slice(0, 5)} pendingOrders={pendingOrders} onPreviewInvoice={handlePreviewInvoice} onGenerateInvoice={handleGenerateInvoiceFromOrder} />;
             case 'invoices': return <InvoiceListPage invoices={invoices} onDelete={handleDeleteRequest} onCollect={handleCollectRequest} onPreview={handlePreviewInvoice} />;
             case 'customers': return <CustomerListPage customers={customers} invoices={invoices} onViewCustomer={handleViewCustomer} />;
             case 'customer-detail': 
@@ -175,8 +209,9 @@ const App: React.FC = () => {
             case 'day-book': return <DayBookPage invoices={invoices} onPreviewInvoice={handlePreviewInvoice} onCollectInvoice={handleCollectRequest} />;
             case 'settings': return <SettingsPage serviceSets={serviceSets} onSaveServices={saveServiceSets} appSettings={settings} onSaveSettings={saveSettings} />;
             case 'reports': return <ReportsPage invoices={invoices} />;
-            case 'new-invoice': return <InvoiceFormPage onSave={handleSaveInvoice} existingInvoice={invoiceToEdit} customers={customers} serviceSets={serviceSets} />;
-            default: return <DashboardPage analytics={analytics} recentInvoices={invoices.slice(0,5)} onPreviewInvoice={handlePreviewInvoice} />;
+            case 'new-invoice': return <InvoiceFormPage onSave={handleSaveInvoice} existingInvoice={invoiceToEdit} customers={customers} serviceSets={serviceSets} invoices={invoices} pendingOrder={orderToConvert} />;
+            case 'take-order': return <OrderFormPage onSave={handleSaveOrder} customers={customers} serviceSets={serviceSets} appSettings={settings} />;
+            default: return <DashboardPage analytics={analytics} recentInvoices={invoices.slice(0,5)} pendingOrders={pendingOrders} onPreviewInvoice={handlePreviewInvoice} onGenerateInvoice={handleGenerateInvoiceFromOrder} />;
         }
     };
 
@@ -218,6 +253,7 @@ const App: React.FC = () => {
                 currentView={view} 
                 onNavigate={handleNavigate} 
                 onNewInvoice={handleStartNewInvoice}
+                onTakeOrder={handleStartTakeOrder}
                 pageTitle={viewTitles[view] || 'VOS WASH'}
             >
                 {renderAdminContent()}

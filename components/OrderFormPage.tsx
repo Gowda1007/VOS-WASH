@@ -1,22 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import type { Invoice, CustomerType, Service, Customer, ServiceSets, ManageableService, PaymentMethod, PendingOrder } from '../types';
+import type { Service, Customer, ServiceSets, ManageableService, CustomerType, AppSettings, PendingOrder } from '../types';
 import { Card, Button, Icon, Modal } from './Common';
-import { InvoicePreview } from './InvoicePreview';
 import { CUSTOMER_TYPE_LABELS } from '../constants';
-import { downloadPDF } from '../services/pdfService';
 import { useToast } from '../hooks/useToast';
-import { calculateRemainingBalance } from '../hooks/useInvoices';
 
-interface InvoiceFormPageProps {
-    onSave: (invoiceData: Omit<Invoice, 'id' | 'invoiceNumber' | 'invoiceDate'>) => void;
-    existingInvoice: Invoice | null;
+interface OrderFormPageProps {
+    onSave: (orderData: Omit<PendingOrder, 'id'>) => void;
     customers: Customer[];
     serviceSets: ServiceSets;
-    invoices: Invoice[];
-    pendingOrder: PendingOrder | null;
+    appSettings: AppSettings;
 }
 
-export const InvoiceFormPage: React.FC<InvoiceFormPageProps> = ({ onSave, customers, serviceSets, invoices, pendingOrder }) => {
+export const OrderFormPage: React.FC<OrderFormPageProps> = ({ onSave, customers, serviceSets, appSettings }) => {
     const toast = useToast();
     const [step, setStep] = useState(1);
     
@@ -30,31 +25,7 @@ export const InvoiceFormPage: React.FC<InvoiceFormPageProps> = ({ onSave, custom
     const [newCustomService, setNewCustomService] = useState({ name: '', price: 0 });
 
     // Step 3 State
-    const [showOldBalance, setShowOldBalance] = useState(false);
-    const [oldBalance, setOldBalance] = useState({ amount: 0, date: '' });
-    const [showAdvancePaid, setShowAdvancePaid] = useState(false);
-    const [advancePaid, setAdvancePaid] = useState({ amount: 0, date: '' });
-    const [showNowPaid, setShowNowPaid] = useState(false);
-    const [nowPaid, setNowPaid] = useState({ amount: 0, method: 'cash' as PaymentMethod });
-
-    // Step 4 State
-    const [previewData, setPreviewData] = useState<Invoice | null>(null);
-
-     useEffect(() => {
-        if (pendingOrder) {
-            setCustomer({
-                name: pendingOrder.customerName,
-                phone: pendingOrder.customerPhone,
-                address: pendingOrder.customerAddress,
-            });
-            setCustomerType(pendingOrder.customerType);
-            setSelectedServices(pendingOrder.services);
-            if (pendingOrder.advancePaid.amount > 0) {
-                setShowAdvancePaid(true);
-                setAdvancePaid({ amount: pendingOrder.advancePaid.amount, date: pendingOrder.orderDate });
-            }
-        }
-    }, [pendingOrder]);
+    const [advancePaid, setAdvancePaid] = useState({ amount: 0 });
 
     useEffect(() => {
         if (customer.phone.length === 10) {
@@ -65,35 +36,13 @@ export const InvoiceFormPage: React.FC<InvoiceFormPageProps> = ({ onSave, custom
                     name: existingCustomer.name,
                     address: existingCustomer.address,
                 });
-
-                const totalArrears = invoices
-                    .filter(inv => inv.customerPhone === customer.phone)
-                    .reduce((total, inv) => {
-                        const balance = calculateRemainingBalance(inv);
-                        return balance > 0 ? total + balance : total;
-                    }, 0);
-
-                if (totalArrears > 0) {
-                    setShowOldBalance(true);
-                    setOldBalance({ amount: Math.round(totalArrears), date: '' });
-                } else {
-                    setShowOldBalance(false);
-                    setOldBalance({ amount: 0, date: '' });
-                }
-
-            } else {
-                // If it's a new customer, ensure old balance is cleared
-                setShowOldBalance(false);
-                setOldBalance({ amount: 0, date: '' });
             }
         }
-    }, [customer.phone, customers, invoices]);
+    }, [customer.phone, customers]);
     
     useEffect(() => {
-        if (!pendingOrder) {
-            setSelectedServices([]);
-        }
-    }, [customerType, pendingOrder]);
+        setSelectedServices([]);
+    }, [customerType]);
 
     const handleNext = () => {
         if (step === 1) {
@@ -113,24 +62,24 @@ export const InvoiceFormPage: React.FC<InvoiceFormPageProps> = ({ onSave, custom
     };
 
     const handleBack = () => setStep(prev => prev - 1);
-
-    const handleGeneratePreview = () => {
+    
+    const handleSaveOrder = () => {
+        if (advancePaid.amount <= 0) {
+            toast.error("Please enter an advance payment amount.");
+            return;
+        }
         const finalServices = selectedServices.filter(s => s.name && s.price > 0 && s.quantity > 0);
-        const invoiceForPreview: Invoice = {
-            id: Date.now(),
-            invoiceNumber: 'PREVIEW',
-            invoiceDate: new Date().toLocaleDateString("en-IN"),
+        const orderData: Omit<PendingOrder, 'id'> = {
+            orderDate: new Date().toLocaleDateString("en-IN"),
             customerName: customer.name,
             customerPhone: customer.phone,
             customerAddress: customer.address || 'N/A',
             customerType: customerType,
             services: finalServices,
-            oldBalance: showOldBalance && oldBalance.amount > 0 ? oldBalance : undefined,
-            advancePaid: showAdvancePaid && advancePaid.amount > 0 ? advancePaid : undefined,
-            payments: showNowPaid && nowPaid.amount > 0 ? [{ ...nowPaid, date: new Date().toLocaleDateString("en-IN") }] : [],
+            advancePaid: advancePaid,
         };
-        setPreviewData(invoiceForPreview);
-        setStep(4);
+        onSave(orderData);
+        toast.success("Order saved successfully! It can be converted to an invoice from the dashboard.");
     };
 
     const handleServiceQuantityChange = (index: number, newQuantity: number) => {
@@ -166,16 +115,11 @@ export const InvoiceFormPage: React.FC<InvoiceFormPageProps> = ({ onSave, custom
     const handleRemoveService = (index: number) => {
         setSelectedServices(prev => prev.filter((_, i) => i !== index));
     };
-
-    const handleFinalSave = () => {
-        if (!previewData) return;
-        onSave(previewData);
-    };
     
-    const handleDownload = async () => {
-        if (!previewData) return;
-        await downloadPDF(previewData, document.getElementById('invoice-preview-content'));
-        toast.success('Invoice saved to your Downloads folder.');
+    const generateQrCodeUrl = () => {
+        if (!appSettings.upiId || advancePaid.amount <= 0) return null;
+        const upiUrl = `upi://pay?pa=${appSettings.upiId}&pn=VOS%20WASH&am=${advancePaid.amount}&cu=INR`;
+        return `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiUrl)}`;
     };
 
     const renderStep1 = () => (
@@ -262,65 +206,48 @@ export const InvoiceFormPage: React.FC<InvoiceFormPageProps> = ({ onSave, custom
         );
     };
     
-    const renderStep3 = () => (
-        <Card className="p-6 md:p-8">
-            <h3 className="font-bold text-lg mb-4 text-slate-800 dark:text-slate-100 border-b pb-2 dark:border-slate-700">Financials</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border dark:border-slate-700">
-                   <label className="flex items-center font-medium mb-3"><input type="checkbox" checked={showOldBalance} onChange={e => setShowOldBalance(e.target.checked)} className="mr-2 h-4 w-4 rounded text-red-600 focus:ring-red-500" /> Old Balance (Arrears)</label>
-                   {showOldBalance && <div className="space-y-2"><input type="number" value={oldBalance.amount || ''} onChange={e => setOldBalance({ ...oldBalance, amount: parseFloat(e.target.value) || 0 })} placeholder="Amount (₹)" className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" /><input type="date" value={oldBalance.date} onChange={e => setOldBalance({ ...oldBalance, date: e.target.value })} className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" /></div>}
+    const renderStep3 = () => {
+        const qrCodeUrl = generateQrCodeUrl();
+        return (
+            <Card className="p-6 md:p-8">
+                <h3 className="font-bold text-lg mb-4 text-slate-800 dark:text-slate-100 border-b pb-2 dark:border-slate-700">Advance Payment</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                    <div className="space-y-4">
+                         <label className="font-medium">Enter Advance Amount</label>
+                         <input type="number" value={advancePaid.amount || ''} onChange={e => setAdvancePaid({ ...advancePaid, amount: parseFloat(e.target.value) || 0 })} placeholder="Amount (₹)" className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" />
+                         <p className="text-sm text-slate-500">A QR code will be generated for the customer to scan and pay.</p>
+                    </div>
+                    <div className="text-center p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border dark:border-slate-700">
+                        {qrCodeUrl ? (
+                            <>
+                                <img src={qrCodeUrl} alt="UPI QR Code" className="mx-auto rounded-lg" />
+                                <p className="mt-2 font-semibold">{appSettings.upiId}</p>
+                            </>
+                        ) : (
+                            <div className='flex flex-col items-center justify-center h-[250px]'>
+                                <p className="text-slate-500">Enter an amount to generate QR code.</p>
+                                <p className="text-xs text-slate-400 mt-2"> (Ensure UPI ID is set in Settings)</p>
+                            </div>
+                        )}
+                    </div>
                 </div>
-                <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border dark:border-slate-700">
-                   <label className="flex items-center font-medium mb-3"><input type="checkbox" checked={showAdvancePaid} onChange={e => setShowAdvancePaid(e.target.checked)} className="mr-2 h-4 w-4 rounded text-green-600 focus:ring-green-500"/> Advance Paid</label>
-                   {showAdvancePaid && <div className="space-y-2"><input type="number" value={advancePaid.amount || ''} onChange={e => setAdvancePaid({ ...advancePaid, amount: parseFloat(e.target.value) || 0 })} placeholder="Amount (₹)" className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" /><input type="date" value={advancePaid.date} onChange={e => setAdvancePaid({ ...advancePaid, date: e.target.value })} className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" /></div>}
+                 <div className="flex justify-between gap-4 mt-6 border-t pt-6 dark:border-slate-700">
+                    <Button onClick={handleBack} variant="secondary">Back</Button>
+                    <Button onClick={handleSaveOrder} className="!bg-teal-600 hover:!bg-teal-700">Save Order</Button>
                 </div>
-                <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border dark:border-slate-700">
-                   <label className="flex items-center font-medium mb-3"><input type="checkbox" checked={showNowPaid} onChange={e => setShowNowPaid(e.target.checked)} className="mr-2 h-4 w-4 rounded text-blue-600 focus:ring-blue-500"/> Now Paid (Today)</label>
-                   {showNowPaid && <div className="space-y-2"><input type="number" value={nowPaid.amount || ''} onChange={e => setNowPaid({ ...nowPaid, amount: parseFloat(e.target.value) || 0 })} placeholder="Amount (₹)" className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" /><select value={nowPaid.method} onChange={e => setNowPaid({ ...nowPaid, method: e.target.value as PaymentMethod })} className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"><option value="cash">Cash</option><option value="upi">UPI</option></select></div>}
-                </div>
-            </div>
-            <div className="flex justify-between gap-4 mt-6 border-t pt-6 dark:border-slate-700">
-                <Button onClick={handleBack} variant="secondary">Back</Button>
-                <Button onClick={handleGeneratePreview}>Next: Preview Invoice</Button>
-            </div>
-        </Card>
-    );
-
-    const renderStep4 = () => (
-        <div>
-            <h3 className="font-bold text-lg mb-4 text-center text-slate-800 dark:text-slate-100">Invoice Preview</h3>
-            <div className="p-4 sm:p-8 bg-slate-200 dark:bg-slate-800 rounded-lg">
-                {previewData && <InvoicePreview invoiceData={previewData} />}
-            </div>
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6">
-                <Button onClick={handleBack} variant="secondary" className="w-full sm:w-auto">
-                    <Icon name="pencil" className="w-5 h-5"/> Edit Details
-                </Button>
-                <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-                    <Button onClick={handleFinalSave} className="w-full">
-                        <Icon name="document-duplicate" className="w-5 h-5"/> Confirm & Save
-                    </Button>
-                    <Button onClick={handleDownload} variant="secondary" className="w-full">
-                        <Icon name="document-duplicate" className="w-5 h-5"/> Download PDF
-                    </Button>
-                    <Button onClick={() => window.print()} variant="secondary" className="w-full print-hidden">
-                        <Icon name="printer" className="w-5 h-5"/> Print
-                    </Button>
-                </div>
-            </div>
-        </div>
-    );
+            </Card>
+        );
+    }
     
     return (
         <div className="space-y-6">
             <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5">
-                <div className="bg-indigo-600 h-2.5 rounded-full" style={{ width: `${(step / 4) * 100}%`, transition: 'width 0.3s ease-in-out' }}></div>
+                <div className="bg-teal-500 h-2.5 rounded-full" style={{ width: `${(step / 3) * 100}%`, transition: 'width 0.3s ease-in-out' }}></div>
             </div>
 
             {step === 1 && renderStep1()}
             {step === 2 && renderStep2()}
             {step === 3 && renderStep3()}
-            {step === 4 && renderStep4()}
             
             <Modal isOpen={isCustomServiceModalOpen} onClose={() => setIsCustomServiceModalOpen(false)} title="Add Custom Service">
                 <div className="space-y-4">
