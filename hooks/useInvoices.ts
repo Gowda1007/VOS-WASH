@@ -46,9 +46,10 @@ export const useInvoices = () => {
     const addInvoice = async (invoiceData: Omit<Invoice, 'id'>) => {
         const newInvoice = await apiService.addInvoice(invoiceData);
         setInvoices(prev => [newInvoice, ...prev]);
+        return newInvoice;
     };
 
-    const updateInvoice = async (invoiceId: number, updatedData: Partial<Invoice>) => {
+    const updateInvoice = async (invoiceId: number, updatedData: Partial<Invoice>): Promise<Invoice | null> => {
         const updatedInvoice = await apiService.updateInvoice(invoiceId, updatedData);
         if (updatedInvoice) {
             setInvoices(prev => 
@@ -57,6 +58,7 @@ export const useInvoices = () => {
                 )
             );
         }
+        return updatedInvoice;
     };
 
     const deleteInvoice = async (invoiceId: number) => {

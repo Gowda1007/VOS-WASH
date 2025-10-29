@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { View } from '../types';
-import { Icon, Logo } from './Common';
-import { useTheme } from '../hooks/useTheme';
+import { Icon, Logo, Button } from './Common';
+import { useLanguage } from '../hooks/useLanguage';
 
 interface MainLayoutProps {
     children: React.ReactNode;
@@ -12,18 +12,19 @@ interface MainLayoutProps {
     onTakeOrder: () => void;
 }
 
-const navItems: { view: View; label: string; icon: React.ComponentProps<typeof Icon>['name'] }[] = [
-    { view: 'dashboard', label: 'Dashboard', icon: 'chart-pie' },
-    { view: 'invoices', label: 'Invoices', icon: 'document-text' },
-    { view: 'customers', label: 'Customers', icon: 'users' },
-    { view: 'day-book', label: 'Day Book', icon: 'calendar-days' },
-    { view: 'reports', label: 'Reports', icon: 'chart-bar-square' },
-    { view: 'settings', label: 'Settings', icon: 'cog-6-tooth' },
+const navItems: { view: View; labelKey: string; icon: React.ComponentProps<typeof Icon>['name'] }[] = [
+    { view: 'dashboard', labelKey: 'dashboard', icon: 'chart-pie' },
+    { view: 'invoices', labelKey: 'invoices', icon: 'document-text' },
+    { view: 'customers', labelKey: 'customers', icon: 'users' },
+    { view: 'day-book', labelKey: 'day-book', icon: 'calendar-days' },
+    { view: 'reports', labelKey: 'reports', icon: 'chart-bar-square' },
+    { view: 'settings', labelKey: 'settings', icon: 'cog-6-tooth' },
 ];
 
 export const MainLayout: React.FC<MainLayoutProps> = ({ children, currentView, pageTitle, onNavigate, onNewInvoice, onTakeOrder }) => {
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const drawerRef = useRef<HTMLDivElement>(null);
+    const { t } = useLanguage();
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -45,29 +46,32 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children, currentView, p
             <div className="flex items-center justify-center h-20 border-b border-slate-200 dark:border-slate-700">
                 <div className="flex items-center space-x-2">
                     <Logo className="w-10 h-10 text-blue-700 dark:text-blue-400" />
-                    <h1 className="text-xl font-bold text-blue-700 dark:text-blue-400">VOS WASH</h1>
+                    <h1 className="text-xl font-bold text-blue-700 dark:text-blue-400">{t('app-name')}</h1>
                 </div>
             </div>
             <nav className="flex-1 px-4 py-4 space-y-2">
                 {navItems.map(item => (
                     <NavItem
                         key={item.view}
-                        {...item}
+                        label={t(item.labelKey, item.labelKey)}
+                        icon={item.icon}
                         isActive={currentView === item.view}
                         onClick={() => handleNavItemClick(item.view)}
                     />
                 ))}
             </nav>
             <div className="px-4 py-4 space-y-4">
-                <ThemeToggle />
+                <LanguageToggle />
                 <div className="space-y-2">
-                    <Button fullWidth onClick={onTakeOrder} variant="secondary" className="!bg-teal-500 hover:!bg-teal-600 !text-white">
+                    {/* Fix: Replace 'fullWidth' prop with 'w-full' class in className */}
+                    <Button onClick={onTakeOrder} variant="secondary" className="w-full !bg-teal-500 hover:!bg-teal-600 !text-white">
                         <Icon name="clipboard-document-list" className="w-6 h-6" />
-                        Take Order
+                        {t('take-order', 'Take Order')}
                     </Button>
-                    <Button fullWidth onClick={onNewInvoice}>
+                    {/* Fix: Replace 'fullWidth' prop with 'w-full' class in className */}
+                    <Button onClick={onNewInvoice} className="w-full">
                         <Icon name="plus-circle" className="w-6 h-6" />
-                        New Invoice
+                        {t('new-invoice', 'New Invoice')}
                     </Button>
                 </div>
             </div>
@@ -142,49 +146,26 @@ const NavItem: React.FC<{ label: string; icon: any; isActive: boolean; onClick: 
     </a>
 );
 
-const ThemeToggle: React.FC = () => {
-    const { theme, setTheme } = useTheme();
+const LanguageToggle: React.FC = () => {
+    const { language, setLanguage } = useLanguage();
     
-    const themeOptions = [
-        { name: 'Light', value: 'light', icon: 'sun' },
-        { name: 'Dark', value: 'dark', icon: 'moon' },
-        { name: 'System', value: 'system', icon: 'computer-desktop' },
+    const languageOptions = [
+        { name: 'English', value: 'en', label: 'En' },
+        { name: 'Kannada', value: 'kn', label: 'ಕ' },
     ] as const;
 
     return (
          <div className="flex items-center justify-center p-1 bg-slate-100 dark:bg-slate-700 rounded-lg">
-            {themeOptions.map(opt => (
+            {languageOptions.map(opt => (
                 <button
                     key={opt.value}
-                    onClick={() => setTheme(opt.value)}
-                    className={`flex-1 flex justify-center items-center gap-2 p-2 text-sm rounded-md transition-colors ${theme === opt.value ? 'bg-white dark:bg-slate-800 shadow-sm' : 'text-slate-500'}`}
-                    aria-label={`Switch to ${opt.name} theme`}
+                    onClick={() => setLanguage(opt.value)}
+                    className={`flex-1 flex justify-center items-center gap-2 p-2 text-sm rounded-md transition-colors ${language === opt.value ? 'bg-white dark:bg-slate-800 shadow-sm' : 'text-slate-500'}`}
+                    aria-label={`Switch to ${opt.name} language`}
                 >
-                    <Icon name={opt.icon} className="w-5 h-5" />
+                    <span className="font-bold text-base">{opt.label}</span>
                 </button>
             ))}
         </div>
-    );
-};
-
-
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-    children: React.ReactNode;
-    fullWidth?: boolean;
-    variant?: 'primary' | 'secondary' | 'danger';
-}
-const Button: React.FC<ButtonProps> = ({ children, fullWidth, variant = 'primary', ...props }) => {
-    const variantClasses = {
-        primary: 'bg-indigo-600 text-white font-semibold shadow-md hover:bg-indigo-700',
-        secondary: 'bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold hover:bg-slate-300 dark:hover:bg-slate-600',
-        danger: 'bg-red-600 text-white font-semibold shadow-md hover:bg-red-700',
-    };
-    return (
-        <button
-            {...props}
-            className={`flex items-center justify-center gap-2 py-3 px-4 rounded-lg transition ${fullWidth ? 'w-full' : ''} ${variantClasses[variant]} ${props.className || ''}`}
-        >
-            {children}
-        </button>
     );
 };

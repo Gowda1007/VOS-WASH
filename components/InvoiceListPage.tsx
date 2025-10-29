@@ -2,14 +2,16 @@ import React, { useState, useMemo } from 'react';
 import type { Invoice, InvoiceStatus } from '../types';
 import { Card, Badge, Button, Icon, EmptyState } from './Common';
 import { calculateInvoiceTotal, calculateStatus, calculateRemainingBalance, calculateTotalPaid } from '../hooks/useInvoices';
-import { exportToCSV } from '../services/exportService';
+import { downloadListAsPDF } from '../services/pdfService'; // Updated import
 import { useToast } from '../hooks/useToast';
+import { useLanguage } from '../hooks/useLanguage';
 
 interface InvoiceListPageProps {
   invoices: Invoice[];
   onDelete: (id: number) => void;
   onCollect: (id: number) => void;
   onPreview: (invoice: Invoice) => void;
+  initialFilter?: 'all' | InvoiceStatus | 'outstanding';
 }
 
 type FilterStatus = 'all' | InvoiceStatus;
@@ -17,17 +19,17 @@ type FilterStatus = 'all' | InvoiceStatus;
 const parseDate = (dateString: string): Date | null => {
     const parts = dateString.split('/');
     if (parts.length === 3) {
-        // new Date(year, monthIndex, day)
         return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
     }
     return null;
 };
 
-export const InvoiceListPage: React.FC<InvoiceListPageProps> = ({ invoices, onDelete, onCollect, onPreview }) => {
+export const InvoiceListPage: React.FC<InvoiceListPageProps> = ({ invoices, onDelete, onCollect, onPreview, initialFilter = 'all' }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | InvoiceStatus | 'outstanding'>(initialFilter);
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const toast = useToast();
+  const { t } = useLanguage();
 
   const processedInvoices = useMemo(() => {
     return invoices.map(inv => ({
@@ -44,7 +46,10 @@ export const InvoiceListPage: React.FC<InvoiceListPageProps> = ({ invoices, onDe
         const matchesQuery = inv.customerName.toLowerCase().includes(query) ||
                              inv.customerPhone.includes(query) ||
                              inv.invoiceNumber.toLowerCase().includes(query);
-        const matchesStatus = filterStatus === 'all' || inv.status === filterStatus;
+        
+        const matchesStatus = filterStatus === 'all' ||
+                              (filterStatus === 'outstanding' && (inv.status === 'unpaid' || inv.status === 'partially_paid')) ||
+                              inv.status === filterStatus;
         
         const matchesDate = (() => {
             if (!dateRange.start && !dateRange.end) return true;
@@ -64,35 +69,42 @@ export const InvoiceListPage: React.FC<InvoiceListPageProps> = ({ invoices, onDe
         })();
 
         return matchesQuery && matchesStatus && matchesDate;
+      })
+      .sort((a, b) => {
+        const dateA = parseDate(a.invoiceDate) || new Date(0);
+        const dateB = parseDate(b.invoiceDate) || new Date(0);
+        return dateB.getTime() - dateA.getTime(); // Sort by date descending
       });
   }, [processedInvoices, searchQuery, filterStatus, dateRange]);
   
-  const handleExport = () => {
-    const headers = ['Invoice #', 'Date', 'Customer Name', 'Customer Phone', 'Total Amount', 'Paid Amount', 'Balance', 'Status'];
+  const handleExport = async () => {
+    const headers = [t('invoice-number', 'Invoice #'), t('invoice-date', 'Date'), t('customer-name'), t('customer-phone'), t('total-amount'), t('paid-amount'), t('balance-due-label'), t('status', 'Status')];
     const data = filteredInvoices.map(inv => [
       inv.invoiceNumber,
       inv.invoiceDate,
       inv.customerName,
       inv.customerPhone,
-      inv.totalAmount,
-      calculateTotalPaid(inv.payments),
-      calculateRemainingBalance(inv),
-      inv.status,
+      `₹${inv.totalAmount.toLocaleString('en-IN')}`,
+      `₹${calculateTotalPaid(inv.payments).toLocaleString('en-IN')}`,
+      `₹${calculateRemainingBalance(inv).toLocaleString('en-IN')}`,
+      t(inv.status), // Translate status for PDF
     ]);
-    exportToCSV(headers, data, `vos-wash-invoices-${new Date().toISOString().split('T')[0]}.csv`);
-    toast.success('Invoice data saved to your Downloads folder.');
+    const filename = `vos-wash-invoices-${new Date().toISOString().split('T')[0]}.pdf`;
+    const title = t('invoice-list-report-title', 'VOS WASH Invoice List Report');
+    await downloadListAsPDF(headers, data, filename, title);
+    toast.success(t('export-pdf-success-message', 'Invoice list exported to PDF.'));
   };
 
   return (
     <div className="space-y-6">
-       <p className="text-slate-500 dark:text-slate-400">{`You have ${invoices.length} total invoices.`}</p>
+       <p className="text-slate-500 dark:text-slate-400">{t('you-have-total-invoices', 'You have {count} total invoices.').replace('{count}', invoices.length.toString())}</p>
 
       <Card>
         <div className="p-4 flex flex-col md:flex-row gap-4 border-b border-slate-200 dark:border-slate-700 items-start">
             <div className="flex-grow w-full">
                 <input
                   type="search"
-                  placeholder="Search by name, phone, or invoice #"
+                  placeholder={t('search-invoices-placeholder')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
@@ -101,7 +113,7 @@ export const InvoiceListPage: React.FC<InvoiceListPageProps> = ({ invoices, onDe
             <div className="w-full md:w-auto">
                  <Button onClick={handleExport} variant="secondary" className="w-full">
                     <Icon name="document-duplicate" className="w-5 h-5" />
-                    Export CSV
+                    {t('export-pdf', 'Export PDF')}
                 </Button>
             </div>
         </div>
@@ -114,7 +126,7 @@ export const InvoiceListPage: React.FC<InvoiceListPageProps> = ({ invoices, onDe
                 {(['all', 'unpaid', 'partially_paid', 'paid'] as FilterStatus[]).map(status => (
                     <FilterButton 
                         key={status} 
-                        label={status.replace('_', ' ')}
+                        label={t(status)}
                         isActive={filterStatus === status}
                         onClick={() => setFilterStatus(status)}
                     />
@@ -122,7 +134,6 @@ export const InvoiceListPage: React.FC<InvoiceListPageProps> = ({ invoices, onDe
             </div>
         </div>
         
-        {/* Mobile Card View */}
         <div className="md:hidden">
           <div className="p-4 space-y-4">
             {filteredInvoices.length > 0 ? (
@@ -130,21 +141,20 @@ export const InvoiceListPage: React.FC<InvoiceListPageProps> = ({ invoices, onDe
                 <InvoiceCard key={inv.id} invoice={inv} onDelete={onDelete} onCollect={onCollect} onPreview={onPreview}/>
               ))
             ) : (
-                <EmptyState icon="document-text" title="No Invoices Found" message="Try adjusting your search, filter, or date range." />
+                <EmptyState icon="document-text" title={t('no-invoices-found')} message={t('adjust-filters-message')} />
             )}
           </div>
         </div>
 
-        {/* Desktop Table View */}
         <div className="hidden md:block overflow-x-auto no-scrollbar">
             <table className="w-full text-left">
                 <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-400">
                     <tr>
-                        <th className="p-4 font-semibold">Customer</th>
-                        <th className="p-4 font-semibold">Date</th>
-                        <th className="p-4 font-semibold text-right">Amount</th>
-                        <th className="p-4 font-semibold text-center">Status</th>
-                        <th className="p-4 font-semibold">Actions</th>
+                        <th className="p-4 font-semibold">{t('customer-name')}</th>
+                        <th className="p-4 font-semibold">{t('invoice-date', 'Date')}</th>
+                        <th className="p-4 font-semibold text-right">{t('invoice-total', 'Amount')}</th>
+                        <th className="p-4 font-semibold text-center">{t('status', 'Status')}</th>
+                        <th className="p-4 font-semibold">{t('actions', 'Actions')}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -154,7 +164,7 @@ export const InvoiceListPage: React.FC<InvoiceListPageProps> = ({ invoices, onDe
                         ))
                     ) : (
                         <tr><td colSpan={5}>
-                           <EmptyState icon="document-text" title="No Invoices Found" message="Try adjusting your search, filter, or date range." />
+                           <EmptyState icon="document-text" title={t('no-invoices-found')} message={t('adjust-filters-message')} />
                         </td></tr>
                     )}
                 </tbody>
@@ -214,7 +224,8 @@ const ActionButtons: React.FC<{invoice: any, onDelete: (id: number) => void, onC
 );
 
 const StatusBadge: React.FC<{status: InvoiceStatus}> = ({ status }) => {
-  if (status === 'paid') return <Badge color="green">Paid</Badge>;
-  if (status === 'partially_paid') return <Badge color="amber">Partial</Badge>;
-  return <Badge color="red">Unpaid</Badge>;
+  const { t } = useLanguage();
+  if (status === 'paid') return <Badge color="green">{t('paid')}</Badge>;
+  if (status === 'partially_paid') return <Badge color="amber">{t('partially_paid')}</Badge>;
+  return <Badge color="red">{t('unpaid')}</Badge>;
 };

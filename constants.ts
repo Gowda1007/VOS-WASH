@@ -6,12 +6,6 @@ export const SERVICES_STORAGE_KEY = 'vosWashServices_v2';
 export const APP_SETTINGS_STORAGE_KEY = 'vosWashAppSettings_v2';
 export const PENDING_ORDERS_STORAGE_KEY = 'vosWashPendingOrders_v1';
 
-export const CUSTOMER_TYPE_LABELS: Record<CustomerType, string> = {
-  customer: 'Customer',
-  garage_service_station: 'Garage / Service Station',
-  dealer: 'Dealer',
-};
-
 export const DEFAULT_SERVICE_SETS: ServiceSets = {
     garage_service_station: [
         { name: "Interior & Exterior", price: 250 },

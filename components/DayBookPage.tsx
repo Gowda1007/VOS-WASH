@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import type { Invoice, Payment } from '../types';
 import { Card, Icon, Badge } from './Common';
-import { calculateInvoiceTotal, calculateTotalPaid } from '../hooks/useInvoices';
+import { calculateInvoiceTotal } from '../hooks/useInvoices';
+import { useLanguage } from '../hooks/useLanguage';
 
 interface DayBookPageProps {
     invoices: Invoice[];
@@ -20,12 +21,13 @@ const toISODateString = (date: Date) => {
     return date.getFullYear() + '-' + ('0' + (date.getMonth() + 1)).slice(-2) + '-' + ('0' + date.getDate()).slice(-2);
 };
 
-export const DayBookPage: React.FC<DayBookPageProps> = ({ invoices, onPreviewInvoice, onCollectInvoice }) => {
+export const DayBookPage: React.FC<DayBookPageProps> = ({ invoices, onPreviewInvoice }) => {
     const [selectedDate, setSelectedDate] = useState(toISODateString(new Date()));
+    const { t } = useLanguage();
 
     const dayBookData = useMemo(() => {
         const date = new Date(selectedDate);
-        date.setHours(date.getHours() + 5, 30); // Adjust for timezone if needed
+        date.setHours(date.getHours() + 5, 30);
         const dateString = date.toLocaleDateString("en-IN");
 
         const invoicesForDay = invoices.filter(inv => inv.invoiceDate === dateString);
@@ -61,7 +63,7 @@ export const DayBookPage: React.FC<DayBookPageProps> = ({ invoices, onPreviewInv
     return (
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-                 <p className="text-slate-500 dark:text-slate-400">View a financial summary for any day.</p>
+                 <p className="text-slate-500 dark:text-slate-400">{t('day-book-description')}</p>
                  <input 
                     type="date" 
                     value={selectedDate} 
@@ -71,20 +73,20 @@ export const DayBookPage: React.FC<DayBookPageProps> = ({ invoices, onPreviewInv
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <StatCard title="Total Revenue" value={`₹${dayBookData.stats.revenue.toLocaleString('en-IN')}`} />
-                <StatCard title="Total Collections" value={`₹${dayBookData.stats.collections.toLocaleString('en-IN')}`} />
-                <StatCard title="New Invoices" value={dayBookData.stats.newInvoices} />
-                 <StatCard title="Cash / UPI" value={`₹${dayBookData.stats.cashCollections} / ₹${dayBookData.stats.upiCollections}`} />
+                <StatCard title={t('total-revenue')} value={`₹${dayBookData.stats.revenue.toLocaleString('en-IN')}`} />
+                <StatCard title={t('collected')} value={`₹${dayBookData.stats.collections.toLocaleString('en-IN')}`} />
+                <StatCard title={t('new-invoices')} value={dayBookData.stats.newInvoices} />
+                 <StatCard title={t('cash-upi', 'Cash / UPI')} value={`₹${dayBookData.stats.cashCollections} / ₹${dayBookData.stats.upiCollections}`} />
             </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <Card>
                     <div className="p-4 border-b dark:border-slate-700">
-                        <h3 className="font-bold text-lg">Invoices Created</h3>
+                        <h3 className="font-bold text-lg">{t('invoices-created')}</h3>
                     </div>
                      <div className="overflow-x-auto no-scrollbar">
                         <table className="w-full text-left">
-                            <thead className="text-sm text-slate-500 dark:text-slate-400"><tr><th className="p-3 font-semibold">Customer</th><th className="p-3 font-semibold text-right">Amount</th><th></th></tr></thead>
+                            <thead className="text-sm text-slate-500 dark:text-slate-400"><tr><th className="p-3 font-semibold">{t('customer-name')}</th><th className="p-3 font-semibold text-right">{t('amount', 'Amount')}</th><th></th></tr></thead>
                             <tbody>
                                 {dayBookData.invoices.map(inv => (
                                     <tr key={inv.id} className="border-t dark:border-slate-700">
@@ -95,16 +97,16 @@ export const DayBookPage: React.FC<DayBookPageProps> = ({ invoices, onPreviewInv
                                 ))}
                             </tbody>
                         </table>
-                        {dayBookData.invoices.length === 0 && <p className="p-8 text-center text-slate-500">No invoices were created on this day.</p>}
+                        {dayBookData.invoices.length === 0 && <p className="p-8 text-center text-slate-500">{t('no-invoices-on-day')}</p>}
                      </div>
                 </Card>
                  <Card>
                     <div className="p-4 border-b dark:border-slate-700">
-                        <h3 className="font-bold text-lg">Payments Collected</h3>
+                        <h3 className="font-bold text-lg">{t('payments-collected')}</h3>
                     </div>
                      <div className="overflow-x-auto no-scrollbar">
                         <table className="w-full text-left">
-                           <thead className="text-sm text-slate-500 dark:text-slate-400"><tr><th className="p-3 font-semibold">From</th><th className="p-3 font-semibold text-right">Amount</th><th className="p-3 font-semibold text-center">Method</th></tr></thead>
+                           <thead className="text-sm text-slate-500 dark:text-slate-400"><tr><th className="p-3 font-semibold">{t('from', 'From')}</th><th className="p-3 font-semibold text-right">{t('amount', 'Amount')}</th><th className="p-3 font-semibold text-center">{t('payment-method')}</th></tr></thead>
                            <tbody>
                                 {dayBookData.payments.map((p, i) => (
                                      <tr key={`${p.invoice.id}-${i}`} className="border-t dark:border-slate-700">
@@ -115,7 +117,7 @@ export const DayBookPage: React.FC<DayBookPageProps> = ({ invoices, onPreviewInv
                                 ))}
                            </tbody>
                         </table>
-                         {dayBookData.payments.length === 0 && <p className="p-8 text-center text-slate-500">No payments were collected on this day.</p>}
+                         {dayBookData.payments.length === 0 && <p className="p-8 text-center text-slate-500">{t('no-payments-on-day')}</p>}
                      </div>
                 </Card>
             </div>

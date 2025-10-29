@@ -6,6 +6,8 @@ export type View = 'dashboard' | 'invoices' | 'customers' | 'settings' | 'report
 
 export type PaymentMethod = 'upi' | 'cash';
 
+export type Language = 'en' | 'kn';
+
 export interface Payment {
   amount: number;
   date: string;
@@ -31,6 +33,7 @@ export interface Invoice {
   payments: Payment[];
   oldBalance?: { amount: number; date?: string };
   advancePaid?: { amount: number; date?: string };
+  language?: Language;
 }
 
 export interface PendingOrder {
@@ -42,6 +45,8 @@ export interface PendingOrder {
   customerType: CustomerType;
   services: Service[];
   advancePaid: { amount: number };
+  dueDate?: string;
+  isUrgent?: boolean;
 }
 
 export interface Customer {
@@ -68,4 +73,15 @@ export interface AnalyticsData {
 
 export interface AppSettings {
   upiId: string;
+}
+
+export interface ConfirmModalState {
+  isOpen: boolean;
+  action?: 'delete' | 'collect' | 'deleteOrder' | 'deleteCustomer'; // Added 'deleteOrder' and 'deleteCustomer'
+  invoice?: Invoice;
+  order?: PendingOrder;
+  customer?: Customer; // Added for customer deletion
+  title?: string;
+  message?: string;
+  onConfirm?: (...args: any[]) => void | Promise<void>;
 }

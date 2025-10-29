@@ -4,6 +4,8 @@ import { Card, Button, Icon } from './Common';
 import { calculateInvoiceTotal, calculateTotalPaid } from '../hooks/useInvoices';
 import { downloadPDF } from '../services/pdfService';
 import { useToast } from '../hooks/useToast';
+import { useTheme } from '../hooks/useTheme';
+import { useLanguage } from '../hooks/useLanguage';
 
 declare global { interface Window { Chart: any; } }
 
@@ -13,15 +15,10 @@ export const ReportsPage: React.FC<{ invoices: Invoice[] }> = ({ invoices }) => 
     const [period, setPeriod] = useState<ReportPeriod>('this_month');
     const chartRef = useRef<HTMLCanvasElement>(null);
     const chartInstanceRef = useRef<any>(null);
-    const [isDarkMode, setIsDarkMode] = useState(window.matchMedia('(prefers-color-scheme: dark)').matches);
+    const { resolvedTheme } = useTheme();
+    const { t } = useLanguage();
+    const isDarkMode = resolvedTheme === 'dark';
     const toast = useToast();
-
-    useEffect(() => {
-        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-        const handler = (e: MediaQueryListEvent) => setIsDarkMode(e.matches);
-        mediaQuery.addEventListener('change', handler);
-        return () => mediaQuery.removeEventListener('change', handler);
-    }, []);
 
     const filteredData = useMemo(() => {
         const now = new Date();
@@ -60,7 +57,6 @@ export const ReportsPage: React.FC<{ invoices: Invoice[] }> = ({ invoices }) => 
         };
     }, [invoices, period]);
 
-    // Chart Effect
     useEffect(() => {
         if (!chartRef.current || typeof window.Chart === 'undefined') return;
         const ctx = chartRef.current.getContext('2d');
@@ -73,7 +69,6 @@ export const ReportsPage: React.FC<{ invoices: Invoice[] }> = ({ invoices }) => 
         const collectedData: number[] = [];
         const dataMap = new Map<string, { revenue: number, collected: number }>();
 
-        // Group data by day for monthly reports, or by month for yearly
         if (period === 'this_year') {
              const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
              months.forEach(m => dataMap.set(m, { revenue: 0, collected: 0 }));
@@ -119,54 +114,54 @@ export const ReportsPage: React.FC<{ invoices: Invoice[] }> = ({ invoices }) => 
             data: {
                 labels,
                 datasets: [
-                    { label: 'Revenue', data: revenueData, backgroundColor: 'rgba(79, 70, 229, 0.8)' },
-                    { label: 'Collected', data: collectedData, backgroundColor: 'rgba(5, 150, 105, 0.8)' }
+                    { label: t('total-revenue'), data: revenueData, backgroundColor: 'rgba(79, 70, 229, 0.8)' },
+                    { label: t('collected'), data: collectedData, backgroundColor: 'rgba(5, 150, 105, 0.8)' }
                 ]
             },
             options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, grid: { color: chartColors.grid }, ticks: { color: chartColors.ticks } }, x: { grid: { color: chartColors.grid }, ticks: { color: chartColors.ticks } } }, plugins: { legend: { labels: { color: chartColors.ticks } } } }
         });
         return () => chartInstanceRef.current?.destroy();
-    }, [filteredData, period, isDarkMode]);
+    }, [filteredData, period, isDarkMode, t]);
     
     const handleDownload = async () => {
         const reportElement = document.getElementById('report-content');
         if (reportElement) {
-           // Temporarily add a visible title for the PDF
            const titleElement = document.createElement('h1');
-           titleElement.innerText = `VOS WASH Financial Report - ${period.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}`;
+           const periodText = t(period);
+           titleElement.innerText = t('report-title').replace('{period}', periodText);
            titleElement.className = 'text-2xl font-bold mb-4 text-black p-4 sm:p-6';
            reportElement.prepend(titleElement);
 
            const fakeInvoiceForFilename = { invoiceNumber: period, customerName: 'Report' };
            await downloadPDF(fakeInvoiceForFilename as Invoice, reportElement);
            reportElement.removeChild(titleElement);
-           toast.success('Report saved to your Downloads folder.');
+           toast.success(t('export-success-message'));
         }
     };
 
     return (
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-                <p className="text-slate-500 dark:text-slate-400">Analyze your revenue and collections.</p>
+                <p className="text-slate-500 dark:text-slate-400">{t('analyze-revenue-and-collections')}</p>
                 <div className="flex gap-2">
                     {(['this_month', 'last_month', 'this_year'] as ReportPeriod[]).map(p => (
-                        <button key={p} onClick={() => setPeriod(p)} className={`px-4 py-2 text-sm font-semibold rounded-lg capitalize transition ${period === p ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-700'}`}>{p.replace('_', ' ')}</button>
+                        <button key={p} onClick={() => setPeriod(p)} className={`px-4 py-2 text-sm font-semibold rounded-lg capitalize transition ${period === p ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-700'}`}>{t(p)}</button>
                     ))}
                 </div>
             </div>
             
             <div id="report-content-wrapper">
                  <div className="text-right mb-4">
-                    <Button onClick={handleDownload} variant="secondary"><Icon name="document-duplicate" className="w-5 h-5" /> Download PDF</Button>
+                    <Button onClick={handleDownload} variant="secondary"><Icon name="document-duplicate" className="w-5 h-5" /> {t('download-pdf')}</Button>
                 </div>
                 <div id="report-content" className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-lg">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                        <StatCard title="Total Revenue" value={`₹${filteredData.stats.totalRevenue.toLocaleString()}`} />
-                        <StatCard title="Total Collected" value={`₹${filteredData.stats.totalCollected.toLocaleString()}`} />
-                        <StatCard title="Invoices Issued" value={filteredData.stats.invoiceCount} />
+                        <StatCard title={t('total-revenue')} value={`₹${filteredData.stats.totalRevenue.toLocaleString()}`} />
+                        <StatCard title={t('collected')} value={`₹${filteredData.stats.totalCollected.toLocaleString()}`} />
+                        <StatCard title={t('invoices-issued')} value={filteredData.stats.invoiceCount} />
                     </div>
                     
-                    <h3 className="text-xl font-bold mb-4">Cashflow Trend</h3>
+                    <h3 className="text-xl font-bold mb-4">{t('cashflow-trend')}</h3>
                     <div className="h-96">
                         <canvas ref={chartRef}></canvas>
                     </div>

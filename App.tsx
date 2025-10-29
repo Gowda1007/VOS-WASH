@@ -7,48 +7,53 @@ import { CustomerDetailPage } from './components/CustomerDetailPage';
 import { SettingsPage } from './components/SettingsPage';
 import { InvoiceFormPage } from './components/InvoiceFormPage';
 import { OrderFormPage } from './components/OrderFormPage';
-import { ConfirmationModal, ConfirmModalState } from './components/ConfirmationModal';
+import { ConfirmationModal } from './components/ConfirmationModal';
 import { SplashScreen } from './components/SplashScreen';
 import { ReportsPage } from './components/ReportsPage';
 import { DayBookPage } from './components/DayBookPage';
 import { InvoicePreviewOverlay } from './components/InvoicePreviewOverlay';
 
-import type { Invoice, View, Payment, Customer, PendingOrder } from './types';
+import type { Invoice, View, Payment, Customer, PendingOrder, PaymentMethod, InvoiceStatus, ConfirmModalState } from './types';
 import { useInvoices } from './hooks/useInvoices';
 import { useCustomers } from './hooks/useCustomers';
 import { useServices } from './hooks/useServices';
 import { useAppSettings } from './hooks/useAppSettings';
 import { usePendingOrders } from './hooks/usePendingOrders';
 import { calculateAnalytics } from './services/analyticsService';
-
-const viewTitles: Record<View, string> = {
-    dashboard: 'Dashboard',
-    invoices: 'Invoices',
-    customers: 'Customers',
-    settings: 'Settings',
-    reports: 'Financial Reports',
-    'new-invoice': 'New Invoice',
-    'take-order': 'Take Order',
-    'customer-detail': 'Customer Details',
-    'day-book': 'Day Book',
-};
+import { useLanguage } from './hooks/useLanguage';
+import { useToast } from './hooks/useToast';
 
 const App: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [view, setView] = useState<View>('dashboard');
     const { invoices, addInvoice, updateInvoice, deleteInvoice } = useInvoices();
-    const { customers, addOrUpdateCustomer } = useCustomers();
+    const { customers, addOrUpdateCustomer, deleteCustomer } = useCustomers();
     const { serviceSets, saveServiceSets } = useServices();
     const { pendingOrders, addPendingOrder, deletePendingOrder } = usePendingOrders();
     const { settings, saveSettings } = useAppSettings();
+    const { t } = useLanguage();
+    const toast = useToast();
 
     const [confirmModalState, setConfirmModalState] = useState<ConfirmModalState>({ isOpen: false });
     const [invoiceToEdit, setInvoiceToEdit] = useState<Invoice | null>(null);
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
     const [orderToConvert, setOrderToConvert] = useState<PendingOrder | null>(null);
+    const [invoiceListFilter, setInvoiceListFilter] = useState<'all' | InvoiceStatus | 'outstanding'>('all');
     
     const analytics = useMemo(() => calculateAnalytics(invoices), [invoices]);
+    
+    const viewTitles: Record<View, string> = useMemo(() => ({
+        dashboard: t('page-title-dashboard', 'Dashboard'),
+        invoices: t('page-title-invoices', 'Invoices'),
+        customers: t('page-title-customers', 'Customers'),
+        settings: t('page-title-settings', 'Settings'),
+        reports: t('page-title-reports', 'Financial Reports'),
+        'new-invoice': t('page-title-new-invoice', 'New Invoice'),
+        'take-order': t('page-title-take-order', 'Take Order'),
+        'customer-detail': t('page-title-customer-detail', 'Customer Details'),
+        'day-book': t('page-title-day-book', 'Day Book'),
+    }), [t]);
 
     useEffect(() => {
         setTimeout(() => setLoading(false), 5000);
@@ -58,7 +63,15 @@ const App: React.FC = () => {
         setInvoiceToEdit(null);
         setSelectedCustomer(null);
         setOrderToConvert(null);
+        if (newView !== 'invoices') {
+            setInvoiceListFilter('all');
+        }
         setView(newView);
+    };
+
+    const handleNavigateToUnpaid = () => {
+        setInvoiceListFilter('outstanding');
+        setView('invoices');
     };
 
     const handleStartNewInvoice = () => {
@@ -87,28 +100,28 @@ const App: React.FC = () => {
         setPreviewInvoice(invoice);
     };
 
-    const handleSaveInvoice = (invoiceData: Omit<Invoice, 'id' | 'invoiceNumber' | 'invoiceDate'>) => {
-        addOrUpdateCustomer({
+    const handleSaveInvoice = async (invoiceData: Omit<Invoice, 'id' | 'invoiceNumber' | 'invoiceDate'>): Promise<Invoice> => {
+        await addOrUpdateCustomer({
             phone: invoiceData.customerPhone,
             name: invoiceData.customerName,
             address: invoiceData.customerAddress
         });
         
-        const newInvoice: Omit<Invoice, 'id'> = {
+        const newInvoiceData: Omit<Invoice, 'id'> = {
             ...invoiceData,
             invoiceNumber: generateInvoiceNumber(invoices),
             invoiceDate: new Date().toLocaleDateString("en-IN"),
         };
         
-        addInvoice(newInvoice);
+        const savedInvoice = await addInvoice(newInvoiceData);
         
         if (orderToConvert) {
-            deletePendingOrder(orderToConvert.id);
+            await deletePendingOrder(orderToConvert.id);
             setOrderToConvert(null);
         }
         
         setInvoiceToEdit(null);
-        setView('invoices');
+        return savedInvoice;
     };
 
     const handleSaveOrder = (orderData: Omit<PendingOrder, 'id'>) => {
@@ -120,6 +133,22 @@ const App: React.FC = () => {
         addPendingOrder(orderData);
         setView('dashboard');
     }
+    
+    const handleUpdatePayment = async (invoiceId: number, amount: number, method: PaymentMethod): Promise<Invoice | null> => {
+        const invoice = invoices.find(inv => inv.id === invoiceId);
+        if (!invoice) return null;
+
+        const newPayment: Payment = { amount, method, date: new Date().toLocaleDateString("en-IN") };
+        const updatedPayments = [...invoice.payments, newPayment];
+        
+        const updatedInvoice = await updateInvoice(invoiceId, { payments: updatedPayments });
+        if (updatedInvoice) {
+            if (previewInvoice && previewInvoice.id === invoiceId) {
+                setPreviewInvoice(updatedInvoice);
+            }
+        }
+        return updatedInvoice;
+    };
 
 
     const handleDeleteRequest = (invoiceId: number) => {
@@ -129,14 +158,48 @@ const App: React.FC = () => {
                 isOpen: true,
                 action: 'delete',
                 invoice,
-                title: 'Confirm Deletion',
-                message: `Are you sure you want to permanently delete invoice #${invoice.invoiceNumber}? This action cannot be undone.`,
+                title: t('confirm-deletion-title'),
+                message: t('confirm-deletion-message', 'Are you sure you want to permanently delete invoice #{invoiceNumber}? This action cannot be undone.').replace('{invoiceNumber}', invoice.invoiceNumber),
                 onConfirm: () => {
                     deleteInvoice(invoiceId);
                     setConfirmModalState({ isOpen: false });
                 },
             });
         }
+    };
+    
+    const handleDeleteOrderRequest = (orderId: number) => {
+        const order = pendingOrders.find(o => o.id === orderId);
+        if (order) {
+            setConfirmModalState({
+                isOpen: true,
+                action: 'deleteOrder',
+                order,
+                title: t('confirm-order-deletion-title'),
+                message: t('confirm-order-deletion-message').replace('{customerName}', order.customerName),
+                onConfirm: () => {
+                    deletePendingOrder(orderId);
+                    setConfirmModalState({ isOpen: false });
+                    toast.success(t('delete-order-success'));
+                },
+            });
+        }
+    };
+
+    const handleDeleteCustomerRequest = (customer: Customer) => {
+        setConfirmModalState({
+            isOpen: true,
+            action: 'deleteCustomer',
+            customer,
+            title: t('confirm-customer-deletion-title'),
+            message: t('confirm-customer-deletion-message', 'Are you sure you want to permanently delete customer {customerName} and their associated data? This action cannot be undone.').replace('{customerName}', customer.name),
+            onConfirm: async () => {
+                await deleteCustomer(customer.phone);
+                setConfirmModalState({ isOpen: false });
+                toast.success(t('delete-customer-success'));
+                handleNavigate('customers'); // Go back to customer list after deletion
+            },
+        });
     };
     
     const handleCollectRequest = (invoiceId: number) => {
@@ -146,20 +209,11 @@ const App: React.FC = () => {
                 isOpen: true,
                 action: 'collect',
                 invoice,
-                title: 'Collect Balance',
-                message: `Record a payment for invoice #${invoice.invoiceNumber}.`,
-                onConfirm: (amount, method) => {
-                    const newPayment: Payment = {
-                        amount,
-                        method,
-                        date: new Date().toLocaleDateString("en-IN")
-                    };
-                    const updatedPayments = [...invoice.payments, newPayment];
-                    updateInvoice(invoiceId, { payments: updatedPayments });
+                title: t('collect-balance-title'),
+                message: t('collect-balance-message').replace('{invoiceNumber}', invoice.invoiceNumber),
+                onConfirm: async (amount: number, method: PaymentMethod) => {
+                    await handleUpdatePayment(invoiceId, amount, method);
                     setConfirmModalState({ isOpen: false });
-                    if (previewInvoice && previewInvoice.id === invoiceId) {
-                        setPreviewInvoice({ ...invoice, payments: updatedPayments });
-                    }
                 },
             });
         }
@@ -167,32 +221,48 @@ const App: React.FC = () => {
 
     const renderContent = () => {
         switch (view) {
-            case 'dashboard': return <DashboardPage analytics={analytics} recentInvoices={invoices.slice(0, 5)} pendingOrders={pendingOrders} onPreviewInvoice={handlePreviewInvoice} onGenerateInvoice={handleGenerateInvoiceFromOrder} />;
-            case 'invoices': return <InvoiceListPage invoices={invoices} onDelete={handleDeleteRequest} onCollect={handleCollectRequest} onPreview={handlePreviewInvoice} />;
+            case 'dashboard': return <DashboardPage analytics={analytics} recentInvoices={invoices.slice(0, 5)} pendingOrders={pendingOrders} onPreviewInvoice={handlePreviewInvoice} onGenerateInvoice={handleGenerateInvoiceFromOrder} onDeleteOrder={handleDeleteOrderRequest} onNavigateToUnpaid={handleNavigateToUnpaid} />;
+            case 'invoices': return <InvoiceListPage invoices={invoices} onDelete={handleDeleteRequest} onCollect={handleCollectRequest} onPreview={handlePreviewInvoice} initialFilter={invoiceListFilter} />;
             case 'customers': return <CustomerListPage customers={customers} invoices={invoices} onViewCustomer={handleViewCustomer} />;
             case 'customer-detail': 
                 if (!selectedCustomer) {
                     setView('customers');
                     return null;
                 }
-                const customerTitle = selectedCustomer ? `${selectedCustomer.name}` : 'Customer Details';
-                viewTitles['customer-detail'] = customerTitle;
-
                 return <CustomerDetailPage 
                     customer={selectedCustomer} 
                     invoices={invoices.filter(i => i.customerPhone === selectedCustomer.phone)}
                     onNavigateBack={() => handleNavigate('customers')}
                     onCollectInvoice={handleCollectRequest}
                     onPreviewInvoice={handlePreviewInvoice}
+                    onDeleteCustomer={handleDeleteCustomerRequest}
                 />;
             case 'day-book': return <DayBookPage invoices={invoices} onPreviewInvoice={handlePreviewInvoice} onCollectInvoice={handleCollectRequest} />;
             case 'settings': return <SettingsPage serviceSets={serviceSets} onSaveServices={saveServiceSets} appSettings={settings} onSaveSettings={saveSettings} />;
             case 'reports': return <ReportsPage invoices={invoices} />;
-            case 'new-invoice': return <InvoiceFormPage onSave={handleSaveInvoice} existingInvoice={invoiceToEdit} customers={customers} serviceSets={serviceSets} invoices={invoices} pendingOrder={orderToConvert} />;
+            case 'new-invoice': return <InvoiceFormPage 
+                                            onSave={handleSaveInvoice} 
+                                            onUpdatePayment={handleUpdatePayment}
+                                            onComplete={() => setView('invoices')}
+                                            existingInvoice={invoiceToEdit} 
+                                            customers={customers} 
+                                            serviceSets={serviceSets} 
+                                            invoices={invoices} 
+                                            pendingOrder={orderToConvert}
+                                            appSettings={settings} 
+                                        />;
             case 'take-order': return <OrderFormPage onSave={handleSaveOrder} customers={customers} serviceSets={serviceSets} appSettings={settings} />;
-            default: return <DashboardPage analytics={analytics} recentInvoices={invoices.slice(0,5)} pendingOrders={pendingOrders} onPreviewInvoice={handlePreviewInvoice} onGenerateInvoice={handleGenerateInvoiceFromOrder} />;
+            default: return <DashboardPage analytics={analytics} recentInvoices={invoices.slice(0,5)} pendingOrders={pendingOrders} onPreviewInvoice={handlePreviewInvoice} onGenerateInvoice={handleGenerateInvoiceFromOrder} onDeleteOrder={handleDeleteOrderRequest} onNavigateToUnpaid={handleNavigateToUnpaid} />;
         }
     };
+    
+    const getPageTitle = () => {
+        if (view === 'customer-detail' && selectedCustomer) {
+            return selectedCustomer.name;
+        }
+        return viewTitles[view] || 'VOS WASH';
+    };
+
 
     if (loading) {
         return <SplashScreen />;
@@ -205,11 +275,11 @@ const App: React.FC = () => {
                 onNavigate={handleNavigate} 
                 onNewInvoice={handleStartNewInvoice}
                 onTakeOrder={handleStartTakeOrder}
-                pageTitle={viewTitles[view] || 'VOS WASH'}
+                pageTitle={getPageTitle()}
             >
                 {renderContent()}
             </MainLayout>
-            <ConfirmationModal state={confirmModalState} setState={setConfirmModalState} />
+            <ConfirmationModal state={confirmModalState} setState={setConfirmModalState} appSettings={settings} />
             {previewInvoice && (
                 <InvoicePreviewOverlay 
                     invoice={previewInvoice} 

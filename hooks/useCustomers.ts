@@ -36,5 +36,10 @@ export const useCustomers = () => {
         return await apiService.isCustomerExists(phone);
     };
 
-    return { customers, addOrUpdateCustomer, addCustomer, isCustomerExists };
+    const deleteCustomer = async (phone: string) => {
+        await apiService.deleteCustomer(phone);
+        setCustomers(prev => prev.filter(c => c.phone !== phone));
+    };
+
+    return { customers, addOrUpdateCustomer, addCustomer, isCustomerExists, deleteCustomer };
 };

@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 
 type Theme = 'light' | 'dark' | 'system';
+type ResolvedTheme = 'light' | 'dark';
 
 interface ThemeContextType {
-  theme: Theme;
+  theme: Theme; // The user's setting: 'light', 'dark', or 'system'
   setTheme: (theme: Theme) => void;
+  resolvedTheme: ResolvedTheme; // The actually applied theme: 'light' or 'dark'
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -14,45 +16,45 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return (localStorage.getItem('theme') as Theme) || 'system';
   });
 
+  const [isSystemDark, setIsSystemDark] = useState(() => 
+    window.matchMedia('(prefers-color-scheme: dark)').matches
+  );
+
+  // Effect to listen for OS theme changes
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    
+    const handleChange = (e: MediaQueryListEvent) => {
+      setIsSystemDark(e.matches);
+    };
+    
+    mediaQuery.addEventListener('change', handleChange);
+    
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+
+  // Determine the actual theme to apply
+  const resolvedTheme = useMemo<ResolvedTheme>(() => {
+    return theme === 'system' ? (isSystemDark ? 'dark' : 'light') : theme;
+  }, [theme, isSystemDark]);
+
+  // Effect to apply the theme class to <html> and save the user's preference
   useEffect(() => {
     const root = window.document.documentElement;
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    if (resolvedTheme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
 
-    // This function applies the correct class based on the currently selected theme
-    // and the system preference.
-    const applyTheme = (selectedTheme: Theme) => {
-      const systemIsDark = mediaQuery.matches;
-      const isDark = selectedTheme === 'dark' || (selectedTheme === 'system' && systemIsDark);
-      
-      root.classList.toggle('dark', isDark);
+    if (theme === 'system') {
+      localStorage.removeItem('theme');
+    } else {
+      localStorage.setItem('theme', theme);
+    }
+  }, [theme, resolvedTheme]);
 
-      if (selectedTheme === 'system') {
-        localStorage.removeItem('theme');
-      } else {
-        localStorage.setItem('theme', selectedTheme);
-      }
-    };
-
-    // Apply the theme when the component mounts or when the user changes the theme.
-    applyTheme(theme);
-
-    // This handler listens for changes in the system's color scheme.
-    const handleSystemThemeChange = () => {
-      // We only need to react if the user's preference is 'system'.
-      // We check localStorage directly to avoid stale closures on the 'theme' state variable.
-      const currentThemeSetting = (localStorage.getItem('theme') as Theme) || 'system';
-      if (currentThemeSetting === 'system') {
-        applyTheme('system');
-      }
-    };
-
-    mediaQuery.addEventListener('change', handleSystemThemeChange);
-    return () => {
-      mediaQuery.removeEventListener('change', handleSystemThemeChange);
-    };
-  }, [theme]); // This effect re-runs only when the user explicitly changes the theme.
-
-  const contextValue = useMemo(() => ({ theme, setTheme }), [theme]);
+  const contextValue = useMemo(() => ({ theme, setTheme, resolvedTheme }), [theme, resolvedTheme]);
 
   return <ThemeContext.Provider value={contextValue}>{children}</ThemeContext.Provider>;
 };
@@ -60,7 +62,6 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 export const useTheme = (): ThemeContextType => {
   const context = useContext(ThemeContext);
   if (context === undefined) {
-    // Correcting the error message to be more accurate
     throw new Error('useTheme must be used within a ThemeProvider');
   }
   return context;

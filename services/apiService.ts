@@ -114,6 +114,12 @@ export const isCustomerExists = async (phone: string): Promise<boolean> => {
     return customers.some(c => c.phone === phone);
 };
 
+export const deleteCustomer = async (phone: string): Promise<void> => {
+    await new Promise(resolve => setTimeout(resolve, MOCK_API_DELAY));
+    const customers = getFromStorage<Customer[]>(CUSTOMERS_STORAGE_KEY, []);
+    saveToStorage(CUSTOMERS_STORAGE_KEY, customers.filter(c => c.phone !== phone));
+};
+
 // Services
 export const getServiceSets = async (): Promise<ServiceSets> => {
      await new Promise(resolve => setTimeout(resolve, MOCK_API_DELAY));

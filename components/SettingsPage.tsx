@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import type { ServiceSets, CustomerType, ManageableService, AppSettings } from '../types';
+import type { ServiceSets, CustomerType } from '../types';
 import { Card, Button, Icon } from './Common';
 import { useToast } from '../hooks/useToast';
-import { CUSTOMER_TYPE_LABELS } from '../constants';
+import { useLanguage } from '../hooks/useLanguage';
+import type { AppSettings } from '../types';
 
 interface SettingsPageProps {
   serviceSets: ServiceSets;
@@ -11,11 +12,14 @@ interface SettingsPageProps {
   onSaveSettings: (newSettings: AppSettings) => void;
 }
 
+const customerTypesForTabs: CustomerType[] = ['customer', 'garage_service_station', 'dealer'];
+
 export const SettingsPage: React.FC<SettingsPageProps> = ({ serviceSets: initialServiceSets, onSaveServices, appSettings: initialAppSettings, onSaveSettings }) => {
   const [currentSets, setCurrentSets] = useState<ServiceSets>(initialServiceSets);
   const [currentAppSettings, setCurrentAppSettings] = useState<AppSettings>(initialAppSettings);
   const [activeTab, setActiveTab] = useState<CustomerType>('customer');
   const toast = useToast();
+  const { t } = useLanguage();
 
   const handleServiceChange = (type: CustomerType, index: number, field: 'name' | 'price', value: string | number) => {
     const newSets = { ...currentSets };
@@ -27,7 +31,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ serviceSets: initial
 
   const handleAddService = (type: CustomerType) => {
     const newSets = { ...currentSets };
-    newSets[type] = [...newSets[type], { name: 'New Service', price: 0 }];
+    newSets[type] = [...newSets[type], { name: t('new-service'), price: 0 }];
     setCurrentSets(newSets);
   };
 
@@ -42,17 +46,17 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ serviceSets: initial
   const handleSaveSettings = () => {
     onSaveServices(currentSets);
     onSaveSettings(currentAppSettings);
-    toast.success('Service & App settings saved successfully!');
+    toast.success(t('settings-saved-success'));
   };
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-        <p className="text-slate-500 dark:text-slate-400">Customize services and app settings.</p>
+        <p className="text-slate-500 dark:text-slate-400">{t('customize-services-and-settings')}</p>
       
         <Card>
           <div className="p-6 space-y-4">
-              <h4 className="font-bold text-lg">App Settings</h4>
-              <label htmlFor="upiId" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">UPI ID for Customer Payments</label>
+              <h4 className="font-bold text-lg">{t('app-settings')}</h4>
+              <label htmlFor="upiId" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('upi-id-label')}</label>
                  <input 
                     type="text" 
                     id="upiId" 
@@ -62,15 +66,15 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ serviceSets: initial
                 />
           </div>
           <div className="border-t border-slate-200 dark:border-slate-700">
-              <h4 className="font-bold text-lg p-6 pb-2">Service Prices</h4>
+              <h4 className="font-bold text-lg p-6 pb-2">{t('service-prices')}</h4>
               <nav className="flex space-x-1 p-2 pt-0" aria-label="Tabs">
-                  {(Object.keys(CUSTOMER_TYPE_LABELS) as CustomerType[]).map(type => (
+                  {customerTypesForTabs.map(type => (
                       <button
                           key={type}
                           onClick={() => setActiveTab(type)}
                           className={`capitalize px-3 py-2 text-sm font-medium rounded-md transition ${activeTab === type ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
                       >
-                          {CUSTOMER_TYPE_LABELS[type]}
+                          {t(type)}
                       </button>
                   ))}
               </nav>
@@ -82,28 +86,28 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ serviceSets: initial
                           type="text"
                           value={service.name}
                           onChange={(e) => handleServiceChange(activeTab, index, 'name', e.target.value)}
-                          placeholder="Service Name"
+                          placeholder={t('service-name-placeholder', 'Goods/Service Name')}
                           className="block w-0 flex-grow px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
                       />
                       <input
                           type="number"
                           value={service.price || ''}
                           onChange={(e) => handleServiceChange(activeTab, index, 'price', parseFloat(e.target.value) || 0)}
-                          placeholder="Price"
+                          placeholder={t('price-placeholder')}
                           className="block w-24 px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
                       />
-                      <button onClick={() => handleDeleteService(activeTab, index)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-full" aria-label="Delete service">
+                      <button onClick={() => handleDeleteService(activeTab, index)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-full" aria-label={t('delete-service-aria', 'Delete goods/service')}>
                           <Icon name="trash" className="w-5 h-5" />
                       </button>
                   </div>
               ))}
               <Button onClick={() => handleAddService(activeTab)} variant="secondary" className="w-full mt-2">
                   <Icon name="plus" className="w-5 h-5" />
-                  Add Service for {CUSTOMER_TYPE_LABELS[activeTab]}
+                  {t('add-service-for', 'Add Service for {customerType}').replace('{customerType}', t(activeTab))}
               </Button>
           </div>
           <div className="p-4 border-t border-slate-200 dark:border-slate-700 flex justify-end">
-            <Button onClick={handleSaveSettings}>Save Settings</Button>
+            <Button onClick={handleSaveSettings}>{t('save-settings')}</Button>
           </div>
         </Card>
     </div>

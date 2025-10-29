@@ -13,20 +13,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
-    <script type="importmap">
-{
-  "imports": {
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react-dom": "https://aistudiocdn.com/react-dom@^19.2.0",
-    "vite": "https://aistudiocdn.com/vite@^7.1.12",
-    "path": "https://aistudiocdn.com/path@^0.12.7",
-    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.0",
-    "url": "https://aistudiocdn.com/url@^0.11.4"
-  }
-}
-</script>
     <script>
       // On page load or when changing themes, best to add inline in `head` to avoid FOUC
       if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -92,6 +78,22 @@
       }
     </style>
 <link rel="stylesheet" href="/index.css">
+<script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom": "https://aistudiocdn.com/react-dom@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "url": "https://aistudiocdn.com/url@^0.11.4",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.0",
+    "vite": "https://aistudiocdn.com/vite@^7.1.12",
+    "html2canvas": "https://aistudiocdn.com/html2canvas@^1.4.1",
+    "chart.js/": "https://aistudiocdn.com/chart.js@^4.5.1/",
+    "jspdf": "https://aistudiocdn.com/jspdf@^3.0.3"
+  }
+}
+</script>
 </head>
   <body class="bg-slate-100 dark:bg-slate-900 overflow-hidden">
     <div id="root"></div>
