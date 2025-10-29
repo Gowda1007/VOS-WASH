@@ -1,12 +1,15 @@
-import type { Invoice } from "../types";
 
-// Add types to window object to avoid TypeScript errors
-declare global {
-    interface Window {
-        html2canvas: any;
-        jspdf: any;
-    }
-}
+import type { Invoice } from "../types";
+import html2canvas from 'html2canvas'; // Dynamically imported
+import { jsPDF } from 'jspdf'; // Dynamically imported
+
+// No longer need declare global for window object, import directly
+// declare global {
+//     interface Window {
+//         html2canvas: any;
+//         jspdf: any;
+//     }
+// }
 
 const applyCommonPDFStyles = (element: HTMLElement) => {
     element.style.fontFamily = 'sans-serif';
@@ -21,13 +24,14 @@ const generatePdfFromHtmlElement = async (element: HTMLElement, filename: string
         throw new Error("Element to print not found.");
     }
 
-    if (!window.html2canvas || !window.jspdf) {
-        throw new Error("PDF generation libraries are not loaded.");
-    }
+    // Reference directly imported libraries instead of window global
+    // if (!window.html2canvas || !window.jspdf) {
+    //     throw new Error("PDF generation libraries are not loaded.");
+    // }
 
     try {
-        const { jsPDF } = window.jspdf;
-        const canvas = await window.html2canvas(element, {
+        // const { jsPDF } = window.jspdf; // Use direct import
+        const canvas = await html2canvas(element, { // Use direct import
             scale: 2,
             logging: false,
             useCORS: true,

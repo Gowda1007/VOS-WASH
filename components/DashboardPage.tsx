@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import type { AnalyticsData, Invoice, PendingOrder } from '../types';
 import { filterAndGroupInvoicesForChart } from '../services/analyticsService';
@@ -5,10 +6,12 @@ import { Card, Badge, Icon, Button, EmptyState } from './Common';
 import { calculateInvoiceTotal, calculateStatus } from '../hooks/useInvoices';
 import { useTheme } from '../hooks/useTheme';
 import { useLanguage } from '../hooks/useLanguage';
+import Chart from 'chart.js/auto'; // Dynamically imported
 
-declare global {
-    interface Window { Chart: any; }
-}
+// No longer need declare global for window object, import directly
+// declare global {
+//     interface Window { Chart: any; }
+// }
 
 const KpiCard: React.FC<{ title: string; value: string | number; icon: React.ComponentProps<typeof Icon>['name']; color: string }> = ({ title, value, icon, color }) => (
     <Card className="p-4">
@@ -87,7 +90,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ analytics, recentI
     }, [pendingOrders]);
     
     useEffect(() => {
-        if (!barChartRef.current || typeof window.Chart === 'undefined') return;
+        if (!barChartRef.current || typeof Chart === 'undefined') return; // Use Chart directly
         const ctx = barChartRef.current.getContext('2d');
         if (!ctx) return;
         if (barChartInstanceRef.current) barChartInstanceRef.current.destroy();
@@ -98,7 +101,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ analytics, recentI
             ticks: isDarkMode ? '#cbd5e1' : '#64748b',
         };
 
-        barChartInstanceRef.current = new window.Chart(ctx, {
+        barChartInstanceRef.current = new Chart(ctx, { // Use Chart directly
             type: 'bar',
             data: {
                 labels: data.labels,
@@ -132,7 +135,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ analytics, recentI
     }, [chartPeriod, recentInvoices, isDarkMode, t]);
 
      useEffect(() => {
-        if (!pieChartRef.current || typeof window.Chart === 'undefined') return;
+        if (!pieChartRef.current || typeof Chart === 'undefined') return; // Use Chart directly
         const ctx = pieChartRef.current.getContext('2d');
         if (!ctx) return;
         if (pieChartInstanceRef.current) pieChartInstanceRef.current.destroy();
@@ -143,7 +146,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ analytics, recentI
             border: isDarkMode ? '#1e293b' : '#fff'
         };
 
-        pieChartInstanceRef.current = new window.Chart(ctx, {
+        pieChartInstanceRef.current = new Chart(ctx, { // Use Chart directly
             type: 'doughnut',
             data: {
                 labels: [t('customer'), t('garage_service_station'), t('dealer')],

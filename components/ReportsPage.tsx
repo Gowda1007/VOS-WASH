@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import type { Invoice } from '../types';
 import { Card, Button, Icon } from './Common';
@@ -6,8 +7,10 @@ import { downloadPDF } from '../services/pdfService';
 import { useToast } from '../hooks/useToast';
 import { useTheme } from '../hooks/useTheme';
 import { useLanguage } from '../hooks/useLanguage';
+import Chart from 'chart.js/auto'; // Dynamically imported
 
-declare global { interface Window { Chart: any; } }
+// No longer need declare global for window object, import directly
+// declare global { interface Window { Chart: any; } }
 
 type ReportPeriod = 'this_month' | 'last_month' | 'this_year';
 
@@ -58,7 +61,7 @@ export const ReportsPage: React.FC<{ invoices: Invoice[] }> = ({ invoices }) => 
     }, [invoices, period]);
 
     useEffect(() => {
-        if (!chartRef.current || typeof window.Chart === 'undefined') return;
+        if (!chartRef.current || typeof Chart === 'undefined') return; // Use Chart directly
         const ctx = chartRef.current.getContext('2d');
         if (!ctx) return;
         if (chartInstanceRef.current) chartInstanceRef.current.destroy();
@@ -109,7 +112,7 @@ export const ReportsPage: React.FC<{ invoices: Invoice[] }> = ({ invoices }) => 
             ticks: isDarkMode ? '#cbd5e1' : '#64748b',
         };
 
-        chartInstanceRef.current = new window.Chart(ctx, {
+        chartInstanceRef.current = new Chart(ctx, { // Use Chart directly
             type: 'bar',
             data: {
                 labels,

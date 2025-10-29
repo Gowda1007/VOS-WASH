@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import type { Invoice, CustomerType, Service, Customer, ServiceSets, ManageableService, PaymentMethod, PendingOrder, AppSettings, Payment, Language } from '../types';
 import { Card, Button, Icon, Modal } from './Common';
@@ -8,6 +9,8 @@ import { calculateRemainingBalance } from '../hooks/useInvoices';
 import { PhoneNumberInput } from './PhoneNumberInput';
 import { useLanguage } from '../hooks/useLanguage';
 
+// Updated declare global for AndroidBridge - it will now be available on window
+// due to `addJavascriptInterface` in MainActivity.kt
 declare global {
     interface Window {
         AndroidBridge?: {
@@ -269,6 +272,7 @@ export const InvoiceFormPage: React.FC<InvoiceFormPageProps> = ({ onSave, onUpda
             return;
         }
 
+        // Check if the AndroidBridge is available (only in Android WebView)
         if (window.AndroidBridge?.sharePdfViaWhatsApp) {
             try {
                 const base64Pdf = await blobToBase64(pdfFile);
@@ -276,13 +280,16 @@ export const InvoiceFormPage: React.FC<InvoiceFormPageProps> = ({ onSave, onUpda
                     base64Pdf,
                     pdfFile.name,
                     messageText,
-                    `91${savedInvoice.customerPhone}`
+                    // Ensure the phone number is clean and prefixed with country code if needed
+                    // For Indian numbers, '91' is the country code.
+                    `91${savedInvoice.customerPhone.replace(/\D/g, '')}` 
                 );
             } catch (error) {
                 console.error("Error sharing via native bridge:", error);
                 toast.error("Could not share via WhatsApp.");
             }
         } else if (navigator.share && navigator.canShare({ files: [pdfFile] })) {
+            // Fallback for web browsers supporting Web Share API
             try {
                 await navigator.share({
                     files: [pdfFile],
@@ -291,10 +298,20 @@ export const InvoiceFormPage: React.FC<InvoiceFormPageProps> = ({ onSave, onUpda
                 });
             } catch (error) {
                 console.log('Share cancelled or failed', error);
+                if (error instanceof DOMException && error.name === "AbortError") {
+                    // User dismissed the share dialog
+                } else {
+                    toast.error("Web Share API failed. Attempting direct download.");
+                    await handleDownload(savedInvoice);
+                    const whatsappUrl = `https://wa.me/91${savedInvoice.customerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(messageText)}`;
+                    window.open(whatsappUrl, '_blank');
+                    toast.info("Your file has been downloaded. Please attach it in the WhatsApp chat.");
+                }
             }
         } else {
+            // Fallback for browsers not supporting Web Share API
             await handleDownload(savedInvoice);
-            const whatsappUrl = `https://wa.me/91${savedInvoice.customerPhone}?text=${encodeURIComponent(messageText)}`;
+            const whatsappUrl = `https://wa.me/91${savedInvoice.customerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(messageText)}`;
             window.open(whatsappUrl, '_blank');
             toast.info("Your file has been downloaded. Please attach it in the WhatsApp chat.");
         }

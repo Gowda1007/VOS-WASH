@@ -1,8 +1,19 @@
+
 import React, { useRef, useEffect } from 'react';
 import type { Invoice, Language } from '../types';
 import { calculateInvoiceTotal, calculateRemainingBalance } from '../hooks/useInvoices';
 import { Logo, Vari } from './Common';
 import { useLanguage } from '../hooks/useLanguage';
+
+// Removed global declarations for html2canvas, jspdf, Chart
+// They are now either imported where needed or handled by the bundling process.
+// declare global {
+//     interface Window {
+//         html2canvas: any;
+//         jspdf: any;
+//         Chart: any;
+//     }
+// }
 
 const useResponsiveScaling = (
     contentRef: React.RefObject<HTMLDivElement>,
