@@ -16,8 +16,7 @@ export default defineConfig(({ mode }) => {
       },
       resolve: {
         alias: {
-          // Fix: __dirname is not available in all module systems. Using `import.meta.url` is the modern, robust way to get the current file's path.
-          '@': fileURLToPath(new URL('.', import.meta.url)),
+          '@': fileURLToPath(new URL('./src', import.meta.url)),
         }
       }
     };

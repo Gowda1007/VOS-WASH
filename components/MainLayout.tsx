@@ -63,12 +63,10 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children, currentView, p
             <div className="px-4 py-4 space-y-4">
                 <LanguageToggle />
                 <div className="space-y-2">
-                    {/* Fix: Replace 'fullWidth' prop with 'w-full' class in className */}
                     <Button onClick={onTakeOrder} variant="secondary" className="w-full !bg-teal-500 hover:!bg-teal-600 !text-white">
                         <Icon name="clipboard-document-list" className="w-6 h-6" />
                         {t('take-order', 'Take Order')}
                     </Button>
-                    {/* Fix: Replace 'fullWidth' prop with 'w-full' class in className */}
                     <Button onClick={onNewInvoice} className="w-full">
                         <Icon name="plus-circle" className="w-6 h-6" />
                         {t('new-invoice', 'New Invoice')}
