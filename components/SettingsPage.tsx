@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import type { ServiceSets, CustomerType } from '../types';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView } from 'react-native';
+import type { ServiceSets, CustomerType, AppSettings } from '../types';
 import { Card, Button, Icon } from './Common';
 import { useToast } from '../hooks/useToast';
 import { useLanguage } from '../hooks/useLanguage';
-import type { AppSettings } from '../types';
+import { useTheme } from '../hooks/useTheme';
 
 interface SettingsPageProps {
   serviceSets: ServiceSets;
@@ -20,11 +21,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ serviceSets: initial
   const [activeTab, setActiveTab] = useState<CustomerType>('customer');
   const toast = useToast();
   const { t } = useLanguage();
+  const { resolvedTheme } = useTheme();
+  const isDarkMode = resolvedTheme === 'dark';
 
   const handleServiceChange = (type: CustomerType, index: number, field: 'name' | 'price', value: string | number) => {
     const newSets = { ...currentSets };
     const services = [...newSets[type]];
-    services[index] = { ...services[index], [field]: value };
+    // Ensure value for price is parsed as number
+    services[index] = { ...services[index], [field]: field === 'price' ? parseFloat(value as string) || 0 : value };
     newSets[type] = services;
     setCurrentSets(newSets);
   };
@@ -50,66 +54,219 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ serviceSets: initial
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-        <p className="text-slate-500 dark:text-slate-400">{t('customize-services-and-settings')}</p>
+    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+        <Text style={[styles.descriptionText, isDarkMode ? styles.textSlate400 : styles.textSlate500]}>{t('customize-services-and-settings')}</Text>
       
-        <Card>
-          <div className="p-6 space-y-4">
-              <h4 className="font-bold text-lg">{t('app-settings')}</h4>
-              <label htmlFor="upiId" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('upi-id-label')}</label>
-                 <input 
-                    type="text" 
-                    id="upiId" 
+        <Card style={styles.cardMargin}>
+          <View style={styles.appSettingsSection}>
+              <Text style={[styles.sectionTitle, isDarkMode ? styles.textLight : styles.textDark]}>{t('app-settings')}</Text>
+              <Text style={[styles.label, isDarkMode ? styles.textSlate300 : styles.textSlate700]}>{t('upi-id-label')}</Text>
+                 <TextInput 
                     value={currentAppSettings.upiId}
-                    onChange={(e) => setCurrentAppSettings(prev => ({ ...prev, upiId: e.target.value }))}
-                    className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" 
+                    onChangeText={(text) => setCurrentAppSettings(prev => ({ ...prev, upiId: text }))}
+                    style={[styles.input, isDarkMode ? styles.inputDark : styles.inputLight]} 
+                    placeholderTextColor={isDarkMode ? '#64748b' : '#94a3b8'}
                 />
-          </div>
-          <div className="border-t border-slate-200 dark:border-slate-700">
-              <h4 className="font-bold text-lg p-6 pb-2">{t('service-prices')}</h4>
-              <nav className="flex space-x-1 p-2 pt-0" aria-label="Tabs">
+          </View>
+          <View style={[styles.servicePricesSection, isDarkMode ? styles.borderSlate700 : styles.borderSlate200]}>
+              <Text style={[styles.sectionTitle, styles.pb2, isDarkMode ? styles.textLight : styles.textDark]}>{t('service-prices')}</Text>
+              <View style={styles.tabsContainer}>
                   {customerTypesForTabs.map(type => (
-                      <button
+                      <TouchableOpacity
                           key={type}
-                          onClick={() => setActiveTab(type)}
-                          className={`capitalize px-3 py-2 text-sm font-medium rounded-md transition ${activeTab === type ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                          onPress={() => setActiveTab(type)}
+                          style={[
+                            styles.tabButton,
+                            activeTab === type ? (isDarkMode ? styles.tabActiveDark : styles.tabActiveLight) : (isDarkMode ? styles.tabInactiveDark : styles.tabInactiveLight)
+                          ]}
                       >
-                          {t(type)}
-                      </button>
+                          <Text style={[
+                            styles.tabButtonText,
+                            activeTab === type ? (isDarkMode ? styles.tabTextActiveDark : styles.tabTextActiveLight) : (isDarkMode ? styles.tabTextInactiveDark : styles.tabTextInactiveLight)
+                          ]}>
+                              {t(type)}
+                          </Text>
+                      </TouchableOpacity>
                   ))}
-              </nav>
-          </div>
-          <div className="p-4 space-y-3">
+              </View>
+          </View>
+          <View style={styles.serviceListContainer}>
               {currentSets[activeTab]?.map((service, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                      <input
-                          type="text"
+                  <View key={index} style={styles.serviceItem}>
+                      <TextInput
                           value={service.name}
-                          onChange={(e) => handleServiceChange(activeTab, index, 'name', e.target.value)}
+                          onChangeText={(text) => handleServiceChange(activeTab, index, 'name', text)}
                           placeholder={t('service-name-placeholder', 'Goods/Service Name')}
-                          className="block w-0 flex-grow px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
+                          style={[styles.serviceNameInput, isDarkMode ? styles.inputDark : styles.inputLight]}
+                          placeholderTextColor={isDarkMode ? '#64748b' : '#94a3b8'}
                       />
-                      <input
-                          type="number"
-                          value={service.price || ''}
-                          onChange={(e) => handleServiceChange(activeTab, index, 'price', parseFloat(e.target.value) || 0)}
+                      <TextInput
+                          keyboardType="numeric"
+                          value={service.price === 0 ? '' : service.price.toString()}
+                          onChangeText={(text) => handleServiceChange(activeTab, index, 'price', text)}
                           placeholder={t('price-placeholder')}
-                          className="block w-24 px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
+                          style={[styles.servicePriceInput, isDarkMode ? styles.inputDark : styles.inputLight]}
+                          placeholderTextColor={isDarkMode ? '#64748b' : '#94a3b8'}
                       />
-                      <button onClick={() => handleDeleteService(activeTab, index)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-full" aria-label={t('delete-service-aria', 'Delete goods/service')}>
-                          <Icon name="trash" className="w-5 h-5" />
-                      </button>
-                  </div>
+                      <TouchableOpacity onPress={() => handleDeleteService(activeTab, index)} style={styles.deleteButton} accessibilityLabel={t('delete-service-aria', 'Delete goods/service')}>
+                          <Icon name="trash" size={20} style={styles.deleteIcon} />
+                      </TouchableOpacity>
+                  </View>
               ))}
-              <Button onClick={() => handleAddService(activeTab)} variant="secondary" className="w-full mt-2">
-                  <Icon name="plus" className="w-5 h-5" />
-                  {t('add-service-for', 'Add Service for {customerType}').replace('{customerType}', t(activeTab))}
+              <Button onPress={() => handleAddService(activeTab)} variant="secondary" style={styles.addServiceButton}>
+                  <Icon name="plus" size={20} style={isDarkMode ? styles.iconDark : styles.iconLight} />
+                  <Text>{t('add-service-for', 'Add Service for {customerType}').replace('{customerType}', t(activeTab))}</Text>
               </Button>
-          </div>
-          <div className="p-4 border-t border-slate-200 dark:border-slate-700 flex justify-end">
-            <Button onClick={handleSaveSettings}>{t('save-settings')}</Button>
-          </div>
+          </View>
+          <View style={[styles.saveSettingsContainer, isDarkMode ? styles.borderSlate700 : styles.borderSlate200]}>
+            <Button onPress={handleSaveSettings}>{t('save-settings')}</Button>
+          </View>
         </Card>
-    </div>
+    </ScrollView>
   );
 };
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+    },
+    contentContainer: {
+        paddingBottom: 24, // space-y-6
+    },
+    descriptionText: {
+        fontSize: 14,
+        marginBottom: 24, // space-y-6 at top
+    },
+    textSlate500: { color: '#64748b' }, // text-slate-500
+    textSlate400: { color: '#94a3b8' }, // dark:text-slate-400
+
+    cardMargin: {
+        marginBottom: 24,
+    },
+    appSettingsSection: {
+        padding: 24, // p-6
+        paddingBottom: 16, // Adjust padding
+        gap: 8, // space-y-4 for inputs
+    },
+    sectionTitle: {
+        fontSize: 18, // text-lg
+        fontWeight: 'bold',
+        marginBottom: 16, // mb-4
+    },
+    pb2: {
+        paddingBottom: 8, // pb-2
+    },
+    textLight: { color: '#f8fafc' }, // dark:text-slate-100
+    textDark: { color: '#1e293b' }, // text-slate-800
+
+    label: {
+        fontSize: 14, // text-sm
+        fontWeight: '500', // font-medium
+        marginBottom: 4, // mb-1
+    },
+    textSlate300: { color: '#cbd5e1' }, // dark:text-slate-300
+    textSlate700: { color: '#475569' }, // text-slate-700
+
+    input: {
+        width: '100%', // block w-full
+        paddingHorizontal: 16, // px-4
+        paddingVertical: 12, // py-3
+        fontSize: 16, // text-base
+        borderWidth: 1,
+        borderRadius: 8, // rounded-lg
+    },
+    inputLight: {
+        borderColor: '#cbd5e1', // border-slate-300
+        backgroundColor: '#ffffff', // bg-white
+        color: '#1e293b', // text-slate-800
+    },
+    inputDark: {
+        borderColor: '#475569', // dark:border-slate-600
+        backgroundColor: '#0f172a', // dark:bg-slate-900
+        color: '#f8fafc', // dark:text-slate-200
+    },
+    
+    servicePricesSection: {
+        borderTopWidth: 1,
+        padding: 24, // p-6
+        paddingBottom: 0, // pt-0
+    },
+    borderSlate200: { borderColor: '#e2e8f0' },
+    borderSlate700: { borderColor: '#334155' },
+
+    tabsContainer: {
+        flexDirection: 'row',
+        paddingVertical: 8, // p-2
+        paddingTop: 0, // pt-0
+    },
+    tabButton: {
+        paddingHorizontal: 12, // px-3
+        paddingVertical: 8, // py-2
+        borderRadius: 6, // rounded-md
+        // transitionDuration: 200, // FIX: Removed web-specific property
+    },
+    tabButtonText: {
+        fontSize: 14, // text-sm
+        fontWeight: '500', // font-medium
+        textTransform: 'capitalize',
+    },
+    tabActiveLight: {
+        backgroundColor: '#e0e7ff', // bg-indigo-100
+    },
+    tabTextActiveLight: {
+        color: '#4f46e5', // text-indigo-700
+    },
+    tabInactiveLight: {
+        // text-slate-500 hover:bg-slate-100
+    },
+    tabTextInactiveLight: {
+        color: '#64748b',
+    },
+    tabActiveDark: {
+        backgroundColor: 'rgba(79, 70, 229, 0.2)', // dark:bg-indigo-900/50
+    },
+    tabTextActiveDark: {
+        color: '#93c5fd', // dark:text-indigo-300
+    },
+    tabInactiveDark: {
+        // dark:text-slate-400 dark:hover:bg-slate-700
+    },
+    tabTextInactiveDark: {
+        color: '#94a3b8',
+    },
+
+    serviceListContainer: {
+        padding: 16, // p-4
+        gap: 12, // space-y-3
+    },
+    serviceItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8, // gap-2
+    },
+    serviceNameInput: {
+        flexGrow: 1, // w-0 flex-grow
+    },
+    servicePriceInput: {
+        width: 96, // w-24
+    },
+    deleteButton: {
+        padding: 8, // p-2
+        borderRadius: 9999, // rounded-full
+    },
+    deleteIcon: {
+        color: '#ef4444', // text-red-500
+    },
+    iconDark: { color: '#e2e8f0' }, // dark:text-slate-200
+    iconLight: { color: '#1e293b' }, // text-slate-800
+
+    addServiceButton: {
+        width: '100%',
+        marginTop: 8, // mt-2
+    },
+    saveSettingsContainer: {
+        padding: 16, // p-4
+        borderTopWidth: 1,
+        alignItems: 'flex-end',
+    },
+});

@@ -1,60 +1,55 @@
-import React, { useRef, createRef } from 'react';
+import React from 'react';
+import { TextInput, StyleSheet, View } from 'react-native';
+import { useTheme } from '../hooks/useTheme';
 
 interface PhoneNumberInputProps {
     value: string;
     onChange: (value: string) => void;
+    isDarkMode: boolean; // Prop to pass theme for styling
 }
 
-export const PhoneNumberInput: React.FC<PhoneNumberInputProps> = ({ value, onChange }) => {
-    const inputsRef = useRef<Array<React.RefObject<HTMLInputElement>>>(
-        Array.from({ length: 10 }, () => createRef<HTMLInputElement>())
-    );
-
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
-        const newDigits = value.split('');
-        const { value: inputValue } = e.target;
-        
-        if (!/^\d*$/.test(inputValue)) return; // Only allow digits
-
-        newDigits[index] = inputValue.slice(-1); // Take only the last digit entered
-        onChange(newDigits.join(''));
-
-        if (inputValue && index < 9) {
-            inputsRef.current[index + 1].current?.focus();
-        }
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
-        if (e.key === 'Backspace' && !e.currentTarget.value && index > 0) {
-            inputsRef.current[index - 1].current?.focus();
-        }
-    };
-
-    const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
-        e.preventDefault();
-        const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 10);
-        if (pastedData) {
-            onChange(pastedData.padEnd(10, ' ')); // Pad to ensure length is 10 for split
-            const focusIndex = Math.min(pastedData.length, 9);
-            inputsRef.current[focusIndex].current?.focus();
-        }
+export const PhoneNumberInput: React.FC<PhoneNumberInputProps> = ({ value, onChange, isDarkMode }) => {
+    const handleChangeText = (text: string) => {
+        // Only allow digits and limit to 10 characters
+        const formattedText = text.replace(/\D/g, '').slice(0, 10);
+        onChange(formattedText);
     };
 
     return (
-        <div className="flex gap-1 md:gap-2" onPaste={handlePaste}>
-            {Array.from({ length: 10 }).map((_, index) => (
-                <input
-                    key={index}
-                    ref={inputsRef.current[index]}
-                    type="tel"
-                    maxLength={1}
-                    value={value[index] || ''}
-                    onChange={(e) => handleInputChange(e, index)}
-                    onKeyDown={(e) => handleKeyDown(e, index)}
-                    className="block w-full h-12 text-center text-lg font-semibold border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
-                    aria-label={`Digit ${index + 1}`}
-                />
-            ))}
-        </div>
+        <TextInput
+            style={[
+                styles.input,
+                isDarkMode ? styles.inputDark : styles.inputLight
+            ]}
+            keyboardType="phone-pad" // Specific keyboard for phone numbers
+            maxLength={10}
+            value={value}
+            onChangeText={handleChangeText}
+            placeholder="Enter 10-digit phone number"
+            placeholderTextColor={isDarkMode ? '#64748b' : '#94a3b8'}
+            accessibilityLabel="Phone number input"
+        />
     );
 };
+
+const styles = StyleSheet.create({
+    input: {
+        borderWidth: 1,
+        borderRadius: 8,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        fontSize: 16,
+        width: '100%',
+        height: 50, // Standard height for input
+    },
+    inputLight: {
+        borderColor: '#cbd5e1', // border-slate-300
+        backgroundColor: '#ffffff', // bg-white
+        color: '#1e293b', // text-slate-800
+    },
+    inputDark: {
+        borderColor: '#475569', // dark:border-slate-600
+        backgroundColor: '#0f172a', // dark:bg-slate-900
+        color: '#f8fafc', // dark:text-slate-200
+    },
+});

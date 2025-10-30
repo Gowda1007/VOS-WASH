@@ -1,4 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react'; // FIX: Imported useCallback
+import { Appearance,ColorSchemeName } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type Theme = 'light' | 'dark' | 'system';
 type ResolvedTheme = 'light' | 'dark';
@@ -11,26 +13,37 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setTheme] = useState<Theme>(() => {
-    return (localStorage.getItem('theme') as Theme) || 'system';
-  });
+const THEME_STORAGE_KEY = 'vosWashTheme';
 
-  const [isSystemDark, setIsSystemDark] = useState(() => 
-    window.matchMedia('(prefers-color-scheme: dark)').matches
-  );
+export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [theme, setThemeState] = useState<Theme>('system'); // Default to system until loaded
+  const [isSystemDark, setIsSystemDark] = useState<boolean>(() => Appearance.getColorScheme() === 'dark');
+
+  // Load theme from AsyncStorage on component mount
+  useEffect(() => {
+    const loadTheme = async () => {
+      try {
+        const storedTheme = await AsyncStorage.getItem(THEME_STORAGE_KEY);
+        if (storedTheme) {
+          setThemeState(storedTheme as Theme);
+        }
+      } catch (error) {
+        console.error('Failed to load theme from AsyncStorage:', error);
+      }
+    };
+    loadTheme();
+  }, []);
 
   // Effect to listen for OS theme changes
   useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const subscription = Appearance.addChangeListener(({ colorScheme }: { colorScheme: ColorSchemeName }) => {
+      setIsSystemDark(colorScheme === 'dark');
+    });
+
+    // Initial check in case it changed before listener was attached
+    setIsSystemDark(Appearance.getColorScheme() === 'dark');
     
-    const handleChange = (e: MediaQueryListEvent) => {
-      setIsSystemDark(e.matches);
-    };
-    
-    mediaQuery.addEventListener('change', handleChange);
-    
-    return () => mediaQuery.removeEventListener('change', handleChange);
+    return () => subscription.remove();
   }, []);
 
   // Determine the actual theme to apply
@@ -38,23 +51,21 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return theme === 'system' ? (isSystemDark ? 'dark' : 'light') : theme;
   }, [theme, isSystemDark]);
 
-  // Effect to apply the theme class to <html> and save the user's preference
-  useEffect(() => {
-    const root = window.document.documentElement;
-    if (resolvedTheme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
+  // Function to set theme and save to AsyncStorage
+  const setTheme = useCallback(async (newTheme: Theme) => {
+    setThemeState(newTheme);
+    try {
+      if (newTheme === 'system') {
+        await AsyncStorage.removeItem(THEME_STORAGE_KEY);
+      } else {
+        await AsyncStorage.setItem(THEME_STORAGE_KEY, newTheme);
+      }
+    } catch (error) {
+      console.error('Failed to save theme to AsyncStorage:', error);
     }
+  }, []);
 
-    if (theme === 'system') {
-      localStorage.removeItem('theme');
-    } else {
-      localStorage.setItem('theme', theme);
-    }
-  }, [theme, resolvedTheme]);
-
-  const contextValue = useMemo(() => ({ theme, setTheme, resolvedTheme }), [theme, resolvedTheme]);
+  const contextValue = useMemo(() => ({ theme, setTheme, resolvedTheme }), [theme, setTheme, resolvedTheme]);
 
   return <ThemeContext.Provider value={contextValue}>{children}</ThemeContext.Provider>;
 };

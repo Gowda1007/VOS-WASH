@@ -1,29 +1,22 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Platform, ScrollView, Switch, Image } from 'react-native'; // FIX: Imported Image
+import { Picker } from '@react-native-picker/picker';
 import type { Invoice, CustomerType, Service, Customer, ServiceSets, ManageableService, PaymentMethod, PendingOrder, AppSettings, Payment, Language } from '../types';
 import { Card, Button, Icon, Modal } from './Common';
 import { InvoicePreview } from './InvoicePreview';
-import { downloadPDF, generatePdfAsFile } from '../services/pdfService';
+import { downloadPDF, generatePdfAsFile } from '../services/pdfService'; // These now trigger native Alerts
 import { useToast } from '../hooks/useToast';
 import { calculateRemainingBalance } from '../hooks/useInvoices';
 import { PhoneNumberInput } from './PhoneNumberInput';
 import { useLanguage } from '../hooks/useLanguage';
+import { useTheme } from '../hooks/useTheme';
 
-// Updated declare global for AndroidBridge - it will now be available on window
-// due to `addJavascriptInterface` in MainActivity.kt
-declare global {
-    interface Window {
-        AndroidBridge?: {
-            sharePdfViaWhatsApp: (base64Pdf: string, fileName: string, message: string, phoneNumber: string) => void;
-        };
-    }
-}
 
 interface InvoiceFormPageProps {
     onSave: (invoiceData: Omit<Invoice, 'id' | 'invoiceNumber' | 'invoiceDate'>) => Promise<Invoice>;
     onUpdatePayment: (invoiceId: number, amount: number, method: PaymentMethod) => Promise<Invoice | null>;
     onComplete: () => void;
-    existingInvoice: Invoice | null;
+    existingInvoice: Invoice | null; // Note: existingInvoice is always null for new invoice form.
     customers: Customer[];
     serviceSets: ServiceSets;
     invoices: Invoice[];
@@ -33,19 +26,31 @@ interface InvoiceFormPageProps {
 
 const customerTypes: CustomerType[] = ['customer', 'garage_service_station', 'dealer'];
 
-const InvoiceLanguageToggle: React.FC<{ value: Language, onChange: (lang: Language) => void }> = ({ value, onChange }) => {
+interface InvoiceLanguageToggleProps {
+  value: Language;
+  onChange: (lang: Language) => void;
+  isDarkMode: boolean;
+}
+
+const InvoiceLanguageToggle: React.FC<InvoiceLanguageToggleProps> = ({ value, onChange, isDarkMode }) => {
     const { t } = useLanguage();
     return (
-        <div className="flex items-center justify-center p-1 bg-slate-200 dark:bg-slate-700 rounded-lg">
-            <button onClick={() => onChange('en')} className={`px-4 py-1.5 text-sm rounded-md ${value === 'en' ? 'bg-white dark:bg-slate-800 shadow' : ''}`}>{t('english')}</button>
-            <button onClick={() => onChange('kn')} className={`px-4 py-1.5 text-sm rounded-md ${value === 'kn' ? 'bg-white dark:bg-slate-800 shadow' : ''}`}>{t('kannada')}</button>
-        </div>
+        <View style={[styles.langToggleContainer, isDarkMode ? styles.bgSlate700 : styles.bgSlate200]}>
+            <TouchableOpacity onPress={() => onChange('en')} style={[styles.langToggleButton, value === 'en' && (isDarkMode ? styles.langToggleActiveDark : styles.langToggleActiveLight)]}>
+                <Text style={styles.langToggleButtonText}>{t('english')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => onChange('kn')} style={[styles.langToggleButton, value === 'kn' && (isDarkMode ? styles.langToggleActiveDark : styles.langToggleActiveLight)]}>
+                <Text style={styles.langToggleButtonText}>{t('kannada')}</Text>
+            </TouchableOpacity>
+        </View>
     );
 };
 
 export const InvoiceFormPage: React.FC<InvoiceFormPageProps> = ({ onSave, onUpdatePayment, onComplete, customers, serviceSets, invoices, pendingOrder, appSettings }) => {
     const toast = useToast();
     const { t } = useLanguage();
+    const { resolvedTheme } = useTheme();
+    const isDarkMode = resolvedTheme === 'dark';
     const [step, setStep] = useState(1);
     
     const [customer, setCustomer] = useState({ name: '', phone: '', address: '' });
@@ -87,11 +92,11 @@ export const InvoiceFormPage: React.FC<InvoiceFormPageProps> = ({ onSave, onUpda
         if (customer.phone.length === 10) {
             const existingCustomer = customers.find((c: Customer) => c.phone === customer.phone);
             if (existingCustomer) {
-                setCustomer({
-                    ...customer,
+                setCustomer(prev => ({
+                    ...prev,
                     name: existingCustomer.name,
                     address: existingCustomer.address,
-                });
+                }));
 
                 const totalArrears = invoices
                     .filter(inv => inv.customerPhone === customer.phone)
@@ -121,7 +126,7 @@ export const InvoiceFormPage: React.FC<InvoiceFormPageProps> = ({ onSave, onUpda
         }
     }, [customerType, pendingOrder]);
 
-    const handleNext = () => {
+    const handleNext = useCallback(() => {
         if (step === 1) {
             if (!customer.name || customer.phone.length !== 10) {
                 toast.error("Please provide a valid customer name and 10-digit phone number.");
@@ -136,11 +141,11 @@ export const InvoiceFormPage: React.FC<InvoiceFormPageProps> = ({ onSave, onUpda
             }
         }
         setStep(prev => prev + 1);
-    };
+    }, [step, customer.name, customer.phone, selectedServices, toast, t]);
 
-    const handleBack = () => setStep(prev => prev - 1);
+    const handleBack = useCallback(() => setStep(prev => prev - 1), []);
 
-    const handleGeneratePreview = () => {
+    const handleGeneratePreview = useCallback(() => {
         const finalServices = selectedServices.filter(s => s.name && s.price > 0 && s.quantity > 0);
         const invoiceForPreview: Omit<Invoice, 'id' | 'invoiceNumber' | 'invoiceDate' | 'payments'> & { payments: Payment[] } = {
             customerName: customer.name,
@@ -155,21 +160,22 @@ export const InvoiceFormPage: React.FC<InvoiceFormPageProps> = ({ onSave, onUpda
         };
         setPreviewData({ ...invoiceForPreview, id: 0, invoiceNumber: 'PREVIEW', invoiceDate: new Date().toLocaleDateString("en-IN") });
         setStep(4);
-    };
+    }, [selectedServices, customer, customerType, showOldBalance, oldBalance, showAdvancePaid, advancePaid, invoiceLanguage]);
     
-    const handleSaveAndProceed = async () => {
+    const handleSaveAndProceed = useCallback(async () => {
         if (!previewData) return;
         try {
             const saved = await onSave(previewData);
             setSavedInvoice(saved);
-            setNowPaid({ ...nowPaid, amount: calculateRemainingBalance(saved) });
+            // Set nowPaid amount to the *newly calculated* remaining balance after saving
+            setNowPaid(prev => ({ ...prev, amount: calculateRemainingBalance(saved) }));
             setStep(5);
         } catch (error) {
             toast.error("Failed to save invoice.");
         }
-    };
+    }, [previewData, onSave, toast]);
 
-    const handleCollectPayment = async () => {
+    const handleCollectPayment = useCallback(async () => {
         if (!savedInvoice || nowPaid.amount <= 0) {
             toast.error("Please enter a valid amount to collect.");
             return;
@@ -189,19 +195,20 @@ export const InvoiceFormPage: React.FC<InvoiceFormPageProps> = ({ onSave, onUpda
         } finally {
             setIsSubmittingPayment(false);
         }
-    };
+    }, [savedInvoice, nowPaid, onUpdatePayment, toast, t]);
 
-    const handleServiceQuantityChange = (index: number, newQuantity: number) => {
+    const handleServiceQuantityChange = useCallback((index: number, newQuantity: string) => {
+        const parsedQuantity = parseInt(newQuantity, 10);
         setSelectedServices(prev => {
             const newServices = [...prev];
             if (newServices[index]) {
-                newServices[index].quantity = Math.max(1, newQuantity);
+                newServices[index].quantity = Math.max(1, parsedQuantity || 0);
             }
             return newServices;
         });
-    };
+    }, []);
 
-    const handleAddCustomServiceFromModal = () => {
+    const handleAddCustomServiceFromModal = useCallback(() => {
         if (!newCustomService.name || newCustomService.price <= 0) {
             toast.error(t('valid-service-name-price', 'Please enter a valid goods/service name and price.'));
             return;
@@ -210,144 +217,81 @@ export const InvoiceFormPage: React.FC<InvoiceFormPageProps> = ({ onSave, onUpda
         setSelectedServices(prev => [...prev, serviceToAdd]);
         setNewCustomService({ name: '', price: 0 });
         setIsCustomServiceModalOpen(false);
-    };
+    }, [newCustomService, toast, t]);
 
-    const handleSelectPredefinedService = (service: ManageableService) => {
+    const handleSelectPredefinedService = useCallback((service: ManageableService) => {
         setSelectedServices(prev => {
             if (prev.some(s => s.name === service.name && !s.isCustom)) {
                 return prev;
             }
             return [...prev, { ...service, quantity: 1, isCustom: false }];
         });
-    };
+    }, []);
 
-    const handleRemoveService = (index: number) => {
+    const handleRemoveService = useCallback((index: number) => {
         setSelectedServices(prev => prev.filter((_, i) => i !== index));
-    };
+    }, []);
     
+    // In React Native, PDF functionality is stubbed out.
     const handleDownload = async (invoiceToDownload: Invoice) => {
-        const elementToPrint = document.getElementById('invoice-preview-content');
-        if (elementToPrint) {
-            await downloadPDF(invoiceToDownload, elementToPrint);
-            toast.success(t('export-success-message'));
-        } else {
-            toast.error('Could not find invoice content to download.');
-        }
+        // Calling stubbed function in pdfService.ts
+        await downloadPDF(invoiceToDownload);
     };
 
-    const blobToBase64 = (blob: Blob): Promise<string> => {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                const base64String = reader.result?.toString().split(',')[1];
-                if (base64String) {
-                    resolve(base64String);
-                } else {
-                    reject(new Error('Failed to convert blob to base64'));
-                }
-            };
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-        });
-    };
-
+    // In React Native, WhatsApp sharing functionality is stubbed out.
     const handleShareWhatsApp = async () => {
-        if (!savedInvoice) return;
-
-        const elementToPrint = document.getElementById('invoice-preview-content');
-        if (!elementToPrint) {
-            toast.error("Could not find invoice content to share.");
-            return;
-        }
-
-        const amountPaid = savedInvoice.payments.slice(-1)[0]?.amount || 0;
-        const messageText = t('whatsapp-share-message')
-            .replace('{customerName}', savedInvoice.customerName)
-            .replace('{amountPaid}', amountPaid.toString())
-            .replace('{invoiceNumber}', savedInvoice.invoiceNumber);
-
-        const pdfFile = await generatePdfAsFile(savedInvoice, elementToPrint);
-        if (!pdfFile) {
-            toast.error("Failed to generate PDF file for sharing.");
-            return;
-        }
-
-        // Check if the AndroidBridge is available (only in Android WebView)
-        if (window.AndroidBridge?.sharePdfViaWhatsApp) {
-            try {
-                const base64Pdf = await blobToBase64(pdfFile);
-                window.AndroidBridge.sharePdfViaWhatsApp(
-                    base64Pdf,
-                    pdfFile.name,
-                    messageText,
-                    // Ensure the phone number is clean and prefixed with country code if needed
-                    // For Indian numbers, '91' is the country code.
-                    `91${savedInvoice.customerPhone.replace(/\D/g, '')}` 
-                );
-            } catch (error) {
-                console.error("Error sharing via native bridge:", error);
-                toast.error("Could not share via WhatsApp.");
-            }
-        } else if (navigator.share && navigator.canShare({ files: [pdfFile] })) {
-            // Fallback for web browsers supporting Web Share API
-            try {
-                await navigator.share({
-                    files: [pdfFile],
-                    title: `VOS WASH Invoice #${savedInvoice.invoiceNumber}`,
-                    text: messageText,
-                });
-            } catch (error) {
-                console.log('Share cancelled or failed', error);
-                if (error instanceof DOMException && error.name === "AbortError") {
-                    // User dismissed the share dialog
-                } else {
-                    toast.error("Web Share API failed. Attempting direct download.");
-                    await handleDownload(savedInvoice);
-                    const whatsappUrl = `https://wa.me/91${savedInvoice.customerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(messageText)}`;
-                    window.open(whatsappUrl, '_blank');
-                    toast.info("Your file has been downloaded. Please attach it in the WhatsApp chat.");
-                }
-            }
-        } else {
-            // Fallback for browsers not supporting Web Share API
-            await handleDownload(savedInvoice);
-            const whatsappUrl = `https://wa.me/91${savedInvoice.customerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(messageText)}`;
-            window.open(whatsappUrl, '_blank');
-            toast.info("Your file has been downloaded. Please attach it in the WhatsApp chat.");
-        }
+        Alert.alert(
+            'WhatsApp Share Unavailable',
+            'Direct WhatsApp sharing of generated PDFs is not yet supported in the native app version. Please use the web version for this feature.',
+            [{ text: 'OK' }]
+        );
     };
 
     const renderStep1 = () => (
-        <Card className="p-6 md:p-8">
-            <h3 className="font-bold text-lg mb-4 text-slate-800 dark:text-slate-100 border-b pb-2 dark:border-slate-700">{t('customer-details')}</h3>
-            <div className="grid grid-cols-1 gap-4">
-                <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">{t('customer-phone')}</label>
-                    <PhoneNumberInput value={customer.phone} onChange={phone => setCustomer({ ...customer, phone })} />
-                </div>
-                 <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">{t('customer-name')}</label>
-                    <input type="text" placeholder={t('customer-name')} value={customer.name} onChange={e => setCustomer({ ...customer, name: e.target.value })} className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" />
-                </div>
-                 <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">{t('customer-address')}</label>
-                    <input type="text" placeholder={t('customer-address')} value={customer.address} onChange={e => setCustomer({ ...customer, address: e.target.value })} className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" />
-                </div>
-                <div>
-                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t('customer-type')}</p>
-                    <div className="flex flex-wrap gap-4">
+        <Card style={styles.cardPadding}>
+            <Text style={[styles.cardTitle, isDarkMode ? styles.textLight : styles.textDark]}>{t('customer-details')}</Text>
+            <View style={styles.formSection}>
+                <View style={styles.inputGroup}>
+                    <Text style={[styles.label, isDarkMode ? styles.textSlate300 : styles.textSlate700]}>{t('customer-phone')}</Text>
+                    <PhoneNumberInput value={customer.phone} onChange={phone => setCustomer({ ...customer, phone })} isDarkMode={isDarkMode} />
+                </View>
+                 <View style={styles.inputGroup}>
+                    <Text style={[styles.label, isDarkMode ? styles.textSlate300 : styles.textSlate700]}>{t('customer-name')}</Text>
+                    <TextInput 
+                        placeholder={t('customer-name')} 
+                        value={customer.name} 
+                        onChangeText={name => setCustomer({ ...customer, name })} 
+                        style={[styles.input, isDarkMode ? styles.inputDark : styles.inputLight]}
+                        placeholderTextColor={isDarkMode ? '#64748b' : '#94a3b8'}
+                    />
+                </View>
+                 <View style={styles.inputGroup}>
+                    <Text style={[styles.label, isDarkMode ? styles.textSlate300 : styles.textSlate700]}>{t('customer-address')}</Text>
+                    <TextInput 
+                        placeholder={t('customer-address')} 
+                        value={customer.address} 
+                        onChangeText={address => setCustomer({ ...customer, address })} 
+                        style={[styles.input, isDarkMode ? styles.inputDark : styles.inputLight]} 
+                        placeholderTextColor={isDarkMode ? '#64748b' : '#94a3b8'}
+                    />
+                </View>
+                <View>
+                    <Text style={[styles.label, styles.mb2, isDarkMode ? styles.textSlate300 : styles.textSlate700]}>{t('customer-type')}</Text>
+                    <View style={styles.radioGroup}>
                         {customerTypes.map(type => (
-                            <label key={type} className="flex items-center">
-                                <input type="radio" name="customerType" value={type} checked={customerType === type} onChange={() => setCustomerType(type)} className="mr-2 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:bg-slate-700 dark:border-slate-500"/>
-                                {t(type)}
-                            </label>
+                            <TouchableOpacity key={type} onPress={() => setCustomerType(type)} style={styles.radioOption}>
+                                <View style={[styles.radioButton, customerType === type && styles.radioSelected]}>
+                                    {customerType === type && <View style={styles.radioInner} />}
+                                </View>
+                                <Text style={isDarkMode ? styles.textLight : styles.textDark}>{t(type)}</Text>
+                            </TouchableOpacity>
                         ))}
-                    </div>
-                </div>
-            </div>
-            <div className="border-t pt-6 dark:border-slate-700 mt-6">
-                <Button onClick={handleNext} className="w-full !py-3">{t('next')}</Button>
-            </div>
+                    </View>
+                </View>
+            </View>
+            <View style={styles.buttonDivider}>
+                <Button onPress={handleNext} style={styles.fullWidthButton}>{t('next')}</Button>
+            </View>
         </Card>
     );
 
@@ -357,96 +301,138 @@ export const InvoiceFormPage: React.FC<InvoiceFormPageProps> = ({ onSave, onUpda
         ) || [];
 
         return (
-            <Card className="p-6 md:p-8">
-                <h3 className="font-bold text-lg mb-4 text-slate-800 dark:text-slate-100 border-b pb-2 dark:border-slate-700">{t('services-and-items')}</h3>
-                <div className="space-y-3 mb-6">
-                    {selectedServices.length === 0 && <p className="text-center text-slate-500 py-4">{t('no-services-added')}</p>}
+            <Card style={styles.cardPadding}>
+                <Text style={[styles.cardTitle, isDarkMode ? styles.textLight : styles.textDark]}>{t('services-and-items')}</Text>
+                <View style={styles.serviceListContainer}>
+                    {selectedServices.length === 0 && <Text style={[styles.noServicesText, isDarkMode ? styles.textSlate400 : styles.textSlate500]}>{t('no-services-added')}</Text>}
                     {selectedServices.map((service, index) => (
-                        <div key={index} className="flex items-center gap-2 p-2 rounded-md bg-slate-50 dark:bg-slate-800/50">
-                            <div className="flex-grow">
-                                <p className="font-semibold">{t(service.name)}</p>
-                                <p className="text-sm text-slate-500 dark:text-slate-400">{t('price-label')} ₹{service.price}</p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <label htmlFor={`qty-${index}`} className="text-sm font-medium">{t('qty-label')}</label>
-                                <input
-                                    type="number"
-                                    id={`qty-${index}`}
-                                    value={service.quantity}
-                                    min="1"
-                                    onChange={(e) => handleServiceQuantityChange(index, parseInt(e.target.value, 10))}
-                                    className="block w-20 px-3 py-2 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
+                        <View key={index} style={[styles.serviceItem, isDarkMode ? styles.serviceItemDark : styles.serviceItemLight]}>
+                            <View style={styles.serviceDetails}>
+                                <Text style={[styles.serviceName, isDarkMode ? styles.textLight : styles.textDark]}>{t(service.name)}</Text>
+                                <Text style={[styles.servicePrice, isDarkMode ? styles.textSlate400 : styles.textSlate500]}>{t('price-label')} ₹{service.price}</Text>
+                            </View>
+                            <View style={styles.serviceQuantityControl}>
+                                <Text style={[styles.qtyLabel, isDarkMode ? styles.textLight : styles.textDark]}>{t('qty-label')}</Text>
+                                <TextInput
+                                    style={[styles.qtyInput, isDarkMode ? styles.inputDark : styles.inputLight]}
+                                    keyboardType="numeric"
+                                    value={service.quantity.toString()}
+                                    onChangeText={(text) => handleServiceQuantityChange(index, text)}
                                 />
-                            </div>
-                            <button onClick={() => handleRemoveService(index)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-full" aria-label={t('delete-service-aria', 'Delete goods/service')}>
-                                <Icon name="trash" className="w-5 h-5" />
-                            </button>
-                        </div>
+                            </View>
+                            <TouchableOpacity onPress={() => handleRemoveService(index)} style={styles.removeServiceButton} accessibilityLabel={t('delete-service-aria', 'Delete goods/service')}>
+                                <Icon name="trash" size={20} style={styles.removeServiceIcon} />
+                            </TouchableOpacity>
+                        </View>
                     ))}
-                </div>
+                </View>
 
-                <div className="border-t dark:border-slate-700 pt-4">
-                    <h4 className="font-semibold mb-2">{t('add-services')}</h4>
-                    <div className="flex flex-wrap gap-2 mb-4">
+                <View style={[styles.addServiceSection, isDarkMode ? styles.borderSlate700 : styles.borderSlate200]}>
+                    <Text style={[styles.addServicesHeader, isDarkMode ? styles.textLight : styles.textDark]}>{t('add-services')}</Text>
+                    <View style={styles.predefinedServices}>
                         {availableServices.map(service => (
-                            <button key={service.name} onClick={() => handleSelectPredefinedService(service)} className="px-3 py-1.5 text-sm bg-slate-200 dark:bg-slate-700 rounded-full hover:bg-slate-300 dark:hover:bg-slate-600">
-                                + {t(service.name)}
-                            </button>
+                            <TouchableOpacity key={service.name} onPress={() => handleSelectPredefinedService(service)} style={[styles.predefinedServiceButton, isDarkMode ? styles.predefinedServiceButtonDark : styles.predefinedServiceButtonLight]}>
+                                <Text style={[styles.predefinedServiceButtonText, isDarkMode ? styles.predefinedServiceButtonTextDark : styles.predefinedServiceButtonTextLight]}>+ {t(service.name)}</Text>
+                            </TouchableOpacity>
                         ))}
-                    </div>
-                    <Button onClick={() => setIsCustomServiceModalOpen(true)} variant="secondary" className="w-full">
-                        <Icon name="plus" className="w-5 h-5" />
-                        {t('add-custom-service')}
+                    </View>
+                    <Button onPress={() => setIsCustomServiceModalOpen(true)} variant="secondary" style={styles.fullWidthButton}>
+                        <Icon name="plus" size={20} style={isDarkMode ? styles.iconDark : styles.iconLight} />
+                        <Text>{t('add-custom-service')}</Text>
                     </Button>
-                </div>
+                </View>
 
-                <div className="flex justify-between gap-4 mt-6 border-t pt-6 dark:border-slate-700">
-                    <Button onClick={handleBack} variant="secondary">{t('back')}</Button>
-                    <Button onClick={handleNext}>{t('next')}</Button>
-                </div>
+                <View style={styles.bottomNavigation}>
+                    <Button onPress={handleBack} variant="secondary"><Text>{t('back')}</Text></Button>
+                    <Button onPress={handleNext}><Text>{t('next')}</Text></Button>
+                </View>
             </Card>
         );
     };
     
     const renderStep3 = () => (
-        <Card className="p-6 md:p-8">
-            <h3 className="font-bold text-lg mb-4 text-slate-800 dark:text-slate-100 border-b pb-2 dark:border-slate-700">{t('financials')}</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border dark:border-slate-700">
-                   <label className="flex items-center font-medium mb-3"><input type="checkbox" checked={showOldBalance} onChange={e => setShowOldBalance(e.target.checked)} className="mr-2 h-4 w-4 rounded text-red-600 focus:ring-red-500" /> {t('old-balance-arrears')}</label>
-                   {showOldBalance && <div className="space-y-2"><input type="number" value={oldBalance.amount || ''} onChange={e => setOldBalance({ ...oldBalance, amount: parseFloat(e.target.value) || 0 })} placeholder={t('amount-placeholder')} className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" /><input type="date" value={oldBalance.date} onChange={e => setOldBalance({ ...oldBalance, date: e.target.value })} className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" /></div>}
-                </div>
-                <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border dark:border-slate-700">
-                   <label className="flex items-center font-medium mb-3"><input type="checkbox" checked={showAdvancePaid} onChange={e => setShowAdvancePaid(e.target.checked)} className="mr-2 h-4 w-4 rounded text-green-600 focus:ring-green-500"/> {t('advance-paid')}</label>
-                   {showAdvancePaid && <div className="space-y-2"><input type="number" value={advancePaid.amount || ''} onChange={e => setAdvancePaid({ ...advancePaid, amount: parseFloat(e.target.value) || 0 })} placeholder={t('amount-placeholder')} className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" /><input type="date" value={advancePaid.date} onChange={e => setAdvancePaid({ ...advancePaid, date: e.target.value })} className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" /></div>}
-                </div>
-            </div>
-            <div className="flex justify-between gap-4 mt-6 border-t pt-6 dark:border-slate-700">
-                <Button onClick={handleBack} variant="secondary">{t('back')}</Button>
-                <Button onClick={handleGeneratePreview}>{t('preview-invoice')}</Button>
-            </div>
+        <Card style={styles.cardPadding}>
+            <Text style={[styles.cardTitle, isDarkMode ? styles.textLight : styles.textDark]}>{t('financials')}</Text>
+            <View style={styles.financialsGrid}>
+                <View style={[styles.financialOptionCard, isDarkMode ? styles.financialOptionCardDark : styles.financialOptionCardLight]}>
+                   <TouchableOpacity onPress={() => setShowOldBalance(prev => !prev)} style={styles.checkboxRow}>
+                        <View style={[styles.checkbox, showOldBalance && styles.checkboxChecked]}>
+                            {showOldBalance && <Icon name="check" size={12} style={styles.checkboxCheckIcon} />}
+                        </View>
+                        <Text style={[styles.fontMedium, isDarkMode ? styles.textLight : styles.textDark]}>{t('old-balance-arrears')}</Text>
+                   </TouchableOpacity>
+                   {showOldBalance && <View style={styles.spaceY2}>
+                       <TextInput 
+                           style={[styles.input, isDarkMode ? styles.inputDark : styles.inputLight]} 
+                           keyboardType="numeric"
+                           value={oldBalance.amount === 0 ? '' : oldBalance.amount.toString()} 
+                           onChangeText={text => setOldBalance({ ...oldBalance, amount: parseFloat(text) || 0 })} 
+                           placeholder={t('amount-placeholder')} 
+                           placeholderTextColor={isDarkMode ? '#64748b' : '#94a3b8'}
+                       />
+                       <TextInput 
+                           style={[styles.input, isDarkMode ? styles.inputDark : styles.inputLight]} 
+                           value={oldBalance.date} 
+                           onChangeText={date => setOldBalance({ ...oldBalance, date })} 
+                           placeholder={t('date-placeholder', 'YYYY-MM-DD')} // Add date placeholder
+                           placeholderTextColor={isDarkMode ? '#64748b' : '#94a3b8'}
+                           keyboardType="number-pad"
+                       />
+                    </View>}
+                </View>
+                <View style={[styles.financialOptionCard, isDarkMode ? styles.financialOptionCardDark : styles.financialOptionCardLight]}>
+                   <TouchableOpacity onPress={() => setShowAdvancePaid(prev => !prev)} style={styles.checkboxRow}>
+                       <View style={[styles.checkbox, showAdvancePaid && styles.checkboxChecked]}>
+                            {showAdvancePaid && <Icon name="check" size={12} style={styles.checkboxCheckIcon} />}
+                       </View>
+                       <Text style={[styles.fontMedium, isDarkMode ? styles.textLight : styles.textDark]}>{t('advance-paid')}</Text>
+                   </TouchableOpacity>
+                   {showAdvancePaid && <View style={styles.spaceY2}>
+                       <TextInput 
+                           style={[styles.input, isDarkMode ? styles.inputDark : styles.inputLight]} 
+                           keyboardType="numeric"
+                           value={advancePaid.amount === 0 ? '' : advancePaid.amount.toString()} 
+                           onChangeText={text => setAdvancePaid({ ...advancePaid, amount: parseFloat(text) || 0 })} 
+                           placeholder={t('amount-placeholder')} 
+                           placeholderTextColor={isDarkMode ? '#64748b' : '#94a3b8'}
+                       />
+                       <TextInput 
+                           style={[styles.input, isDarkMode ? styles.inputDark : styles.inputLight]} 
+                           value={advancePaid.date} 
+                           onChangeText={date => setAdvancePaid({ ...advancePaid, date })} 
+                           placeholder={t('date-placeholder', 'YYYY-MM-DD')} 
+                           placeholderTextColor={isDarkMode ? '#64748b' : '#94a3b8'}
+                           keyboardType="number-pad"
+                       />
+                   </View>}
+                </View>
+            </View>
+            <View style={styles.bottomNavigation}>
+                <Button onPress={handleBack} variant="secondary"><Text>{t('back')}</Text></Button>
+                <Button onPress={handleGeneratePreview}><Text>{t('preview-invoice')}</Text></Button>
+            </View>
         </Card>
     );
 
     const renderStep4 = () => (
-        <div>
-            <div className="flex justify-center mb-4">
-                 <InvoiceLanguageToggle value={invoiceLanguage} onChange={setInvoiceLanguage} />
-            </div>
-            <div className="p-4 sm:p-8 bg-slate-200 dark:bg-slate-800 rounded-lg">
+        <View style={styles.previewStepContainer}>
+            <View style={styles.invoiceLanguageToggleWrapper}>
+                 <InvoiceLanguageToggle value={invoiceLanguage} onChange={setInvoiceLanguage} isDarkMode={isDarkMode} />
+            </View>
+            <View style={[styles.invoicePreviewWrapper, isDarkMode ? styles.bgSlate800 : styles.bgSlate200]}>
                 {previewData && <InvoicePreview invoiceData={previewData} language={invoiceLanguage} />}
-            </div>
-             <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6">
-                <Button onClick={handleBack} variant="secondary" className="w-full sm:w-auto">
-                    <Icon name="pencil" className="w-5 h-5"/> {t('edit-details')}
+            </View>
+             <View style={[styles.step4BottomButtons, isDarkMode ? styles.borderSlate700 : styles.borderSlate200]}>
+                <Button onPress={handleBack} variant="secondary" style={styles.fullWidthButton}>
+                    <Icon name="pencil" size={20} style={isDarkMode ? styles.iconDark : styles.iconLight}/> <Text>{t('edit-details')}</Text>
                 </Button>
-                <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-                    <Button onClick={handleSaveAndProceed} className="w-full">
-                        <Icon name="banknotes" className="w-5 h-5"/> {t('save-and-continue')}
+                <View style={styles.step4ActionButtons}>
+                    <Button onPress={handleSaveAndProceed} style={styles.fullWidthButton}>
+                        <Icon name="banknotes" size={20} style={isDarkMode ? styles.iconDark : styles.iconLight}/> <Text>{t('save-and-continue')}</Text>
                     </Button>
-                </div>
-            </div>
-        </div>
+                </View>
+            </View>
+        </View>
     );
 
     const renderStep5 = () => {
@@ -464,89 +450,88 @@ export const InvoiceFormPage: React.FC<InvoiceFormPageProps> = ({ onSave, onUpda
         const qrCodeUrl = generateQrCodeUrl();
 
         return (
-             <Card className="p-6 md:p-8">
-                 <h3 className="font-bold text-lg mb-4 text-slate-800 dark:text-slate-100 border-b pb-2 dark:border-slate-700">
+             <Card style={styles.cardPadding}>
+                 <Text style={[styles.cardTitle, isDarkMode ? styles.textLight : styles.textDark, styles.pb2]}>
                     {paymentCollected ? t('actions') : t('collect-payment')}
-                </h3>
-                <div className='text-center mb-4'>
-                    <p className='text-slate-500'>{t('invoice-for').replace('{invoiceNumber}', savedInvoice.invoiceNumber).replace('{customerName}', savedInvoice.customerName)}</p>
-                    <p className='text-3xl font-bold'>{t('balance-due-label')} ₹{balanceDue.toFixed(2)}</p>
-                </div>
+                </Text>
+                <View style={styles.centerText}>
+                    <Text style={[styles.textSlate500, isDarkMode ? styles.textSlate400 : styles.textSlate500]}>{t('invoice-for').replace('{invoiceNumber}', savedInvoice.invoiceNumber).replace('{customerName}', savedInvoice.customerName)}</Text>
+                    <Text style={[styles.balanceDueAmount, isDarkMode ? styles.textLight : styles.textDark]}>₹{balanceDue.toFixed(2)}</Text>
+                </View>
 
                 {!paymentCollected ? (
-                     <div className="space-y-4">
-                        <div>
-                            <label htmlFor="confirmAmountInput" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">{t('enter-amount')}</label>
-                            <input 
-                                type="number" 
-                                id="confirmAmountInput" 
-                                value={nowPaid.amount || ''}
-                                onChange={(e) => setNowPaid(p => ({ ...p, amount: parseFloat(e.target.value) || 0 }))}
-                                className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
+                     <View style={styles.spaceY4}>
+                        <View>
+                            <Text style={[styles.label, styles.mb1, isDarkMode ? styles.textSlate300 : styles.textSlate700]}>{t('enter-amount')}</Text>
+                            <TextInput 
+                                style={[styles.input, isDarkMode ? styles.inputDark : styles.inputLight]} 
+                                keyboardType="numeric"
+                                value={nowPaid.amount === 0 ? '' : nowPaid.amount.toString()}
+                                onChangeText={(text) => setNowPaid(p => ({ ...p, amount: parseFloat(text) || 0 }))}
                             />
-                        </div>
-                        <div>
-                            <label htmlFor="paymentMethod" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">{t('payment-method')}</label>
-                            <div className="relative">
-                                <select 
-                                    id="paymentMethod" 
-                                    value={nowPaid.method}
-                                    onChange={(e) => setNowPaid(p => ({ ...p, method: e.target.value as PaymentMethod }))}
-                                    className="appearance-none block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200"
+                        </View>
+                        <View>
+                            <Text style={[styles.label, styles.mb1, isDarkMode ? styles.textSlate300 : styles.textSlate700]}>{t('payment-method')}</Text>
+                            <View style={[styles.pickerWrapper, isDarkMode ? styles.inputDark : styles.inputLight]}>
+                                <Picker
+                                    selectedValue={nowPaid.method}
+                                    onValueChange={(itemValue) => setNowPaid(p => ({ ...p, method: itemValue as PaymentMethod }))}
+                                    style={isDarkMode ? styles.pickerDark : styles.pickerLight}
+                                    dropdownIconColor={isDarkMode ? '#f8fafc' : '#1e293b'} // Picker dropdown icon color
                                 >
-                                    <option value="cash">{t('cash')}</option>
-                                    <option value="upi">{t('upi')}</option>
-                                </select>
-                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-700 dark:text-slate-300">
-                                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
-                                </div>
-                            </div>
-                        </div>
+                                    <Picker.Item label={t('cash')} value="cash" />
+                                    <Picker.Item label={t('upi')} value="upi" />
+                                </Picker>
+                            </View>
+                        </View>
                         {nowPaid.method === 'upi' && (
-                        <div className="mt-4 p-4 rounded-lg bg-slate-50 dark:bg-slate-900/50 border dark:border-slate-700 text-center">
+                        <View style={[styles.qrCodeSection, isDarkMode ? styles.qrCodeSectionDark : styles.qrCodeSectionLight]}>
                             {qrCodeUrl ? (
                             <>
-                                <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">{t('scan-to-pay', 'Scan to pay ₹{amount}').replace('{amount}', nowPaid.amount.toString())}</p>
-                                <img src={qrCodeUrl} alt="UPI QR Code" className="mx-auto rounded-lg w-48 h-48" />
-                                <p className="mt-2 font-semibold text-slate-800 dark:text-slate-200">{appSettings.upiId}</p>
+                                <Text style={[styles.qrCodeText, isDarkMode ? styles.textSlate400 : styles.textSlate600]}>{t('scan-to-pay', 'Scan to pay ₹{amount}').replace('{amount}', nowPaid.amount.toString())}</Text> {/* FIX: Added qrCodeText to styles */}
+                                <Image source={{ uri: qrCodeUrl }} style={styles.qrCodeImage} />
+                                <Text style={[styles.upiIdText, isDarkMode ? styles.textLight : styles.textDark]}>{appSettings.upiId}</Text>
                             </>
                             ) : (
-                            <p className="text-slate-500 h-[240px] flex items-center justify-center">{t('enter-valid-amount-qr')}</p>
+                            <View style={styles.noQrCodeWrapper}>
+                                <Text style={[styles.noQrCodeText, isDarkMode ? styles.textSlate400 : styles.textSlate500]}>{t('enter-valid-amount-qr')}</Text> {/* FIX: Added noQrCodeText to styles */}
+                            </View>
                             )}
-                        </div>
+                        </View>
                         )}
-                        <div className="flex justify-end gap-4 mt-6 border-t pt-6 dark:border-slate-700">
-                            <Button onClick={handleCollectPayment} disabled={isSubmittingPayment} className="bg-green-600 hover:bg-green-700">
-                                {isSubmittingPayment ? t('processing') : t('confirm-collection')}
+                        <View style={styles.buttonDivider}>
+                            <Button onPress={handleCollectPayment} disabled={isSubmittingPayment} style={styles.collectPaymentButton}>
+                                <Text>{isSubmittingPayment ? t('processing') : t('confirm-collection')}</Text>
                             </Button>
-                        </div>
-                    </div>
+                        </View>
+                    </View>
                 ) : (
-                    <div className="text-center space-y-4 mt-6 border-t pt-6 dark:border-slate-700">
-                         <div className="p-4 sm:p-8 bg-slate-200 dark:bg-slate-800 rounded-lg hidden">
+                    <View style={styles.actionsPostPayment}>
+                         {/* Hidden Invoice Preview for PDF generation */}
+                         <View style={[styles.invoicePreviewHidden, isDarkMode ? styles.bgSlate800 : styles.bgSlate200]}>
                             <InvoicePreview invoiceData={savedInvoice} language={savedInvoice.language} />
-                        </div>
-                        <p className='text-green-600 font-semibold'>{t('payment-recorded-successfully')}</p>
-                        <div className='flex flex-col sm:flex-row gap-4 justify-center'>
-                             <Button onClick={() => handleDownload(savedInvoice)} variant="secondary">
-                                <Icon name="document-duplicate" className="w-5 h-5"/> {t('download-pdf')}
+                        </View>
+                        <Text style={[styles.paymentRecordedMessage, isDarkMode ? styles.textLight : styles.textDark]}>{t('payment-recorded-successfully')}</Text>
+                        <View style={styles.actionButtonsPostPayment}>
+                             <Button onPress={() => handleDownload(savedInvoice)} variant="secondary" style={styles.actionButtonPost}>
+                                <Icon name="document-duplicate" size={20} style={isDarkMode ? styles.iconDark : styles.iconLight}/> <Text>{t('download-pdf')}</Text>
                             </Button>
-                             <Button onClick={handleShareWhatsApp} className="!bg-[#25D366] hover:!bg-[#128C7E]">
-                                <Icon name="whatsapp" className="w-5 h-5"/> {t('share-on-whatsapp')}
+                             <Button onPress={handleShareWhatsApp} style={styles.whatsappButton}>
+                                <Icon name="whatsapp" size={20} style={styles.whatsappIcon}/> <Text>{t('share-on-whatsapp')}</Text>
                             </Button>
-                        </div>
-                         <Button onClick={onComplete}>{t('finish-and-go-to-invoices')}</Button>
-                    </div>
+                        </View>
+                         <Button onPress={onComplete}><Text>{t('finish-and-go-to-invoices')}</Text></Button>
+                    </View>
                 )}
             </Card>
         );
-    }
-    
+    };
+
     return (
-        <div className="space-y-6">
-            <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5">
-                <div className="bg-indigo-600 h-2.5 rounded-full" style={{ width: `${(step / 5) * 100}%`, transition: 'width 0.3s ease-in-out' }}></div>
-            </div>
+        <ScrollView style={styles.pageContainer} contentContainerStyle={styles.pageContent}>
+            <View style={[styles.progressBarBackground, isDarkMode ? styles.bgSlate700 : styles.bgSlate200]}>
+                <View style={[styles.progressBarFill, { width: `${(step / 5) * 100}%` }]}></View> {/* FIX: Changed divisor to 5 as there are 5 steps */}
+            </View>
 
             {step === 1 && renderStep1()}
             {step === 2 && renderStep2()}
@@ -555,15 +540,464 @@ export const InvoiceFormPage: React.FC<InvoiceFormPageProps> = ({ onSave, onUpda
             {step === 5 && renderStep5()}
             
             <Modal isOpen={isCustomServiceModalOpen} onClose={() => setIsCustomServiceModalOpen(false)} title={t('add-custom-service')}>
-                <div className="space-y-4">
-                     <input type="text" placeholder={t('service-name-placeholder', 'Goods/Service Name')} value={newCustomService.name} onChange={e => setNewCustomService(p => ({ ...p, name: e.target.value }))} className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" />
-                     <input type="number" placeholder={t('price-placeholder')} value={newCustomService.price || ''} onChange={e => setNewCustomService(p => ({ ...p, price: parseFloat(e.target.value) || 0 }))} className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" />
-                     <div className="flex justify-end gap-3 pt-2">
-                        <Button onClick={() => setIsCustomServiceModalOpen(false)} variant="secondary">{t('cancel')}</Button>
-                        <Button onClick={handleAddCustomServiceFromModal}>{t('add-services')}</Button>
-                     </div>
-                </div>
+                <View style={styles.modalContent}>
+                     <TextInput 
+                        placeholder={t('service-name-placeholder', 'Goods/Service Name')} 
+                        value={newCustomService.name} 
+                        onChangeText={text => setNewCustomService(p => ({ ...p, name: text }))} 
+                        style={[styles.input, isDarkMode ? styles.inputDark : styles.inputLight]} 
+                        placeholderTextColor={isDarkMode ? '#64748b' : '#94a3b8'}
+                    />
+                     <TextInput 
+                        placeholder={t('price-placeholder')} 
+                        keyboardType="numeric"
+                        value={newCustomService.price === 0 ? '' : newCustomService.price.toString()} 
+                        onChangeText={text => setNewCustomService(p => ({ ...p, price: parseFloat(text) || 0 }))} 
+                        style={[styles.input, isDarkMode ? styles.inputDark : styles.inputLight]} 
+                        placeholderTextColor={isDarkMode ? '#64748b' : '#94a3b8'}
+                    />
+                     <View style={styles.modalButtons}>
+                        <Button onPress={() => setIsCustomServiceModalOpen(false)} variant="secondary"><Text>{t('cancel')}</Text></Button>
+                        <Button onPress={handleAddCustomServiceFromModal}><Text>{t('add-services')}</Text></Button>
+                     </View>
+                </View>
             </Modal>
-        </div>
+        </ScrollView>
     );
 };
+
+const styles = StyleSheet.create({
+    pageContainer: {
+        flex: 1,
+    },
+    pageContent: {
+        paddingBottom: 24, // space-y-6
+    },
+    progressBarBackground: {
+        width: '100%', // w-full
+        borderRadius: 9999, // rounded-full
+        height: 10, // h-2.5
+        marginBottom: 24, // space-y-6
+    },
+    bgSlate200: { backgroundColor: '#e2e8f0' },
+    bgSlate700: { backgroundColor: '#334155' },
+
+    progressBarFill: {
+        backgroundColor: '#4f46e5', // bg-indigo-600
+        height: '100%',
+        borderRadius: 9999, // rounded-full
+        // transitionProperty: 'width', // transition
+        // transitionDuration: 300, // duration-300
+        // transitionTimingFunction: 'ease-in-out', // ease-in-out
+    },
+    
+    cardPadding: {
+        padding: 24, // p-6 md:p-8
+    },
+    cardTitle: {
+        fontSize: 18, // text-lg
+        fontWeight: 'bold',
+        marginBottom: 16, // mb-4
+        paddingBottom: 8, // pb-2
+        borderBottomWidth: 1,
+        borderBottomColor: '#e2e8f0', // border-b-slate-200
+    },
+    textLight: { color: '#f8fafc' }, // dark:text-slate-100
+    textDark: { color: '#1e293b' }, // text-slate-800
+    textSlate300: { color: '#cbd5e1' }, // dark:text-slate-300
+    textSlate700: { color: '#475569' }, // text-slate-700
+    textSlate400: { color: '#94a3b8' }, // FIX: Defined local color styles
+    textSlate500: { color: '#64748b' }, // FIX: Defined local color styles
+    textSlate600: { color: '#475569' }, // FIX: Defined local color styles
+
+    pb2: { paddingBottom: 8 }, // pb-2
+
+    formSection: {
+        gap: 16, // grid grid-cols-1 gap-4
+    },
+    inputGroup: {
+        gap: 8, // space-y-2
+    },
+    label: {
+        fontSize: 14, // text-sm
+        fontWeight: '500', // font-medium
+    },
+    input: {
+        borderWidth: 1,
+        borderRadius: 8,
+        paddingHorizontal: 16, // px-4
+        paddingVertical: 12, // py-3
+        fontSize: 16, // text-base
+        width: '100%', // block w-full
+    },
+    inputLight: {
+        borderColor: '#cbd5e1', // border-slate-300
+        backgroundColor: '#ffffff', // bg-white
+        color: '#1e293b', // text-slate-800
+    },
+    inputDark: {
+        borderColor: '#475569', // dark:border-slate-600
+        backgroundColor: '#0f172a', // dark:bg-slate-900
+        color: '#f8fafc', // dark:text-slate-200
+    },
+    mb2: { marginBottom: 8 }, // mb-2
+    radioGroup: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 16, // gap-4
+    },
+    radioOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    radioButton: {
+        height: 16, // h-4
+        width: 16, // w-4
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#cbd5e1', // border-slate-300
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 8, // mr-2
+    },
+    radioSelected: {
+        borderColor: '#4f46e5', // text-indigo-600 focus:ring-indigo-500
+    },
+    radioInner: {
+        height: 8,
+        width: 8,
+        borderRadius: 4,
+        backgroundColor: '#4f46e5', // Inner dot color
+    },
+    buttonDivider: {
+        borderTopWidth: 1,
+        borderTopColor: '#e2e8f0', // border-t-slate-200
+        marginTop: 24, // mt-6
+        paddingTop: 24, // pt-6
+        // dark:border-slate-700
+    },
+    fullWidthButton: {
+        width: '100%',
+        paddingVertical: 12, // !py-3
+    },
+    iconDark: { color: '#e2e8f0' }, // dark:text-slate-100
+    iconLight: { color: '#1e293b' }, // text-slate-800
+
+    // Step 2
+    serviceListContainer: {
+        gap: 12, // space-y-3 mb-6
+        marginBottom: 24,
+    },
+    noServicesText: {
+        textAlign: 'center',
+        paddingVertical: 16, // py-4
+    },
+    serviceItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8, // gap-2
+        padding: 8, // p-2
+        borderRadius: 6, // rounded-md
+    },
+    serviceItemLight: {
+        backgroundColor: '#f8fafc', // bg-slate-50
+    },
+    serviceItemDark: {
+        backgroundColor: 'rgba(30, 41, 59, 0.5)', // dark:bg-slate-800/50
+    },
+    serviceDetails: {
+        flexGrow: 1,
+    },
+    serviceName: {
+        fontWeight: 'bold', // font-semibold
+    },
+    servicePrice: {
+        fontSize: 14, // text-sm
+    },
+    serviceQuantityControl: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8, // gap-2
+    },
+    qtyLabel: {
+        fontSize: 14, // text-sm
+        fontWeight: '500', // font-medium
+    },
+    qtyInput: {
+        width: 60, // w-20
+        paddingHorizontal: 12, // px-3
+        paddingVertical: 8, // py-2
+        fontSize: 16, // text-base
+        borderRadius: 8, // rounded-lg
+        borderWidth: 1,
+        textAlign: 'center',
+    },
+    removeServiceButton: {
+        padding: 8, // p-2
+        borderRadius: 9999, // rounded-full
+        // hover:bg-red-100 dark:hover:bg-red-900/20
+    },
+    removeServiceIcon: {
+        color: '#ef4444', // text-red-500
+    },
+    addServiceSection: {
+        borderTopWidth: 1,
+        paddingTop: 16, // pt-4
+    },
+    borderSlate200: { borderColor: '#e2e8f0' },
+    borderSlate700: { borderColor: '#334155' },
+    addServicesHeader: {
+        fontWeight: 'bold', // font-semibold
+        marginBottom: 8, // mb-2
+    },
+    predefinedServices: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8, // gap-2 mb-4
+        marginBottom: 16,
+    },
+    predefinedServiceButton: {
+        paddingHorizontal: 12, // px-3
+        paddingVertical: 6, // py-1.5
+        borderRadius: 9999, // rounded-full
+    },
+    predefinedServiceButtonLight: {
+        backgroundColor: '#e2e8f0', // bg-slate-200
+    },
+    predefinedServiceButtonDark: {
+        backgroundColor: '#334155', // dark:bg-slate-700
+    },
+    predefinedServiceButtonText: {
+        fontSize: 14, // text-sm
+    },
+    predefinedServiceButtonTextLight: {
+        color: '#1e293b', // default
+    },
+    predefinedServiceButtonTextDark: {
+        color: '#f8fafc', // dark
+    },
+    bottomNavigation: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 16, // gap-4
+        marginTop: 24, // mt-6
+        borderTopWidth: 1,
+        paddingTop: 24, // pt-6
+        // dark:border-slate-700
+    },
+
+    // Step 3
+    financialsGrid: {
+        flexDirection: 'column', // grid grid-cols-1 md:grid-cols-2 gap-6
+        gap: 24, // gap-6
+    },
+    financialOptionCard: {
+        padding: 16, // p-4
+        borderRadius: 8, // rounded-lg
+        borderWidth: 1,
+        gap: 8, // space-y-2 for inputs
+    },
+    financialOptionCardLight: {
+        backgroundColor: '#f8fafc', // bg-slate-50
+        borderColor: '#e2e8f0', // border-slate-200
+    },
+    financialOptionCardDark: {
+        backgroundColor: 'rgba(30, 41, 59, 0.5)', // dark:bg-slate-800/50
+        borderColor: '#334155', // dark:border-slate-700
+    },
+    checkboxRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8, // mb-2
+    },
+    checkbox: {
+        height: 20,
+        width: 20,
+        borderRadius: 4,
+        borderWidth: 2,
+        borderColor: '#4f46e5', // text-indigo-600
+        marginRight: 8,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    checkboxChecked: {
+        backgroundColor: '#4f46e5',
+    },
+    checkboxCheckIcon: {
+        color: '#ffffff', // text-white
+        fontSize: 12, // Adjust size to fit checkbox
+    },
+    fontMedium: {
+        fontWeight: '500', // font-medium
+    },
+    spaceY2: {
+        gap: 8, // space-y-2
+    },
+
+    // Step 4
+    previewStepContainer: {
+        flex: 1,
+    },
+    invoiceLanguageToggleWrapper: {
+        alignItems: 'center',
+        marginBottom: 16, // mb-4
+    },
+    langToggleContainer: {
+        flexDirection: 'row',
+        padding: 4, // p-1
+        borderRadius: 8, // rounded-lg
+    },
+    langToggleButton: {
+        paddingHorizontal: 16, // px-4
+        paddingVertical: 6, // py-1.5
+        borderRadius: 6, // rounded-md
+    },
+    langToggleButtonText: {
+        fontSize: 14,
+    },
+    langToggleActiveDark: {
+        backgroundColor: '#1e293b', // dark:bg-slate-800 shadow
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 1,
+        elevation: 2,
+    },
+    langToggleActiveLight: {
+        backgroundColor: '#ffffff', // bg-white shadow
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 1,
+        elevation: 2,
+    },
+    invoicePreviewWrapper: {
+        padding: 16, // p-4 sm:p-8
+        borderRadius: 8, // rounded-lg
+        marginBottom: 24, // mb-6
+    },
+    bgSlate800: { backgroundColor: '#1e293b' },
+    step4BottomButtons: {
+        flexDirection: 'column', // flex flex-col sm:flex-row gap-4
+        gap: 16, // gap-4
+        borderTopWidth: 1,
+        paddingTop: 24, // pt-6
+        // justify-between
+    },
+    step4ActionButtons: {
+        flexDirection: 'row',
+        gap: 16, // gap-4
+        flexGrow: 1, // To make them stretch evenly
+    },
+
+    // Step 5
+    centerText: {
+        alignItems: 'center', // text-center
+        marginBottom: 24, // mb-6
+    },
+    balanceDueAmount: {
+        fontSize: 30, // text-3xl
+        fontWeight: 'bold',
+        marginTop: 8, // mt-2
+    },
+    spaceY4: {
+        gap: 16, // space-y-4
+    },
+    mb1: { marginBottom: 4 }, // mb-1
+    pickerWrapper: {
+        borderWidth: 1,
+        borderRadius: 8,
+        overflow: 'hidden',
+    },
+    pickerLight: {
+        backgroundColor: '#ffffff', // bg-white
+        color: '#1e293b', // text-slate-800
+    },
+    pickerDark: {
+        backgroundColor: '#0f172a', // dark:bg-slate-900
+        color: '#f8fafc', // dark:text-slate-200
+    },
+    qrCodeSection: {
+        padding: 16, // p-4
+        borderRadius: 8, // rounded-lg
+        alignItems: 'center',
+    },
+    qrCodeSectionLight: {
+        backgroundColor: '#f8fafc', // bg-slate-50
+        borderColor: '#e2e8f0', // border-slate-200
+        borderWidth: 1,
+    },
+    qrCodeSectionDark: {
+        backgroundColor: 'rgba(15, 23, 42, 0.5)', // dark:bg-slate-900/50
+        borderColor: '#334155', // dark:border-slate-700
+        borderWidth: 1,
+    },
+    qrCodeText: { // FIX: Added qrCodeText style
+        fontSize: 12, // text-sm
+        color: '#475569', // text-slate-600
+        marginBottom: 8, // mb-2
+    },
+    qrCodeImage: {
+        width: 192, // w-48 h-48
+        height: 192,
+        borderRadius: 8, // rounded-lg
+        resizeMode: 'contain',
+    },
+    upiIdText: {
+        marginTop: 8, // mt-2
+        fontWeight: '600', // font-semibold
+    },
+    noQrCodeWrapper: {
+        height: 192 + 16, // Match QR code image height + some margin
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    noQrCodeText: { // FIX: Added noQrCodeText style
+        color: '#64748b', // text-slate-500
+        height: 240, // Match QR code image height for centering
+        textAlignVertical: 'center',
+    },
+    collectPaymentButton: {
+        width: '100%',
+    },
+    actionsPostPayment: {
+        gap: 24, // space-y-6
+    },
+    invoicePreviewHidden: {
+        position: 'absolute', // Hide the preview off-screen
+        left: -9999,
+        width: 1,
+        height: 1,
+        overflow: 'hidden',
+    },
+    paymentRecordedMessage: {
+        fontSize: 18, // text-lg
+        fontWeight: '600', // font-semibold
+        textAlign: 'center',
+    },
+    actionButtonsPostPayment: {
+        flexDirection: 'column', // flex flex-col sm:flex-row gap-4
+        gap: 16, // gap-4
+    },
+    actionButtonPost: {
+        flex: 1, // Make buttons equal width on row (if row)
+    },
+    whatsappButton: {
+        backgroundColor: '#25d366', // bg-whatsapp-green (custom color if needed, else green-600)
+        flex: 1,
+    },
+    whatsappIcon: {
+        color: '#ffffff', // text-white
+    },
+
+    // Modal for custom service
+    modalContent: {
+        gap: 16, // space-y-4
+    },
+    modalButtons: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        gap: 12, // gap-3
+        paddingTop: 8, // pt-2
+    },
+});

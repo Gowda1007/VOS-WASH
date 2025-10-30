@@ -1,237 +1,449 @@
-
-import React, { useRef, useEffect } from 'react';
+import React from 'react';
+import { View, Text, StyleSheet, Platform } from 'react-native'; // FIX: Imported Platform
 import type { Invoice, Language } from '../types';
 import { calculateInvoiceTotal, calculateRemainingBalance } from '../hooks/useInvoices';
 import { Logo, Vari } from './Common';
 import { useLanguage } from '../hooks/useLanguage';
 
-// Removed global declarations for html2canvas, jspdf, Chart
-// They are now either imported where needed or handled by the bundling process.
-// declare global {
-//     interface Window {
-//         html2canvas: any;
-//         jspdf: any;
-//         Chart: any;
-//     }
-// }
-
-const useResponsiveScaling = (
-    contentRef: React.RefObject<HTMLDivElement>,
-    wrapperRef: React.RefObject<HTMLDivElement>,
-    baseWidth: number
-) => {
-    useEffect(() => {
-        const wrapper = wrapperRef.current;
-        const content = contentRef.current;
-        if (!wrapper || !content) return;
-
-        const observer = new ResizeObserver(entries => {
-            // Defer the execution to the next frame to avoid ResizeObserver loop errors.
-            window.requestAnimationFrame(() => {
-                if (!wrapper || !content) return;
-                for (const entry of entries) {
-                    const wrapperWidth = entry.contentRect.width;
-                    if (wrapperWidth > 0) {
-                        const scale = wrapperWidth / baseWidth;
-                        content.style.transform = `scale(${scale})`;
-                        wrapper.style.height = `${(baseWidth * 1.414) * scale}px`;
-                    }
-                }
-            });
-        });
-
-        observer.observe(wrapper);
-        return () => observer.disconnect();
-    }, [contentRef, wrapperRef, baseWidth]);
-};
-
 const formatDateForDisplay = (dateStr: string | undefined): string => {
     if (!dateStr) return '';
+    // Assuming dateStr is already in a displayable format like DD/MM/YYYY for RN as well
+    // If it comes as YYYY-MM-DD, adjust parsing here.
     if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) return `(${dateStr})`;
     if (dateStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
-         const [d, m, y] = dateStr.split('/');
-         return `(${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')})`;
+        const [d, m, y] = dateStr.split('/');
+        return `(${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')})`;
     }
     return `(${dateStr})`;
 };
 
-const FinancialEntry: React.FC<{
+interface FinancialEntryProps {
   label: string;
   amount: number;
   date?: string;
   sign: '+' | '-';
   color: 'red' | 'green' | 'blue';
-}> = ({ label, amount, date, sign, color }) => {
-  const colorClasses = {
-    red: 'text-red-600',
-    green: 'text-green-600',
-    blue: 'text-blue-600',
+}
+
+const FinancialEntry: React.FC<FinancialEntryProps> = ({ label, amount, date, sign, color }) => {
+  const colorStyles = {
+    red: styles.textRed,
+    green: styles.textGreen,
+    blue: styles.textBlue,
   };
 
   return (
-    <div className={`flex justify-between mb-2 text-lg ${colorClasses[color]}`}>
-      <span>{label} {formatDateForDisplay(date)}</span>
-      <span>{sign} ₹{amount.toFixed(2)}</span>
-    </div>
+    <View style={styles.financialEntryRow}> {/* FIX: Removed colorStyles[color] from View style */}
+      <Text style={[styles.financialEntryLabel, colorStyles[color]]}>{label} {formatDateForDisplay(date)}</Text> {/* FIX: Applied color to Text */}
+      <Text style={[styles.financialEntryAmount, colorStyles[color]]}>{sign} ₹{amount.toFixed(2)}</Text> {/* FIX: Applied color to Text */}
+    </View>
   );
 };
 
 
-export const InvoicePreview: React.FC<{ invoiceData: Invoice, language?: Language }> = ({ invoiceData, language = 'en' }) => {
+interface InvoicePreviewProps {
+  invoiceData: Invoice;
+  language?: Language;
+}
+
+export const InvoicePreview: React.FC<InvoicePreviewProps> = ({ invoiceData, language = 'en' }) => {
   const { services, customerName, customerAddress, customerPhone, invoiceNumber, invoiceDate, payments, oldBalance, advancePaid } = invoiceData;
-  const contentRef = useRef<HTMLDivElement>(null);
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const BASE_INVOICE_WIDTH = 800;
   const { invoiceT } = useLanguage();
   const t = (key: string) => invoiceT(key, language);
-
-  useResponsiveScaling(contentRef, wrapperRef, BASE_INVOICE_WIDTH);
 
   const serviceTotal = calculateInvoiceTotal(services);
   const balanceDue = calculateRemainingBalance(invoiceData);
   const subtotal = services.reduce((sum, s) => sum + (s.price * s.quantity), 0);
   const tax = subtotal * 0.18;
-  const discount = tax;
+  const discount = tax; // Assuming discount equals tax for this simplified example
 
-  const hasFinancialDetails = (oldBalance && oldBalance.amount > 0) || 
-                              (advancePaid && advancePaid.amount > 0) || 
+  const hasFinancialDetails = (oldBalance && oldBalance.amount > 0) ||
+                              (advancePaid && advancePaid.amount > 0) ||
                               (payments && payments.some(p => p.amount > 0));
 
   return (
-    <div id="invoice-preview-container" ref={wrapperRef} className="w-full relative">
-      <div 
-        id="invoice-preview-content" 
-        ref={contentRef}
-        className="absolute top-0 left-0 bg-white text-gray-800 shadow-xl font-sans flex flex-col transform-gpu"
-        style={{ width: `${BASE_INVOICE_WIDTH}px`, height: `${BASE_INVOICE_WIDTH * 1.414}px`, transformOrigin: 'top left' }}
-      >
-        <div className="p-12 m-0 flex-grow flex flex-col">
-            <div className="flex-grow">
-              <header className="text-center mb-5 border-b pb-4">
-                  <Vari className="w-56 mx-auto mb-2" />
-                  <div className="flex items-center justify-center">
-                      <Logo className="w-24" />
-                      <div className="flex flex-col">
-                          <h1 className="text-5xl font-bold text-blue-700">{t('app-name-invoice')}</h1>
-                          <p className="text-xl text-right">{t('app-tagline')}</p>
-                      </div>
-                  </div>
-              </header>
-              
-              <section className="flex justify-between items-start mb-4 text-lg">
-                <div>
-                  <h2 className="font-bold text-xl text-gray-700 mb-2">{t('bill-to')}</h2>
-                  <p>{customerName}</p>
-                  <p>{customerAddress && customerAddress !== 'N/A' ? customerAddress : ''}</p>
-                  <p>{customerPhone}</p>
-                </div>
-                <div className="text-right">
-                  <h2 className="text-xl font-bold uppercase text-gray-700">{t('invoice-header')}</h2>
-                  <p className="text-gray-500"><strong>{t('invoice-number')}</strong> {invoiceNumber}</p>
-                  <p className="text-gray-500"><strong>{t('date')}</strong> {invoiceDate}</p>
-                  <div className="pt-1 border-t border-dashed">
-                    <p className="font-semibold">{t('business-address')}</p>
-                    <p>+919845418725 / 6363178431</p>
-                  </div>
-                </div>
-              </section>
-              
-              <section className="mb-8">
-                  <table className="w-full text-left border border-blue-600 rounded-lg overflow-hidden">
-                      <thead className="bg-blue-600 text-white border-b-2 border-blue-800">
-                          <tr>
-                              <th className="p-1.5 font-semibold">{t('sl-no')}</th>
-                              <th className="p-1.5 font-semibold">{t('service')}</th>
-                              <th className="p-1.5 font-semibold text-center">{t('qty')}</th>
-                              <th className="p-1.5 font-semibold text-right">{t('price')}</th>
-                              <th className="p-1.5 font-semibold text-right">{t('total')}</th>
-                          </tr>
-                      </thead>
-                      <tbody>
-                          {services.map((s, i) => (
-                              <tr key={i} className={`border-b border-gray-200 ${i % 2 === 0 ? 'bg-white' : 'bg-blue-50'}`}>
-                                  <td className="p-1.5">{i + 1}</td>
-                                  <td className="p-1.5">{t(s.name)}</td>
-                                  <td className="p-1.5 text-center">{s.quantity}</td>
-                                  <td className="p-1.5 text-right">₹{s.price.toFixed(2)}</td>
-                                  <td className="p-1.5 text-right font-semibold text-gray-800">₹{(s.price * s.quantity).toFixed(2)}</td>
-                              </tr>
-                          ))}
-                      </tbody>
-                  </table>
-              </section>
+    <View style={styles.invoiceContainer}>
+      <View style={styles.invoiceContent}>
+        <View style={styles.flexGrow}>
+          <View style={styles.header}>
+            <Vari style={styles.variLogo} />
+            <View style={styles.appTitleContainer}>
+              <Logo style={styles.logo} />
+              <View style={styles.appTitleTextContainer}>
+                <Text style={styles.appTitle}>{t('app-name-invoice')}</Text>
+                <Text style={styles.appTagline}>{t('app-tagline')}</Text>
+              </View>
+            </View>
+          </View>
 
-              <section className="flex justify-end mt-auto text-lg">
-                  <div className="w-1/2 ">
-                      <div className="flex justify-between text-gray-700 mb-1"><p>{t('subtotal')}</p><p>₹{subtotal.toFixed(2)}</p></div>
-                      <div className="flex justify-between text-gray-700 mb-1"><p>{t('gst')}</p><p>+ ₹{tax.toFixed(2)}</p></div>
-                      <div className="flex justify-between text-gray-700 mb-1 border-b border-dashed "><p>{t('discount')}</p><p>- ₹{discount.toFixed(2)}</p></div>
-                      
-                      <div className={`flex justify-between text-lg mt-1 pt-1 font-extrabold text-blue-700`}>
-                          <p>{hasFinancialDetails ? t('service-total') : t('grand-total')}</p>
-                          <p>₹{serviceTotal.toFixed(2)}</p>
-                      </div>
-                      
-                      {hasFinancialDetails && (
-                          <div className="mt-2 pt-2 border-t border-b border-dashed border-gray-400 pb-2">
-                            {oldBalance && oldBalance.amount > 0 && 
-                                <FinancialEntry label={t('old-balance')} amount={oldBalance.amount} date={oldBalance.date} sign="+" color="red" />}
-                            {advancePaid && advancePaid.amount > 0 &&
-                                <FinancialEntry label={t('advance-paid')} amount={advancePaid.amount} date={advancePaid.date} sign="-" color="green" />}
-                            {payments.map((p, i) => 
-                                <FinancialEntry key={i} label={t('now-paid')} amount={p.amount} date={p.date} sign="-" color="blue" />)}
-                          </div>
-                      )}
-                      
-                      {hasFinancialDetails && (
-                          <div className="flex justify-between font-extrabold text-xl mt-2 pt-2 border-t-4 border-double border-blue-600">
-                              <p className="text-blue-800">{t('balance-due')}</p>
-                              <p className="text-blue-800">₹{balanceDue.toFixed(2)}</p>
-                          </div>
-                       )}
-                  </div>
-              </section>
-            </div>
-            
-            <footer className="w-full text-center text-sm text-gray-500 mt-8 pt-2 border-t">
-                <p>{t('footer-generated')}</p>
-                <p>{t('footer-thanks')}</p>
-                <p className="mt-1 text-base leading-tight tracking-tighter font-medium text-blue-700">
-                    {t('footer-services')}
-                </p>
-            </footer>
-        </div>
-      </div>
-      <style>{`
-        #invoice-preview-content {
-            box-sizing: border-box;
-        }
-        @media print {
-            body * { visibility: hidden; }
-            .print-hidden { display: none; }
-            #invoice-preview-container, #invoice-preview-container * { 
-                visibility: visible; 
-            }
-            #invoice-preview-container {
-                height: auto !important;
-            }
-            #invoice-preview-content {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100% !important;
-                height: auto !important; 
-                min-height: 100%;
-                transform: scale(1) !important;
-                padding: 1cm;
-                color: #000 !important;
-                background-color: #fff !important;
-                box-shadow: none !important;
-                border: none !important;
-                font-size: 9pt;
-            }
-        }
-      `}</style>
-    </div>
+          <View style={styles.billToSection}>
+            <View>
+              <Text style={styles.billToHeader}>{t('bill-to')}</Text>
+              <Text style={styles.billToText}>{customerName}</Text>
+              {customerAddress && customerAddress !== 'N/A' && <Text style={styles.billToText}>{customerAddress}</Text>}
+              <Text style={styles.billToText}>{customerPhone}</Text>
+            </View>
+            <View style={styles.invoiceInfo}>
+              <Text style={styles.invoiceHeaderTitle}>{t('invoice-header')}</Text>
+              <Text style={styles.invoiceInfoText}>
+                <Text style={styles.invoiceInfoStrong}>{t('invoice-number')}</Text> {invoiceNumber}
+              </Text>
+              <Text style={styles.invoiceInfoText}>
+                <Text style={styles.invoiceInfoStrong}>{t('date')}</Text> {invoiceDate}
+              </Text>
+              <View style={styles.businessAddressContainer}>
+                <Text style={styles.businessAddressText}>{t('business-address')}</Text>
+                <Text style={styles.businessAddressText}>+919845418725 / 6363178431</Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.servicesSection}>
+            <View style={styles.tableHeader}>
+              <Text style={[styles.tableHeaderText, styles.slNoCol]}>{t('sl-no')}</Text>
+              <Text style={[styles.tableHeaderText, styles.serviceCol]}>{t('service')}</Text>
+              <Text style={[styles.tableHeaderText, styles.qtyCol]}>{t('qty')}</Text>
+              <Text style={[styles.tableHeaderText, styles.priceCol]}>{t('price')}</Text>
+              <Text style={[styles.tableHeaderText, styles.totalCol]}>{t('total')}</Text>
+            </View>
+            {services.map((s, i) => (
+              <View key={i} style={[styles.tableRow, i % 2 === 0 ? styles.rowEven : styles.rowOdd]}>
+                <Text style={[styles.tableCell, styles.slNoCol]}>{i + 1}</Text>
+                <Text style={[styles.tableCell, styles.serviceCol]}>{t(s.name)}</Text>
+                <Text style={[styles.tableCell, styles.qtyCol]}>{s.quantity}</Text>
+                <Text style={[styles.tableCell, styles.priceCol]}>₹{s.price.toFixed(2)}</Text>
+                <Text style={[styles.tableCell, styles.totalCol, styles.fontSemibold]}>₹{(s.price * s.quantity).toFixed(2)}</Text>
+              </View>
+            ))}
+          </View>
+
+          <View style={styles.summarySection}>
+            <View style={styles.summaryBox}>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>{t('subtotal')}</Text>
+                <Text style={styles.summaryValue}>₹{subtotal.toFixed(2)}</Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>{t('gst')}</Text>
+                <Text style={styles.summaryValue}>+ ₹{tax.toFixed(2)}</Text>
+              </View>
+              <View style={[styles.summaryRow, styles.dashedBorderBottom]}>
+                <Text style={styles.summaryLabel}>{t('discount')}</Text>
+                <Text style={styles.summaryValue}>- ₹{discount.toFixed(2)}</Text>
+              </View>
+
+              <View style={styles.serviceTotalRow}>
+                <Text style={styles.serviceTotalLabel}>{hasFinancialDetails ? t('service-total') : t('grand-total')}</Text>
+                <Text style={styles.serviceTotalValue}>₹{serviceTotal.toFixed(2)}</Text>
+              </View>
+
+              {hasFinancialDetails && (
+                <View style={styles.financialDetailsBlock}>
+                  {oldBalance && oldBalance.amount > 0 &&
+                    <FinancialEntry label={t('old-balance')} amount={oldBalance.amount} date={oldBalance.date} sign="+" color="red" />}
+                  {advancePaid && advancePaid.amount > 0 &&
+                    <FinancialEntry label={t('advance-paid')} amount={advancePaid.amount} date={advancePaid.date} sign="-" color="green" />}
+                  {payments.map((p, i) =>
+                    <FinancialEntry key={i} label={t('now-paid')} amount={p.amount} date={p.date} sign="-" color="blue" />)}
+                </View>
+              )}
+
+              {hasFinancialDetails && (
+                <View style={styles.balanceDueRow}> {/* FIX: Changed borderStyle to 'solid' */}
+                  <Text style={styles.balanceDueLabel}>{t('balance-due')}</Text>
+                  <Text style={styles.balanceDueValue}>₹{balanceDue.toFixed(2)}</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>{t('footer-generated')}</Text>
+          <Text style={styles.footerText}>{t('footer-thanks')}</Text>
+          <Text style={styles.footerServicesText}>{t('footer-services')}</Text>
+        </View>
+      </View>
+    </View>
   );
 };
+
+const styles = StyleSheet.create({
+  invoiceContainer: {
+    width: '100%',
+    padding: 16, // Equivalent to p-4 sm:p-8
+    backgroundColor: '#f1f5f9', // bg-slate-100
+  },
+  invoiceContent: {
+    backgroundColor: '#ffffff', // bg-white
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
+    padding: 32, // Equivalent to p-12
+    flexDirection: 'column',
+    flexGrow: 1,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto', // Default font
+    color: '#334155', // text-gray-800
+  },
+  flexGrow: {
+    flexGrow: 1,
+  },
+  header: {
+    textAlign: 'center',
+    marginBottom: 20, // mb-5
+    paddingBottom: 16, // pb-4
+    borderBottomWidth: 1,
+    borderBottomColor: '#cbd5e1', // border-b
+  },
+  variLogo: {
+    width: 224, // w-56
+    height: 30, // Approximate height for text
+    alignSelf: 'center',
+    marginBottom: 8, // mb-2
+    textAlign: 'center',
+    fontWeight: 'bold',
+    fontSize: 24,
+    color: '#334155',
+  },
+  appTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logo: {
+    width: 96, // w-24
+    height: 96, // h-24
+    marginRight: 8,
+  },
+  appTitleTextContainer: {
+    flexDirection: 'column',
+  },
+  appTitle: {
+    fontSize: 40, // text-5xl
+    fontWeight: 'bold',
+    color: '#1d4ed8', // text-blue-700
+  },
+  appTagline: {
+    fontSize: 16, // text-xl
+    textAlign: 'right',
+    color: '#475569', // text-gray-600
+  },
+  billToSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16, // mb-4
+    fontSize: 16, // text-lg
+  },
+  billToHeader: {
+    fontWeight: 'bold',
+    fontSize: 18, // text-xl
+    color: '#374151', // text-gray-700
+    marginBottom: 8, // mb-2
+  },
+  billToText: {
+    color: '#475569', // text-gray-700
+    marginBottom: 2,
+  },
+  invoiceInfo: {
+    alignItems: 'flex-end',
+  },
+  invoiceHeaderTitle: {
+    fontSize: 18, // text-xl
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    color: '#374151', // text-gray-700
+  },
+  invoiceInfoText: {
+    color: '#64748b', // text-gray-500
+    marginBottom: 2,
+  },
+  invoiceInfoStrong: {
+    fontWeight: 'bold',
+  },
+  businessAddressContainer: {
+    paddingTop: 4, // pt-1
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0', // border-t border-dashed
+    borderStyle: 'dashed',
+    marginTop: 8,
+  },
+  businessAddressText: {
+    color: '#64748b',
+    fontWeight: '600',
+  },
+  servicesSection: {
+    marginBottom: 32, // mb-8
+    borderWidth: 1,
+    borderColor: '#2563eb', // border border-blue-600
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  tableHeader: {
+    flexDirection: 'row',
+    backgroundColor: '#2563eb', // bg-blue-600
+    borderBottomWidth: 2,
+    borderBottomColor: '#1e40af', // border-b-2 border-blue-800
+  },
+  tableHeaderText: {
+    color: '#ffffff', // text-white
+    padding: 6, // p-1.5
+    fontWeight: '600', // font-semibold
+  },
+  tableRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0', // border-b border-gray-200
+  },
+  rowEven: {
+    backgroundColor: '#ffffff', // bg-white
+  },
+  rowOdd: {
+    backgroundColor: '#eff6ff', // bg-blue-50
+  },
+  tableCell: {
+    padding: 6, // p-1.5
+    color: '#334155', // Default text-gray-800
+  },
+  fontSemibold: {
+    fontWeight: '600',
+  },
+  slNoCol: {
+    width: '10%',
+    textAlign: 'left',
+  },
+  serviceCol: {
+    width: '40%',
+    textAlign: 'left',
+  },
+  qtyCol: {
+    width: '15%',
+    textAlign: 'center',
+  },
+  priceCol: {
+    width: '17.5%',
+    textAlign: 'right',
+  },
+  totalCol: {
+    width: '17.5%',
+    textAlign: 'right',
+  },
+  summarySection: {
+    alignSelf: 'flex-end',
+    width: '50%', // w-1/2
+    marginTop: 'auto',
+    fontSize: 16, // text-lg
+  },
+  summaryBox: {
+    // Styling for the container of subtotal, tax, discount
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4, // mb-1
+    color: '#374151', // text-gray-700
+  },
+  summaryLabel: {
+    // Specific styles might be needed per color
+  },
+  summaryValue: {
+    // Specific styles might be needed per color
+  },
+  dashedBorderBottom: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0', // border-b border-dashed
+    borderStyle: 'dashed',
+    paddingBottom: 4,
+    marginBottom: 4,
+  },
+  serviceTotalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 4, // mt-1
+    paddingTop: 4, // pt-1
+    fontWeight: 'bold', // font-extrabold
+    fontSize: 18, // text-lg
+    color: '#1d4ed8', // text-blue-700
+  },
+  serviceTotalLabel: {
+    color: '#1d4ed8',
+  },
+  serviceTotalValue: {
+    color: '#1d4ed8',
+  },
+  financialDetailsBlock: {
+    marginTop: 8, // mt-2
+    paddingTop: 8, // pt-2
+    paddingBottom: 8, // pb-2
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderTopColor: '#9ca3af', // border-t border-b border-dashed border-gray-400
+    borderBottomColor: '#9ca3af',
+    borderStyle: 'dashed',
+  },
+  financialEntryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8, // mb-2
+    fontSize: 16, // text-lg
+  },
+  financialEntryLabel: {
+    // Specific styles might be needed per color
+  },
+  financialEntryAmount: {
+    // Specific styles might be needed per color
+  },
+  textRed: {
+    color: '#dc2626', // text-red-600
+  },
+  textGreen: {
+    color: '#16a34a', // text-green-600
+  },
+  textBlue: {
+    color: '#2563eb', // text-blue-600
+  },
+  balanceDueRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    fontWeight: 'bold', // font-extrabold
+    fontSize: 20, // text-xl
+    marginTop: 8, // mt-2
+    paddingTop: 8, // pt-2
+    borderTopWidth: 4,
+    borderTopColor: '#2563eb', // border-t-4 border-double border-blue-600
+    borderStyle: 'solid', // FIX: Changed 'double' to 'solid'
+  },
+  balanceDueLabel: {
+    color: '#1e40af', // text-blue-800
+  },
+  balanceDueValue: {
+    color: '#1e40af', // text-blue-800
+  },
+  footer: {
+    width: '100%',
+    textAlign: 'center',
+    fontSize: 12, // text-sm
+    color: '#64748b', // text-gray-500
+    marginTop: 32, // mt-8
+    paddingTop: 8, // pt-2
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0', // border-t
+  },
+  footerText: {
+    textAlign: 'center',
+    fontSize: 12,
+    color: '#64748b',
+    marginBottom: 2,
+  },
+  footerServicesText: {
+    marginTop: 4, // mt-1
+    fontSize: 14, // text-base
+    lineHeight: 18, // leading-tight
+    letterSpacing: -0.2, // tracking-tighter
+    fontWeight: '500', // font-medium
+    color: '#1d4ed8', // text-blue-700
+  },
+});

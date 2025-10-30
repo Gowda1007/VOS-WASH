@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useMemo } from 'react';
+import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Language } from '../types';
 
 interface LanguageContextType {
@@ -9,6 +10,8 @@ interface LanguageContextType {
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
+
+const LANGUAGE_STORAGE_KEY = 'vosWashLanguage';
 
 const translations: Record<string, Record<Language, string>> = {
     // App Name & Tagline
@@ -86,6 +89,8 @@ const translations: Record<string, Record<Language, string>> = {
     'due-date': { en: 'Due Date', kn: 'ಅಂತಿಮ ದಿನಾಂಕ' },
     'order-date-label': { en: 'Ordered', kn: 'ಆರ್ಡರ್ ಮಾಡಲಾಗಿದೆ' },
     'urgent-badge': { en: 'Urgent', kn: 'ತುರ್ತು' },
+    'chart-unavailable-rn': {en: 'Charts are currently unavailable in the native app.', kn: 'ಚಾರ್ಟ್‌ಗಳು ಪ್ರಸ್ತುತ ಸ್ಥಳೀಯ ಅಪ್ಲಿಕೇಶನ್‌ನಲ್ಲಿ ಲಭ್ಯವಿಲ್ಲ.'},
+
 
     // Invoice & Order Forms
     'customer-details': { en: 'Customer Details', kn: 'ಗ್ರಾಹಕರ ವಿವರಗಳು' },
@@ -124,6 +129,7 @@ const translations: Record<string, Record<Language, string>> = {
     'invoice-for': { en: 'Invoice #{invoiceNumber} for {customerName}', kn: 'ಇನ್‌ವಾಯ್ಸ್ #{invoiceNumber} ಗಾಗಿ {customerName}' },
     'balance-due-label': { en: 'Balance Due:', kn: 'ಬಾಕಿ ಉಳಿದ ಮೊತ್ತ:' },
     'whatsapp-share-message': { en: `Hello {customerName}, Thank you for your payment of ₹{amountPaid}. Your invoice #{invoiceNumber} is attached. We appreciate your business with VOS WASH!`, kn: `ನಮಸ್ಕಾರ {customerName}, ₹{amountPaid} ಪಾವತಿಸಿದ್ದಕ್ಕಾಗಿ ಧನ್ಯವಾದಗಳು. ನಿಮ್ಮ ಇನ್‌ವಾಯ್ಸ್ #{invoiceNumber} ಅನ್ನು ಲಗತ್ತಿಸಲಾಗಿದೆ. ವಿ.ಓ.ಎಸ್ ವಾಷ್ ಜೊತೆಗಿನ ನಿಮ್ಮ ವ್ಯವಹಾರವನ್ನು ನಾವು ಪ್ರಶಂಸಿಸುತ್ತೇವೆ!` },
+    'date-placeholder': {en: 'YYYY-MM-DD', kn: 'YYYY-MM-DD'},
     
     // Confirmation Modal
     'confirm-deletion-title': { en: 'Confirm Deletion', kn: 'ಅಳಿಸುವಿಕೆಯನ್ನು ಖಚಿತಪಡಿಸಿ' },
@@ -174,6 +180,8 @@ const translations: Record<string, Record<Language, string>> = {
     'paid-amount': {en: 'Paid Amount', kn: 'ಪಾವತಿಸಿದ ಮೊತ್ತ'},
     'invoice-list-report-title': {en: 'VOS WASH Invoice List Report', kn: 'ವಿ.ಓ.ಎಸ್ ವಾಷ್ ಇನ್‌ವಾಯ್ಸ್ ಪಟ್ಟಿ ವರದಿ'},
     'customer-list-report-title': {en: 'VOS WASH Customer List Report', kn: 'ವಿ.ಓ.ಎಸ್ ವಾಷ್ ಗ್ರಾಹಕರ ಪಟ್ಟಿ ವರದಿ'},
+    'start-date': {en: 'Start Date', kn: 'ಪ್ರಾರಂಭ ದಿನಾಂಕ'},
+    'end-date': {en: 'End Date', kn: 'ಅಂತ್ಯ ದಿನಾಂಕ'},
 
     // Settings
     'customize-services-and-settings': { en: 'Customize goods/services and app settings.', kn: 'ಸರಕು/ಸೇವೆಗಳು ಮತ್ತು ಅಪ್ಲಿಕೇಶನ್ ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಕಸ್ಟಮೈಸ್ ಮಾಡಿ.' },
@@ -236,16 +244,29 @@ const invoiceTranslations: Record<string, Record<Language, string>> = {
 
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [language, setLanguageState] = useState<Language>(() => {
-    if (typeof window !== 'undefined') {
-        return (localStorage.getItem('language') as Language) || 'en';
-    }
-    return 'en';
-  });
+  const [language, setLanguageState] = useState<Language>('en'); // Default to 'en'
 
-  const setLanguage = (lang: Language) => {
-    localStorage.setItem('language', lang);
-    setLanguageState(lang);
+  useEffect(() => {
+    const loadLanguage = async () => {
+      try {
+        const storedLanguage = await AsyncStorage.getItem(LANGUAGE_STORAGE_KEY);
+        if (storedLanguage) {
+          setLanguageState(storedLanguage as Language);
+        }
+      } catch (error) {
+        console.error('Failed to load language from AsyncStorage:', error);
+      }
+    };
+    loadLanguage();
+  }, []);
+
+  const setLanguage = async (lang: Language) => {
+    try {
+      await AsyncStorage.setItem(LANGUAGE_STORAGE_KEY, lang);
+      setLanguageState(lang);
+    } catch (error) {
+      console.error('Failed to save language to AsyncStorage:', error);
+    }
   };
 
   const t = (key: string, defaultText?: string): string => {
@@ -256,7 +277,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return invoiceTranslations[key]?.[lang] || translations[key]?.[lang] || key;
   };
 
-  const value = useMemo(() => ({ language, setLanguage, t, invoiceT }), [language]);
+  const value = useMemo(() => ({ language, setLanguage, t, invoiceT }), [language, setLanguage, t, invoiceT]);
 
   return (
     <LanguageContext.Provider value={value}>

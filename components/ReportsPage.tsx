@@ -1,49 +1,63 @@
-
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import type { Invoice } from '../types';
 import { Card, Button, Icon } from './Common';
 import { calculateInvoiceTotal, calculateTotalPaid } from '../hooks/useInvoices';
-import { downloadPDF } from '../services/pdfService';
-import { useToast } from '../hooks/useToast';
+import { downloadPDF } from '../services/pdfService'; // This will trigger native Alert
+import { useToast } from '../hooks/useToast'; // Still used for non-critical success messages if needed
 import { useTheme } from '../hooks/useTheme';
 import { useLanguage } from '../hooks/useLanguage';
-import Chart from 'chart.js/auto'; // Dynamically imported
-
-// No longer need declare global for window object, import directly
-// declare global { interface Window { Chart: any; } }
 
 type ReportPeriod = 'this_month' | 'last_month' | 'this_year';
 
+interface StatCardProps {
+    title: string;
+    value: string | number;
+    isDarkMode: boolean;
+}
+
+const StatCard: React.FC<StatCardProps> = ({ title, value, isDarkMode }) => (
+    <View style={[styles.statCard, isDarkMode ? styles.statCardDark : styles.statCardLight]}>
+        <Text style={[styles.statCardTitle, isDarkMode ? styles.textSlate400 : styles.textSlate500]}>{title}</Text>
+        <Text style={[styles.statCardValue, isDarkMode ? styles.textSlate100 : styles.textSlate800]}>{value}</Text>
+    </View>
+);
+
 export const ReportsPage: React.FC<{ invoices: Invoice[] }> = ({ invoices }) => {
     const [period, setPeriod] = useState<ReportPeriod>('this_month');
-    const chartRef = useRef<HTMLCanvasElement>(null);
-    const chartInstanceRef = useRef<any>(null);
     const { resolvedTheme } = useTheme();
     const { t } = useLanguage();
     const isDarkMode = resolvedTheme === 'dark';
-    const toast = useToast();
+    const toast = useToast(); // Kept for potential future use or non-PDF related toasts
 
     const filteredData = useMemo(() => {
         const now = new Date();
         let startDate: Date;
         let endDate = new Date(now);
+        endDate.setHours(23, 59, 59, 999); // Set end date to end of day
 
         switch (period) {
             case 'this_month':
                 startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                startDate.setHours(0, 0, 0, 0);
                 break;
             case 'last_month':
                 startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-                endDate = new Date(now.getFullYear(), now.getMonth(), 0);
+                startDate.setHours(0, 0, 0, 0);
+                endDate = new Date(now.getFullYear(), now.getMonth(), 0); // End of last month
+                endDate.setHours(23, 59, 59, 999);
                 break;
             case 'this_year':
                 startDate = new Date(now.getFullYear(), 0, 1);
+                startDate.setHours(0, 0, 0, 0);
                 break;
         }
 
         const filteredInvoices = invoices.filter(inv => {
+            // Assuming invoiceDate is "DD/MM/YYYY"
             const [day, month, year] = inv.invoiceDate.split('/').map(Number);
             const invDate = new Date(year, month - 1, day);
+            invDate.setHours(0, 0, 0, 0); // Normalize invoice date to start of day for comparison
             return invDate >= startDate && invDate <= endDate;
         });
 
@@ -60,123 +74,179 @@ export const ReportsPage: React.FC<{ invoices: Invoice[] }> = ({ invoices }) => 
         };
     }, [invoices, period]);
 
-    useEffect(() => {
-        if (!chartRef.current || typeof Chart === 'undefined') return; // Use Chart directly
-        const ctx = chartRef.current.getContext('2d');
-        if (!ctx) return;
-        if (chartInstanceRef.current) chartInstanceRef.current.destroy();
-
-        const data = filteredData.invoices;
-        const labels: string[] = [];
-        const revenueData: number[] = [];
-        const collectedData: number[] = [];
-        const dataMap = new Map<string, { revenue: number, collected: number }>();
-
-        if (period === 'this_year') {
-             const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-             months.forEach(m => dataMap.set(m, { revenue: 0, collected: 0 }));
-             data.forEach(inv => {
-                 const [,, year] = inv.invoiceDate.split('/').map(Number);
-                 if (year === new Date().getFullYear()) {
-                     const monthIndex = parseInt(inv.invoiceDate.split('/')[1], 10) - 1;
-                     const key = months[monthIndex];
-                     const entry = dataMap.get(key)!;
-                     entry.revenue += calculateInvoiceTotal(inv.services);
-                     entry.collected += calculateTotalPaid(inv.payments);
-                 }
-             });
-        } else {
-            const date = new Date();
-            if (period === 'last_month') date.setMonth(date.getMonth() - 1);
-            const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-            for(let i = 1; i <= daysInMonth; i++) dataMap.set(String(i), { revenue: 0, collected: 0 });
-            data.forEach(inv => {
-                const day = parseInt(inv.invoiceDate.split('/')[0], 10);
-                const key = String(day);
-                const entry = dataMap.get(key);
-                if (entry) {
-                    entry.revenue += calculateInvoiceTotal(inv.services);
-                    entry.collected += calculateTotalPaid(inv.payments);
-                }
-            });
-        }
-
-        dataMap.forEach((value, key) => {
-            labels.push(key);
-            revenueData.push(value.revenue);
-            collectedData.push(value.collected);
-        });
-        
-        const chartColors = {
-            grid: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-            ticks: isDarkMode ? '#cbd5e1' : '#64748b',
-        };
-
-        chartInstanceRef.current = new Chart(ctx, { // Use Chart directly
-            type: 'bar',
-            data: {
-                labels,
-                datasets: [
-                    { label: t('total-revenue'), data: revenueData, backgroundColor: 'rgba(79, 70, 229, 0.8)' },
-                    { label: t('collected'), data: collectedData, backgroundColor: 'rgba(5, 150, 105, 0.8)' }
-                ]
-            },
-            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, grid: { color: chartColors.grid }, ticks: { color: chartColors.ticks } }, x: { grid: { color: chartColors.grid }, ticks: { color: chartColors.ticks } } }, plugins: { legend: { labels: { color: chartColors.ticks } } } }
-        });
-        return () => chartInstanceRef.current?.destroy();
-    }, [filteredData, period, isDarkMode, t]);
-    
+    // handleDownload will now call the stubbed PDF service which shows an alert
     const handleDownload = async () => {
-        const reportElement = document.getElementById('report-content');
-        if (reportElement) {
-           const titleElement = document.createElement('h1');
-           const periodText = t(period);
-           titleElement.innerText = t('report-title').replace('{period}', periodText);
-           titleElement.className = 'text-2xl font-bold mb-4 text-black p-4 sm:p-6';
-           reportElement.prepend(titleElement);
-
-           const fakeInvoiceForFilename = { invoiceNumber: period, customerName: 'Report' };
-           await downloadPDF(fakeInvoiceForFilename as Invoice, reportElement);
-           reportElement.removeChild(titleElement);
-           toast.success(t('export-success-message'));
-        }
+        const periodText = t(period);
+        // The PDF service will internally show an Alert. No elementToPrint is needed for RN stub.
+        await downloadPDF({ invoiceNumber: period, customerName: 'Report' }, undefined); 
+        // No toast.success here, as the Alert from pdfService is sufficient.
     };
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-                <p className="text-slate-500 dark:text-slate-400">{t('analyze-revenue-and-collections')}</p>
-                <div className="flex gap-2">
+        <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+            <View style={styles.headerControls}>
+                <Text style={[styles.descriptionText, isDarkMode ? styles.textSlate400 : styles.textSlate500]}>{t('analyze-revenue-and-collections')}</Text>
+                <View style={styles.periodButtons}>
                     {(['this_month', 'last_month', 'this_year'] as ReportPeriod[]).map(p => (
-                        <button key={p} onClick={() => setPeriod(p)} className={`px-4 py-2 text-sm font-semibold rounded-lg capitalize transition ${period === p ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-700'}`}>{t(p)}</button>
+                        <TouchableOpacity 
+                            key={p} 
+                            onPress={() => setPeriod(p)} 
+                            style={[
+                                styles.periodButton, 
+                                period === p ? (isDarkMode ? styles.periodButtonActiveDark : styles.periodButtonActiveLight) : (isDarkMode ? styles.periodButtonInactiveDark : styles.periodButtonInactiveLight)
+                            ]}
+                        >
+                            <Text style={[
+                                styles.periodButtonText,
+                                period === p ? (isDarkMode ? styles.textWhite : styles.textIndigo700) : (isDarkMode ? styles.textSlate400 : styles.textSlate500)
+                            ]}>{t(p)}</Text>
+                        </TouchableOpacity>
                     ))}
-                </div>
-            </div>
+                </View>
+            </View>
             
-            <div id="report-content-wrapper">
-                 <div className="text-right mb-4">
-                    <Button onClick={handleDownload} variant="secondary"><Icon name="document-duplicate" className="w-5 h-5" /> {t('download-pdf')}</Button>
-                </div>
-                <div id="report-content" className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-lg">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                        <StatCard title={t('total-revenue')} value={`₹${filteredData.stats.totalRevenue.toLocaleString()}`} />
-                        <StatCard title={t('collected')} value={`₹${filteredData.stats.totalCollected.toLocaleString()}`} />
-                        <StatCard title={t('invoices-issued')} value={filteredData.stats.invoiceCount} />
-                    </div>
+            <View style={styles.reportContentWrapper}>
+                 <View style={styles.downloadButtonContainer}>
+                    <Button onPress={handleDownload} variant="secondary">
+                        <Icon name="document-duplicate" size={20} style={isDarkMode ? styles.iconDark : styles.iconLight} /> 
+                        <Text>{t('download-pdf')}</Text>
+                    </Button>
+                </View>
+                <Card style={[styles.reportCard, isDarkMode ? styles.reportCardDark : styles.reportCardLight]}>
+                    <View style={styles.statsGrid}>
+                        <StatCard title={t('total-revenue')} value={`₹${filteredData.stats.totalRevenue.toLocaleString()}`} isDarkMode={isDarkMode}/>
+                        <StatCard title={t('collected')} value={`₹${filteredData.stats.totalCollected.toLocaleString()}`} isDarkMode={isDarkMode}/>
+                        <StatCard title={t('invoices-issued')} value={filteredData.stats.invoiceCount} isDarkMode={isDarkMode}/>
+                    </View>
                     
-                    <h3 className="text-xl font-bold mb-4">{t('cashflow-trend')}</h3>
-                    <div className="h-96">
-                        <canvas ref={chartRef}></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
+                    <Text style={[styles.chartTitle, isDarkMode ? styles.textLight : styles.textDark]}>{t('cashflow-trend')}</Text>
+                    <View style={styles.chartPlaceholder}>
+                        <Text style={[styles.chartPlaceholderText, isDarkMode ? styles.textSlate500 : styles.textSlate500]}>{t('chart-unavailable-rn')}</Text>
+                    </View>
+                </Card>
+            </View>
+        </ScrollView>
     );
 };
 
-const StatCard = ({ title, value }: { title: string, value: string | number }) => (
-    <div className="bg-slate-100 dark:bg-slate-900/50 p-4 rounded-lg">
-        <p className="text-sm text-slate-500 dark:text-slate-400">{title}</p>
-        <p className="text-3xl font-bold text-slate-800 dark:text-slate-100">{value}</p>
-    </div>
-);
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+    },
+    contentContainer: {
+        paddingBottom: 24, // space-y-6
+    },
+    headerControls: {
+        flexDirection: 'column', // sm:flex-row
+        justifyContent: 'space-between',
+        alignItems: 'flex-start', // sm:items-center
+        gap: 16, // gap-4
+        marginBottom: 24, // space-y-6
+    },
+    descriptionText: {
+        fontSize: 14,
+    },
+    textSlate500: { color: '#64748b' },
+    textSlate400: { color: '#94a3b8' },
+
+    periodButtons: {
+        flexDirection: 'row',
+        gap: 8, // gap-2
+    },
+    periodButton: {
+        paddingHorizontal: 16, // px-4
+        paddingVertical: 8, // py-2
+        borderRadius: 8, // rounded-lg
+        // capitalize
+    },
+    periodButtonText: {
+        fontSize: 14, // text-sm
+        fontWeight: '600', // font-semibold
+    },
+    periodButtonActiveLight: {
+        backgroundColor: '#4f46e5', // bg-indigo-600
+    },
+    textWhite: { color: '#ffffff' },
+    textIndigo700: { color: '#1d4ed8' }, // for active light mode button text
+
+    periodButtonInactiveLight: {
+        backgroundColor: '#ffffff', // bg-white
+    },
+    periodButtonInactiveDark: {
+        backgroundColor: '#334155', // dark:bg-slate-700
+    },
+
+    periodButtonActiveDark: {
+        backgroundColor: '#4f46e5', // bg-indigo-600 (or similar vibrant color)
+    },
+    
+    reportContentWrapper: {
+        // Equivalent to id="report-content-wrapper"
+    },
+    downloadButtonContainer: {
+        alignItems: 'flex-end', // text-right
+        marginBottom: 16, // mb-4
+    },
+    iconDark: { color: '#e2e8f0' },
+    iconLight: { color: '#1e293b' },
+
+    reportCard: {
+        padding: 24, // p-4 sm:p-6
+    },
+    reportCardLight: {
+        backgroundColor: '#ffffff', // bg-white
+    },
+    reportCardDark: {
+        backgroundColor: '#1e293b', // dark:bg-slate-800
+    },
+
+    statsGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 24, // gap-6
+        marginBottom: 32, // mb-8
+    },
+    statCard: {
+        flex: 1,
+        minWidth: '30%', // Approx 3 columns
+        padding: 16, // p-4
+        borderRadius: 8, // rounded-lg
+        alignItems: 'center',
+    },
+    statCardLight: {
+        backgroundColor: '#f1f5f9', // bg-slate-100
+    },
+    statCardDark: {
+        backgroundColor: 'rgba(15, 23, 42, 0.5)', // dark:bg-slate-900/50
+    },
+    statCardTitle: {
+        fontSize: 14, // text-sm
+        fontWeight: '500', // font-medium
+    },
+    statCardValue: {
+        fontSize: 24, // text-3xl
+        fontWeight: 'bold',
+    },
+    textSlate100: { color: '#f1f5f9' },
+    textSlate800: { color: '#1e293b' },
+
+    chartTitle: {
+        fontSize: 20, // text-xl
+        fontWeight: 'bold',
+        marginBottom: 16, // mb-4
+    },
+    textLight: { color: '#f8fafc' },
+    textDark: { color: '#1e293b' },
+
+    chartPlaceholder: {
+        height: 384, // h-96
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.05)', // A light gray box
+        borderRadius: 8,
+    },
+    chartPlaceholderText: {
+        fontSize: 16,
+        textAlign: 'center',
+    },
+});

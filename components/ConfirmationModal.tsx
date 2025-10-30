@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Platform, Alert, Modal } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import type { Invoice, PaymentMethod, AppSettings, PendingOrder, Customer, ConfirmModalState } from '../types';
 import { calculateRemainingBalance } from '../hooks/useInvoices';
 import { useLanguage } from '../hooks/useLanguage';
@@ -34,10 +36,11 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ state, set
       setIsLoading(true);
       try {
         if (action === 'collect') {
-            await onConfirm(amount, method);
+          await onConfirm(amount, method);
         } else {
-            await onConfirm();
+          await onConfirm();
         }
+        handleClose(); // Close modal on successful confirmation
       } finally {
         setIsLoading(false);
       }
@@ -52,68 +55,216 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ state, set
   };
 
   const qrCodeUrl = generateQrCodeUrl();
-  const buttonColor = action === 'delete' || action === 'deleteOrder' || action === 'deleteCustomer' ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500' : 'bg-green-600 hover:bg-green-700 focus:ring-green-500';
+  const buttonBackgroundColor = action === 'delete' || action === 'deleteOrder' || action === 'deleteCustomer' ? styles.bgRed : styles.bgGreen;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-2xl w-full max-w-md p-6">
-        <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4 border-b border-slate-200 dark:border-slate-700 pb-2">{title}</h3>
-        <p className="text-slate-700 dark:text-slate-300 mb-4">{message}</p>
-        
-        {action === 'collect' && (
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="confirmAmountInput" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">{t('enter-amount')}</label>
-              <input 
-                type="number" 
-                id="confirmAmountInput" 
-                value={amount || ''}
-                onChange={(e) => setAmount(parseFloat(e.target.value) || 0)}
-                className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
-              />
-            </div>
-             <div>
-              <label htmlFor="paymentMethod" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">{t('payment-method')}</label>
-               <div className="relative">
-                  <select 
-                    id="paymentMethod" 
-                    value={method}
-                    onChange={(e) => setMethod(e.target.value as PaymentMethod)}
-                    className="appearance-none block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200"
-                  >
-                      <option value="cash">{t('cash')}</option>
-                      <option value="upi">{t('upi')}</option>
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-700 dark:text-slate-300">
-                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
-                  </div>
-              </div>
-            </div>
-            {action === 'collect' && method === 'upi' && (
-              <div className="mt-4 p-4 rounded-lg bg-slate-50 dark:bg-slate-900/50 border dark:border-slate-700 text-center">
-                {qrCodeUrl ? (
-                  <>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">{t('scan-to-pay', 'Scan to pay ₹{amount}').replace('{amount}', amount.toString())}</p>
-                    <img src={qrCodeUrl} alt="UPI QR Code" className="mx-auto rounded-lg w-48 h-48" />
-                    <p className="mt-2 font-semibold text-slate-800 dark:text-slate-200">{appSettings.upiId}</p>
-                  </>
-                ) : (
-                  <p className="text-slate-500">{t('enter-valid-amount-qr')}</p>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+    <Modal
+      animationType="fade"
+      transparent={true}
+      visible={isOpen}
+      onRequestClose={handleClose}
+    >
+      <View style={styles.overlay}>
+        <View style={styles.modalContent}>
+          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.message}>{message}</Text>
 
-        <div className="flex justify-end gap-3 mt-6">
-          <button onClick={handleClose} className="bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-200 px-4 py-2 rounded-md font-semibold">
-            {t('cancel')}
-          </button>
-          <button onClick={handleConfirm} disabled={isLoading || (action === 'collect' && amount <= 0)} className={`${buttonColor} text-white px-4 py-2 rounded-md font-semibold disabled:opacity-50 transition`}>
-            {isLoading ? t('processing') : (action === 'delete' || action === 'deleteOrder' || action === 'deleteCustomer' ? t('confirm-delete') : t('confirm-collection'))}
-          </button>
-        </div>
-      </div>
-    </div>
+          {action === 'collect' && (
+            <View style={styles.formSpace}>
+              <View>
+                <Text style={styles.label}>{t('enter-amount')}</Text>
+                <TextInput
+                  style={styles.input}
+                  keyboardType="numeric"
+                  value={amount === 0 ? '' : amount.toString()}
+                  onChangeText={(text) => setAmount(parseFloat(text) || 0)}
+                />
+              </View>
+              <View>
+                <Text style={styles.label}>{t('payment-method')}</Text>
+                <View style={styles.pickerContainer}>
+                  <Picker
+                    selectedValue={method}
+                    onValueChange={(itemValue) => setMethod(itemValue as PaymentMethod)}
+                    style={styles.picker}
+                    // itemStyle={styles.pickerItem} // itemStyle is not supported on Android.
+                  >
+                    <Picker.Item label={t('cash')} value="cash" />
+                    <Picker.Item label={t('upi')} value="upi" />
+                  </Picker>
+                </View>
+              </View>
+              {action === 'collect' && method === 'upi' && (
+                <View style={styles.qrCodeContainer}>
+                  {qrCodeUrl ? (
+                    <>
+                      <Text style={styles.qrCodeText}>{t('scan-to-pay', 'Scan to pay ₹{amount}').replace('{amount}', amount.toString())}</Text>
+                      <Image source={{ uri: qrCodeUrl }} style={styles.qrCodeImage} />
+                      <Text style={styles.upiIdText}>{appSettings.upiId}</Text>
+                    </>
+                  ) : (
+                    <Text style={styles.noQrCodeText}>{t('enter-valid-amount-qr')}</Text>
+                  )}
+                </View>
+              )}
+            </View>
+          )}
+
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity onPress={handleClose} style={[styles.button, styles.cancelButton]}>
+              <Text style={styles.cancelButtonText}>{t('cancel')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleConfirm}
+              disabled={isLoading || (action === 'collect' && amount <= 0)}
+              style={[styles.button, buttonBackgroundColor, (isLoading || (action === 'collect' && amount <= 0)) && styles.disabledButton]}
+            >
+              <Text style={styles.buttonText}>
+                {isLoading ? t('processing') : (action === 'delete' || action === 'deleteOrder' || action === 'deleteCustomer' ? t('confirm-delete') : t('confirm-collection'))}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 };
+
+const styles = StyleSheet.create({
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+    zIndex: 50,
+  },
+  modalContent: {
+    backgroundColor: '#ffffff', // bg-white
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+    width: '100%',
+    maxWidth: 400,
+    padding: 24, // p-6
+  },
+  title: {
+    fontSize: 20, // text-xl
+    fontWeight: 'bold',
+    color: '#1e293b', // text-slate-800
+    marginBottom: 16, // mb-4
+    paddingBottom: 8, // pb-2
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0', // border-b border-slate-200
+  },
+  message: {
+    color: '#334155', // text-slate-700
+    marginBottom: 16, // mb-4
+  },
+  formSpace: {
+    gap: 16, // space-y-4
+  },
+  label: {
+    fontSize: 12, // text-sm
+    fontWeight: '600', // font-semibold
+    color: '#334155', // text-slate-700
+    marginBottom: 4, // mb-1
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#cbd5e1', // border-slate-300
+    borderRadius: 8,
+    paddingHorizontal: 16, // px-4
+    paddingVertical: 12, // py-3
+    fontSize: 16, // text-base
+    backgroundColor: '#ffffff', // bg-white
+    color: '#1e293b', // text-slate-800
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: '#cbd5e1', // border-slate-300
+    borderRadius: 8,
+    backgroundColor: '#ffffff', // bg-white
+    overflow: 'hidden',
+  },
+  picker: {
+    height: 50, // Arbitrary height for picker
+    width: '100%',
+    color: '#1e293b', // text-slate-800
+  },
+  pickerItem: {
+    fontSize: 16, // text-base
+  },
+  qrCodeContainer: {
+    marginTop: 16, // mt-4
+    padding: 16, // p-4
+    borderRadius: 8,
+    backgroundColor: '#f8fafc', // bg-slate-50
+    borderWidth: 1,
+    borderColor: '#e2e8f0', // border-slate-200
+    alignItems: 'center',
+  },
+  qrCodeText: {
+    fontSize: 12, // text-sm
+    color: '#475569', // text-slate-600
+    marginBottom: 8, // mb-2
+  },
+  qrCodeImage: {
+    width: 192, // w-48
+    height: 192, // h-48
+    borderRadius: 8,
+    resizeMode: 'contain',
+  },
+  upiIdText: {
+    marginTop: 8, // mt-2
+    fontWeight: '600', // font-semibold
+    color: '#1e293b', // text-slate-800
+  },
+  noQrCodeText: {
+    color: '#64748b', // text-slate-500
+    height: 240, // Match QR code image height for centering
+    textAlignVertical: 'center',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12, // gap-3
+    marginTop: 24, // mt-6
+  },
+  button: {
+    paddingHorizontal: 16, // px-4
+    paddingVertical: 10, // py-2
+    borderRadius: 6, // rounded-md
+    fontWeight: '600', // font-semibold
+    // transitionDuration: 200, // FIX: Removed web-specific property
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonText: {
+    color: '#ffffff',
+    fontWeight: '600',
+  },
+  cancelButton: {
+    backgroundColor: '#e2e8f0', // bg-slate-200
+  },
+  cancelButtonText: {
+    color: '#1e293b', // text-slate-800
+    fontWeight: '600',
+  },
+  bgRed: {
+    backgroundColor: '#dc2626', // bg-red-600
+  },
+  bgGreen: {
+    backgroundColor: '#22c55e', // bg-green-600
+  },
+  disabledButton: {
+    opacity: 0.5,
+  },
+});

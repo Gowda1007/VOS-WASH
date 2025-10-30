@@ -1,18 +1,22 @@
-import React, { useState, useEffect, useRef } from 'react';
-import type { View } from '../types';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions, ScrollView, Platform, Animated, Easing } from 'react-native';
 import { Icon, Logo, Button } from './Common';
 import { useLanguage } from '../hooks/useLanguage';
+import { useTheme } from '../hooks/useTheme';
+import type { View as AppView } from '../types';
+
+const { width } = Dimensions.get('window');
 
 interface MainLayoutProps {
     children: React.ReactNode;
-    currentView: View;
+    currentView: AppView;
     pageTitle: string;
-    onNavigate: (view: View) => void;
+    onNavigate: (view: AppView) => void;
     onNewInvoice: () => void;
     onTakeOrder: () => void;
 }
 
-const navItems: { view: View; labelKey: string; icon: React.ComponentProps<typeof Icon>['name'] }[] = [
+const navItems: { view: AppView; labelKey: string; icon: React.ComponentProps<typeof Icon>['name'] }[] = [
     { view: 'dashboard', labelKey: 'dashboard', icon: 'chart-pie' },
     { view: 'invoices', labelKey: 'invoices', icon: 'document-text' },
     { view: 'customers', labelKey: 'customers', icon: 'users' },
@@ -23,147 +27,290 @@ const navItems: { view: View; labelKey: string; icon: React.ComponentProps<typeo
 
 export const MainLayout: React.FC<MainLayoutProps> = ({ children, currentView, pageTitle, onNavigate, onNewInvoice, onTakeOrder }) => {
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-    const drawerRef = useRef<HTMLDivElement>(null);
     const { t } = useLanguage();
+    const { resolvedTheme } = useTheme();
+    const drawerAnim = useRef(new Animated.Value(-width * 0.75)).current; // Start off-screen
 
     useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (drawerRef.current && !drawerRef.current.contains(event.target as Node)) {
-                setIsDrawerOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
+        Animated.timing(drawerAnim, {
+            toValue: isDrawerOpen ? 0 : -width * 0.75,
+            duration: 300,
+            easing: Easing.ease,
+            useNativeDriver: true,
+        }).start();
+    }, [isDrawerOpen]);
 
-    const handleNavItemClick = (view: View) => {
+    const handleNavItemClick = useCallback((view: AppView) => {
         onNavigate(view);
         setIsDrawerOpen(false);
-    };
-    
-    const SidebarContent = () => (
-         <div className="flex flex-col h-full bg-white dark:bg-slate-800">
-            <div className="flex items-center justify-center h-20 border-b border-slate-200 dark:border-slate-700">
-                <div className="flex items-center space-x-2">
-                    <Logo className="w-10 h-10 text-blue-700 dark:text-blue-400" />
-                    <h1 className="text-xl font-bold text-blue-700 dark:text-blue-400">{t('app-name')}</h1>
-                </div>
-            </div>
-            <nav className="flex-1 px-4 py-4 space-y-2">
-                {navItems.map(item => (
-                    <NavItem
-                        key={item.view}
-                        label={t(item.labelKey, item.labelKey)}
-                        icon={item.icon}
-                        isActive={currentView === item.view}
-                        onClick={() => handleNavItemClick(item.view)}
-                    />
-                ))}
-            </nav>
-            <div className="px-4 py-4 space-y-4">
-                <LanguageToggle />
-                <div className="space-y-2">
-                    <Button onClick={onTakeOrder} variant="secondary" className="w-full !bg-teal-500 hover:!bg-teal-600 !text-white">
-                        <Icon name="clipboard-document-list" className="w-6 h-6" />
-                        {t('take-order', 'Take Order')}
-                    </Button>
-                    <Button onClick={onNewInvoice} className="w-full">
-                        <Icon name="plus-circle" className="w-6 h-6" />
-                        {t('new-invoice', 'New Invoice')}
-                    </Button>
-                </div>
-            </div>
-        </div>
-    );
+    }, [onNavigate]);
+
+    const drawerBackgroundColor = resolvedTheme === 'dark' ? styles.drawerDark : styles.drawerLight;
+    const headerBackgroundColor = resolvedTheme === 'dark' ? styles.headerDark : styles.headerLight;
+    const headerTextColor = resolvedTheme === 'dark' ? styles.textLight : styles.textDark;
 
     return (
-        <div className="flex h-screen bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200">
-            {/* --- Desktop Sidebar --- */}
-            <aside className="hidden lg:block w-64 flex-shrink-0 border-r border-slate-200 dark:border-slate-700">
-                <SidebarContent />
-            </aside>
-            
-            {/* --- Mobile Drawer --- */}
-            <div 
-                ref={drawerRef}
-                className={`fixed top-0 left-0 h-full w-64 z-50 transform transition-transform duration-300 ease-in-out lg:hidden ${isDrawerOpen ? 'translate-x-0' : '-translate-x-full'}`}
-            >
-                <SidebarContent />
-            </div>
-            {isDrawerOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setIsDrawerOpen(false)}></div>}
+        <View style={styles.container}>
+            {/* Header */}
+            <View style={[styles.header, headerBackgroundColor]}>
+                <TouchableOpacity onPress={() => setIsDrawerOpen(true)} style={styles.menuButton}>
+                    <Icon name="bars-3" size={24} style={resolvedTheme === 'dark' ? styles.textLight : styles.textDark} />
+                </TouchableOpacity>
+                <Text style={[styles.pageTitle, headerTextColor]}>{pageTitle}</Text>
+                <View style={styles.rightHeaderPlaceholder} />
+            </View>
 
-            {/* --- Main Content Area --- */}
-            <div className="flex-1 flex flex-col overflow-hidden">
-                {/* --- Top Header for Mobile/Tablet --- */}
-                <header className="lg:hidden flex items-center justify-between h-16 px-4 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex-shrink-0">
-                    <button onClick={() => setIsDrawerOpen(true)} className="p-2 -ml-2">
-                        <Icon name="bars-3" className="w-6 h-6" />
-                    </button>
-                    <h1 className="text-lg font-semibold">{pageTitle}</h1>
-                    <div className="w-6"></div> {/* Spacer */}
-                </header>
-                
-                <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-8 pb-24 lg:pb-8 no-scrollbar">
-                    {children}
-                </main>
-            </div>
-            
-            {/* --- FAB for New Invoice on Mobile --- */}
-            <div className="lg:hidden fixed bottom-6 right-6 z-30 flex flex-col gap-4">
-                <button
-                    onClick={onTakeOrder}
-                    className="w-14 h-14 flex items-center justify-center bg-teal-500 text-white rounded-full shadow-xl hover:bg-teal-600 transition transform hover:scale-105"
-                    aria-label="Take Order"
-                >
-                    <Icon name="clipboard-document-list" className="w-7 h-7" />
-                </button>
-                <button
-                    onClick={onNewInvoice}
-                    className="w-16 h-16 flex items-center justify-center bg-indigo-600 text-white rounded-full shadow-xl hover:bg-indigo-700 transition transform hover:scale-105"
-                    aria-label="New Invoice"
-                >
-                    <Icon name="plus" className="w-8 h-8" />
-                </button>
-            </div>
-        </div>
+            {/* Main Content */}
+            <ScrollView style={styles.contentContainer} contentContainerStyle={styles.contentPadding}>
+                {children}
+            </ScrollView>
+
+            {/* Floating Action Buttons */}
+            <View style={styles.fabContainer}>
+                <TouchableOpacity onPress={onTakeOrder} style={styles.fabSecondary} activeOpacity={0.8}>
+                    <Icon name="shopping-cart" size={24} style={styles.fabIconSecondary} />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={onNewInvoice} style={styles.fabPrimary} activeOpacity={0.8}>
+                    <Icon name="plus" size={24} style={styles.fabIconPrimary} />
+                </TouchableOpacity>
+            </View>
+
+            {/* Drawer Overlay */}
+            {isDrawerOpen && (
+                <TouchableOpacity
+                    style={styles.drawerOverlay}
+                    activeOpacity={1}
+                    onPress={() => setIsDrawerOpen(false)}
+                />
+            )}
+
+            {/* Drawer */}
+            <Animated.View style={[styles.drawer, drawerBackgroundColor, { transform: [{ translateX: drawerAnim }] }]}>
+                <View style={styles.drawerHeader}>
+                    <Logo style={styles.drawerLogo} />
+                    <Text style={[styles.drawerTitle, headerTextColor]}>VOS WASH</Text>
+                    <Text style={[styles.drawerTagline, headerTextColor]}>{t('app-tagline')}</Text>
+                </View>
+                <ScrollView contentContainerStyle={styles.drawerNav}>
+                    {navItems.map(item => (
+                        <TouchableOpacity
+                            key={item.view}
+                            onPress={() => handleNavItemClick(item.view)}
+                            style={[
+                                styles.navItem,
+                                currentView === item.view ? (resolvedTheme === 'dark' ? styles.navItemActiveDark : styles.navItemActiveLight) : null
+                            ]}
+                        >
+                            <Icon
+                                name={item.icon}
+                                size={20}
+                                style={[
+                                    styles.navIcon,
+                                    currentView === item.view ? (resolvedTheme === 'dark' ? styles.navTextActiveDark : styles.navTextActiveLight) : (resolvedTheme === 'dark' ? styles.textLight : styles.textDark)
+                                ]}
+                            />
+                            <Text
+                                style={[
+                                    styles.navText,
+                                    currentView === item.view ? (resolvedTheme === 'dark' ? styles.navTextActiveDark : styles.navTextActiveLight) : (resolvedTheme === 'dark' ? styles.textLight : styles.textDark)
+                                ]}
+                            >
+                                {t(item.labelKey)}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+                <View style={[styles.drawerFooter, resolvedTheme === 'dark' ? styles.drawerFooterDark : styles.drawerFooterLight]}>
+                    <Text style={resolvedTheme === 'dark' ? styles.textSlate400 : styles.textSlate600}>
+                        VOS WASH © 2024
+                    </Text>
+                </View>
+            </Animated.View>
+        </View>
     );
 };
 
-const NavItem: React.FC<{ label: string; icon: any; isActive: boolean; onClick: () => void }> = ({ label, icon, isActive, onClick }) => (
-    <a
-        href="#"
-        onClick={(e) => { e.preventDefault(); onClick(); }}
-        className={`flex items-center gap-3 px-4 py-3 rounded-lg transition ${
-            isActive 
-            ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 font-semibold' 
-            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
-        }`}
-    >
-        <Icon name={icon} className="w-6 h-6" />
-        <span>{label}</span>
-    </a>
-);
-
-const LanguageToggle: React.FC = () => {
-    const { language, setLanguage } = useLanguage();
-    
-    const languageOptions = [
-        { name: 'English', value: 'en', label: 'En' },
-        { name: 'Kannada', value: 'kn', label: 'ಕ' },
-    ] as const;
-
-    return (
-         <div className="flex items-center justify-center p-1 bg-slate-100 dark:bg-slate-700 rounded-lg">
-            {languageOptions.map(opt => (
-                <button
-                    key={opt.value}
-                    onClick={() => setLanguage(opt.value)}
-                    className={`flex-1 flex justify-center items-center gap-2 p-2 text-sm rounded-md transition-colors ${language === opt.value ? 'bg-white dark:bg-slate-800 shadow-sm' : 'text-slate-500'}`}
-                    aria-label={`Switch to ${opt.name} language`}
-                >
-                    <span className="font-bold text-base">{opt.label}</span>
-                </button>
-            ))}
-        </div>
-    );
-};
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#f1f5f9', // bg-slate-100
+    },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#e2e8f0', // border-slate-200
+        height: Platform.OS === 'ios' ? 60 : 56, // Adjust for iOS status bar
+    },
+    headerLight: {
+        backgroundColor: '#f1f5f9', // bg-slate-100
+        borderBottomColor: '#e2e8f0',
+    },
+    headerDark: {
+        backgroundColor: '#1e293b', // bg-slate-800
+        borderBottomColor: '#334155',
+    },
+    menuButton: {
+        padding: 8,
+    },
+    pageTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        textAlign: 'center',
+        flex: 1,
+    },
+    rightHeaderPlaceholder: {
+        width: 40, // To balance the menu button on the left
+    },
+    contentContainer: {
+        flex: 1,
+    },
+    contentPadding: {
+        padding: 16,
+        paddingBottom: 100, // Space for FABs
+    },
+    fabContainer: {
+        position: 'absolute',
+        bottom: 24,
+        right: 24,
+        flexDirection: 'column',
+        alignItems: 'flex-end',
+        gap: 16, // space-y-4
+    },
+    fabPrimary: {
+        backgroundColor: '#4f46e5', // bg-indigo-600
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 5,
+        elevation: 8,
+    },
+    fabIconPrimary: {
+        color: '#ffffff', // text-white
+    },
+    fabSecondary: {
+        backgroundColor: '#10b981', // bg-emerald-500
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 3,
+        elevation: 4,
+    },
+    fabIconSecondary: {
+        color: '#ffffff', // text-white
+    },
+    drawerOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        zIndex: 10,
+    },
+    drawer: {
+        position: 'absolute',
+        left: 0,
+        top: 0,
+        bottom: 0,
+        width: width * 0.75, // w-3/4
+        paddingTop: Platform.OS === 'ios' ? 40 : 0, // Adjust for iOS status bar
+        zIndex: 20,
+    },
+    drawerLight: {
+        backgroundColor: '#ffffff', // bg-white
+    },
+    drawerDark: {
+        backgroundColor: '#1e293b', // bg-slate-800
+    },
+    drawerHeader: {
+        padding: 16,
+        paddingBottom: 24,
+        borderBottomWidth: 1,
+        borderBottomColor: '#e2e8f0', // border-slate-200
+        alignItems: 'center',
+    },
+    drawerLogo: {
+        width: 80, // w-20
+        height: 80, // h-20
+        marginBottom: 8,
+    },
+    drawerTitle: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#1d4ed8', // text-blue-700
+    },
+    drawerTagline: {
+        fontSize: 14,
+        color: '#475569', // text-slate-600
+    },
+    drawerNav: {
+        paddingVertical: 8,
+    },
+    navItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        marginHorizontal: 8,
+        borderRadius: 8,
+        marginBottom: 4,
+    },
+    navItemActiveLight: {
+        backgroundColor: '#e0e7ff', // bg-indigo-100
+    },
+    navItemActiveDark: {
+        backgroundColor: '#334155', // bg-slate-700
+    },
+    navIcon: {
+        marginRight: 12,
+    },
+    navText: {
+        fontSize: 16,
+        fontWeight: '500',
+    },
+    navTextActiveLight: {
+        color: '#4f46e5', // text-indigo-600
+    },
+    navTextActiveDark: {
+        color: '#93c5fd', // text-blue-300
+    },
+    drawerFooter: {
+        padding: 16,
+        borderTopWidth: 1,
+        marginTop: 'auto',
+    },
+    drawerFooterLight: {
+        borderTopColor: '#e2e8f0',
+        backgroundColor: '#f1f5f9', // bg-slate-100
+    },
+    drawerFooterDark: {
+        borderTopColor: '#334155',
+        backgroundColor: '#0f172a', // bg-slate-900
+    },
+    textDark: {
+        color: '#1e293b', // text-slate-900
+    },
+    textLight: {
+        color: '#f8fafc', // text-slate-50
+    },
+    textSlate400: {
+        color: '#94a3b8',
+    },
+    textSlate600: {
+        color: '#475569',
+    }
+});

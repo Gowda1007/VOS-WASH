@@ -1,33 +1,25 @@
 
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Platform } from 'react-native';
 import type { AnalyticsData, Invoice, PendingOrder } from '../types';
-import { filterAndGroupInvoicesForChart } from '../services/analyticsService';
 import { Card, Badge, Icon, Button, EmptyState } from './Common';
 import { calculateInvoiceTotal, calculateStatus } from '../hooks/useInvoices';
 import { useTheme } from '../hooks/useTheme';
 import { useLanguage } from '../hooks/useLanguage';
-import Chart from 'chart.js/auto'; // Dynamically imported
 
-// No longer need declare global for window object, import directly
-// declare global {
-//     interface Window { Chart: any; }
-// }
-
-const KpiCard: React.FC<{ title: string; value: string | number; icon: React.ComponentProps<typeof Icon>['name']; color: string }> = ({ title, value, icon, color }) => (
-    <Card className="p-4">
-        <div className="flex items-center justify-between">
-            <div>
-                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{title}</p>
-                <p className={`text-3xl font-bold ${color}`}>{value}</p>
-            </div>
-            <div className={`p-3 rounded-full bg-opacity-20 ${color.replace('text', 'bg').replace('-600', '-100')} dark:${color.replace('text', 'bg').replace('-600', '-900')} dark:bg-opacity-30`}>
-                <Icon name={icon} className={`w-6 h-6 ${color}`} />
-            </div>
-        </div>
+const KpiCard: React.FC<{ title: string; value: string | number; icon: React.ComponentProps<typeof Icon>['name']; colorStyle: any; onClick?: () => void }> = ({ title, value, icon, colorStyle, onClick }) => (
+    <Card style={styles.kpiCard}>
+        <TouchableOpacity onPress={onClick} disabled={!onClick} style={styles.kpiCardContent}>
+            <View>
+                <Text style={styles.kpiCardTitle}>{title}</Text>
+                <Text style={[styles.kpiCardValue, colorStyle]}>₹{value}</Text> {/* FIX: Corrected typo 'kkpiCardValue' to 'kpiCardValue' */}
+            </View>
+            <View style={[styles.kpiCardIconContainer, colorStyle, { opacity: 0.2 }]}>
+                <Icon name={icon} size={24} style={colorStyle} />
+            </View>
+        </TouchableOpacity>
     </Card>
 );
-
-type ChartPeriod = 'day' | 'week' | 'month';
 
 interface DashboardPageProps {
     analytics: AnalyticsData;
@@ -35,20 +27,13 @@ interface DashboardPageProps {
     pendingOrders: PendingOrder[];
     onPreviewInvoice: (invoice: Invoice) => void;
     onGenerateInvoice: (order: PendingOrder) => void;
-    onDeleteOrder: (orderId: number) => void;
+    onDeleteOrder: (order: PendingOrder) => void; // FIX: Changed type to PendingOrder
     onNavigateToUnpaid: () => void;
 }
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({ analytics, recentInvoices, pendingOrders, onPreviewInvoice, onGenerateInvoice, onDeleteOrder, onNavigateToUnpaid }) => {
-    const barChartRef = useRef<HTMLCanvasElement>(null);
-    const barChartInstanceRef = useRef<any>(null);
-    const pieChartRef = useRef<HTMLCanvasElement>(null);
-    const pieChartInstanceRef = useRef<any>(null);
-    const [chartPeriod, setChartPeriod] = useState<ChartPeriod>('month');
     
-    const { resolvedTheme } = useTheme();
     const { t } = useLanguage();
-    const isDarkMode = resolvedTheme === 'dark';
 
     const sortedPendingOrders = useMemo(() => {
         const now = new Date();
@@ -89,191 +74,110 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ analytics, recentI
         });
     }, [pendingOrders]);
     
-    useEffect(() => {
-        if (!barChartRef.current || typeof Chart === 'undefined') return; // Use Chart directly
-        const ctx = barChartRef.current.getContext('2d');
-        if (!ctx) return;
-        if (barChartInstanceRef.current) barChartInstanceRef.current.destroy();
-
-        const data = filterAndGroupInvoicesForChart(chartPeriod, recentInvoices);
-        const chartColors = {
-            grid: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-            ticks: isDarkMode ? '#cbd5e1' : '#64748b',
-        };
-
-        barChartInstanceRef.current = new Chart(ctx, { // Use Chart directly
-            type: 'bar',
-            data: {
-                labels: data.labels,
-                datasets: [{
-                    label: t('total-revenue'),
-                    data: data.datasets[0].data,
-                    backgroundColor: 'rgba(79, 70, 229, 0.8)',
-                    borderColor: 'rgb(79, 70, 229)',
-                    borderWidth: 1,
-                    borderRadius: 4,
-                }]
-            },
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false, 
-                plugins: { legend: { display: false, labels: { color: chartColors.ticks } } }, 
-                scales: { 
-                    y: { 
-                        beginAtZero: true,
-                        grid: { color: chartColors.grid },
-                        ticks: { color: chartColors.ticks }
-                    },
-                    x: {
-                        grid: { color: chartColors.grid },
-                        ticks: { color: chartColors.ticks }
-                    }
-                } 
-            }
-        });
-        return () => barChartInstanceRef.current?.destroy();
-    }, [chartPeriod, recentInvoices, isDarkMode, t]);
-
-     useEffect(() => {
-        if (!pieChartRef.current || typeof Chart === 'undefined') return; // Use Chart directly
-        const ctx = pieChartRef.current.getContext('2d');
-        if (!ctx) return;
-        if (pieChartInstanceRef.current) pieChartInstanceRef.current.destroy();
-
-        const data = analytics.revenueByCustomerType;
-        const chartColors = {
-            ticks: isDarkMode ? '#cbd5e1' : '#64748b',
-            border: isDarkMode ? '#1e293b' : '#fff'
-        };
-
-        pieChartInstanceRef.current = new Chart(ctx, { // Use Chart directly
-            type: 'doughnut',
-            data: {
-                labels: [t('customer'), t('garage_service_station'), t('dealer')],
-                datasets: [{
-                    data: [data.customer, data.garage_service_station, data.dealer],
-                    backgroundColor: ['#6366f1', '#38bdf8', '#fbbf24'],
-                    borderColor: chartColors.border,
-                    borderWidth: 2,
-                }]
-            },
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false, 
-                plugins: { 
-                    legend: { 
-                        position: 'bottom',
-                        labels: { color: chartColors.ticks }
-                    } 
-                } 
-            }
-        });
-        return () => pieChartInstanceRef.current?.destroy();
-    }, [analytics.revenueByCustomerType, isDarkMode, t]);
-
     return (
-        <div className="space-y-8">
-            <p className="text-slate-500 dark:text-slate-400">{t('welcome-back')}</p>
+        <View style={styles.container}>
+            <Text style={styles.welcomeText}>{t('welcome-back')}</Text>
             
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-                <KpiCard title={t('total-revenue')} value={`₹${analytics.totalRevenue.toLocaleString('en-IN')}`} icon="chart-pie" color="text-green-600 dark:text-green-400" />
-                <KpiCard title={t('collected')} value={`₹${analytics.totalPayments.toLocaleString('en-IN')}`} icon="banknotes" color="text-blue-600 dark:text-blue-400" />
-                <div onClick={onNavigateToUnpaid} className="cursor-pointer">
-                    <KpiCard title={t('unpaid-balance')} value={`₹${analytics.unpaidBalance.toLocaleString('en-IN')}`} icon="document-text" color="text-red-600 dark:text-red-400" />
-                </div>
-                <KpiCard title={t('total-invoices')} value={analytics.totalInvoices} icon="document-duplicate" color="text-slate-600 dark:text-slate-400" />
-            </div>
+            <View style={styles.kpiGrid}>
+                <KpiCard title={t('total-revenue')} value={analytics.totalRevenue.toLocaleString('en-IN')} icon="chart-pie" colorStyle={styles.textGreen600} />
+                <KpiCard title={t('collected')} value={analytics.totalPayments.toLocaleString('en-IN')} icon="banknotes" colorStyle={styles.textBlue600} />
+                <KpiCard title={t('unpaid-balance')} value={analytics.unpaidBalance.toLocaleString('en-IN')} icon="document-text" colorStyle={styles.textRed600} onClick={onNavigateToUnpaid} />
+                <KpiCard title={t('total-invoices')} value={analytics.totalInvoices} icon="document-duplicate" colorStyle={styles.textSlate600} />
+            </View>
 
             {pendingOrders.length > 0 && (
-                <Card>
-                    <div className="p-6 border-b dark:border-slate-700">
-                        <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">{t('pending-orders')}</h3>
-                    </div>
-                    <ul className="divide-y divide-slate-200 dark:divide-slate-700">
-                        {sortedPendingOrders.map(order => {
+                <Card style={styles.cardMargin}>
+                    <View style={styles.cardHeader}>
+                        <Text style={styles.cardTitle}>{t('pending-orders')}</Text>
+                    </View>
+                    <FlatList
+                        data={sortedPendingOrders}
+                        keyExtractor={item => item.id.toString()}
+                        renderItem={({ item: order }) => {
                             const today = new Date();
-                            today.setHours(0,0,0,0);
+                            today.setHours(0, 0, 0, 0);
                             const isOverdue = order.dueDate ? new Date(order.dueDate) < today : false;
                             const dueDateObj = order.dueDate ? new Date(order.dueDate) : null;
                             const formattedDueDate = dueDateObj ? dueDateObj.toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A';
 
-                             return (
-                                <li key={order.id} className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                                    <div className="flex-grow">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <p className="font-semibold text-indigo-600 dark:text-indigo-400">{order.customerName}</p>
+                            return (
+                                <View style={styles.orderListItem}>
+                                    <View style={styles.orderInfo}>
+                                        <View style={styles.orderNameRow}>
+                                            <Text style={styles.orderCustomerName}>{order.customerName}</Text>
                                             {order.isUrgent && <Badge color="red">{t('urgent-badge', 'Urgent')}</Badge>}
-                                        </div>
-                                        <p className="text-sm text-slate-500 dark:text-slate-400">{order.customerPhone}</p>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('order-date-label')}: {order.orderDate}</p>
+                                        </View>
+                                        <Text style={styles.orderPhone}>{order.customerPhone}</Text>
+                                        <Text style={styles.orderDate}>{t('order-date-label')}: {order.orderDate}</Text>
                                         {order.dueDate && 
-                                            <p className={`text-sm mt-1 font-semibold text-red-600 ${isOverdue ? 'font-bold' : ''}`}>
+                                            <Text style={[styles.orderDueDate, isOverdue ? styles.orderDueDateOverdue : {}]}>
                                                 {t('due-date')}: {formattedDueDate}
-                                            </p>
+                                            </Text>
                                         }
-                                    </div>
-                                    <div className="flex items-center gap-2 self-end sm:self-auto w-full sm:w-auto">
-                                        <div className='text-right flex-grow sm:flex-grow-0'>
-                                            <p className="text-xs">{t('advance-paid')}</p>
-                                            <p className="font-semibold">₹{order.advancePaid.amount.toLocaleString('en-IN')}</p>
-                                        </div>
-                                        <Button onClick={() => onGenerateInvoice(order)} variant="primary" className="!py-2 !px-3 text-sm">
+                                    </View>
+                                    <View style={styles.orderActions}>
+                                        <View style={styles.orderAdvance}>
+                                            <Text style={styles.orderAdvanceLabel}>{t('advance-paid')}</Text>
+                                            <Text style={styles.orderAdvanceAmount}>₹{order.advancePaid.amount.toLocaleString('en-IN')}</Text>
+                                        </View>
+                                        <Button onPress={() => onGenerateInvoice(order)} variant="primary" style={styles.generateInvoiceButton}>
                                             {t('generate-invoice')}
                                         </Button>
-                                        <button onClick={() => onDeleteOrder(order.id)} className="p-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors" title={t('delete')}>
-                                            <Icon name="trash" className="w-5 h-5"/>
-                                        </button>
-                                    </div>
-                                </li>
+                                        <TouchableOpacity onPress={() => onDeleteOrder(order)} style={styles.deleteButton} accessibilityLabel={t('delete')}> {/* FIX: Passed entire order object */}
+                                            <Icon name="trash" size={20} style={styles.deleteIcon}/>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
                             );
-                        })}
-                    </ul>
+                        }}
+                        ItemSeparatorComponent={() => <View style={styles.separator} />}
+                    />
                 </Card>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <Card className="lg:col-span-2 p-4 md:p-6">
-                    <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">{t('revenue-trend')}</h3>
-                     <div className="flex space-x-2 mb-4">
-                        {(['day', 'week', 'month'] as ChartPeriod[]).map(p => (
-                             <button key={p} onClick={() => setChartPeriod(p)} className={`px-3 py-1 text-sm font-semibold rounded-full transition capitalize ${chartPeriod === p ? 'bg-indigo-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200'}`}>{t(p)}</button>
-                        ))}
-                    </div>
-                    <div className="h-80"><canvas ref={barChartRef}></canvas></div>
+            <View style={styles.chartSection}>
+                <Card style={styles.chartCard}>
+                    <Text style={styles.cardTitle}>{t('revenue-trend')}</Text>
+                    <Text style={styles.chartPlaceholderText}>{t('chart-unavailable-rn')}</Text>
                 </Card>
 
-                <div className="flex flex-col gap-6">
-                    <Card className="p-6 flex-1">
-                        <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">{t('revenue-by-type')}</h3>
-                        <div className="h-60"><canvas ref={pieChartRef}></canvas></div>
+                <View style={styles.chartColumn}>
+                    <Card style={styles.chartCardColumn}>
+                        <Text style={styles.cardTitle}>{t('revenue-by-type')}</Text>
+                        <Text style={styles.chartPlaceholderText}>{t('chart-unavailable-rn')}</Text>
                     </Card>
-                    <Card className="p-6 flex-1">
-                        <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">{t('top-services')}</h3>
-                        <div className="space-y-3">
+                    <Card style={styles.chartCardColumn}>
+                        <Text style={styles.cardTitle}>{t('top-services')}</Text>
+                        <View style={styles.topServicesList}>
                             {analytics.topServices.length > 0 ? analytics.topServices.map(([name, count]) => (
-                                <div key={name} className="flex justify-between items-center text-sm">
-                                    <p className="font-medium text-slate-700 dark:text-slate-300">{t(name)}</p>
-                                    <span className="font-bold text-slate-800 dark:text-slate-100">{count}</span>
-                                </div>
-                            )) : <p className="text-slate-500 dark:text-slate-400 text-center text-sm">{t('no-service-data')}</p>}
-                        </div>
+                                <View key={name} style={styles.topServiceItem}>
+                                    <Text style={styles.topServiceText}>{t(name)}</Text>
+                                    <Text style={styles.topServiceCount}>{count}</Text>
+                                </View>
+                            )) : <Text style={styles.noServiceData}>{t('no-service-data')}</Text>}
+                        </View>
                     </Card>
-                </div>
-            </div>
-             <Card>
-                <div className="p-6">
-                    <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">{t('recent-invoices')}</h3>
-                </div>
-                 <ul className="divide-y divide-slate-200 dark:divide-slate-700">
-                     {recentInvoices.length > 0 ? recentInvoices.map(inv => <InvoiceListItem key={inv.id} invoice={inv} onPreview={onPreviewInvoice} />)
-                     : (
-                        <div className='p-4'>
-                            <EmptyState icon="document-text" title={t('no-invoices-found')} message={t('no-invoices-found-message', "Your latest invoices will appear here once created.")} />
-                        </div>
-                     )}
-                </ul>
+                </View>
+            </View>
+             <Card style={styles.cardMargin}>
+                <View style={styles.cardHeader}>
+                    <Text style={styles.cardTitle}>{t('recent-invoices')}</Text>
+                </View>
+                 {recentInvoices.length > 0 ? (
+                    <FlatList
+                        data={recentInvoices}
+                        keyExtractor={item => item.id.toString()}
+                        renderItem={({ item: inv }) => <InvoiceListItem invoice={inv} onPreview={onPreviewInvoice} />}
+                        ItemSeparatorComponent={() => <View style={styles.separator} />}
+                    />
+                 )
+                 : (
+                    <View style={styles.emptyStatePadding}>
+                        <EmptyState icon="document-text" title={t('no-invoices-found')} message={t('no-invoices-found-message', "Your latest invoices will appear here once created.")} />
+                    </View>
+                 )}
             </Card>
-        </div>
+        </View>
     );
 };
 
@@ -284,19 +188,240 @@ const InvoiceListItem: React.FC<{ invoice: Invoice; onPreview: (invoice: Invoice
     const { t } = useLanguage();
     
     return (
-        <li>
-            <button onClick={() => onPreview(invoice)} className="w-full text-left px-6 py-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                <div>
-                    <p className="font-semibold text-indigo-600 dark:text-indigo-400">{invoice.customerName}</p>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">#{invoice.invoiceNumber} &bull; {invoice.invoiceDate}</p>
-                </div>
-                <div className="text-right">
-                     <p className="font-bold text-slate-800 dark:text-slate-100">₹{totalAmount.toLocaleString('en-IN')}</p>
-                    {status === 'paid' && <Badge color="green">{t('paid')}</Badge>}
-                    {status === 'partially_paid' && <Badge color="amber">{t('partially_paid')}</Badge>}
-                    {status === 'unpaid' && <Badge color="red">{t('unpaid')}</Badge>}
-                </div>
-            </button>
-        </li>
+        <TouchableOpacity onPress={() => onPreview(invoice)} style={styles.invoiceListItem}>
+            <View>
+                <Text style={styles.invoiceListItemCustomerName}>{invoice.customerName}</Text>
+                <Text style={styles.invoiceListItemDetails}>#{invoice.invoiceNumber} • {invoice.invoiceDate}</Text>
+            </View>
+            <View style={styles.invoiceListItemRight}>
+                <Text style={styles.invoiceListItemAmount}>₹{totalAmount.toLocaleString('en-IN')}</Text>
+                {status === 'paid' && <Badge color="green">{t('paid')}</Badge>}
+                {status === 'partially_paid' && <Badge color="amber">{t('partially_paid')}</Badge>}
+                {status === 'unpaid' && <Badge color="red">{t('unpaid')}</Badge>}
+            </View>
+        </TouchableOpacity>
     );
 }
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        paddingBottom: 24, // Matches web spacing
+    },
+    welcomeText: {
+        fontSize: 14, // text-slate-500
+        color: '#64748b',
+        marginBottom: 24, // space-y-8 at top
+    },
+    kpiGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        gap: 16, // gap-4 md:gap-6
+        marginBottom: 32, // space-y-8
+    },
+    kpiCard: {
+        width: '48%', // Approx 2 cols
+        padding: 16,
+        // Card styling handled by Common.tsx
+    },
+    kpiCardContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    kpiCardTitle: {
+        fontSize: 14, // text-sm
+        fontWeight: '500', // font-medium
+        color: '#64748b', // text-slate-500
+    },
+    kpiCardValue: {
+        fontSize: 30, // text-3xl
+        fontWeight: 'bold',
+    },
+    kpiCardIconContainer: {
+        padding: 12, // p-3
+        borderRadius: 9999, // rounded-full
+    },
+    textGreen600: {
+        color: '#16a34a', // text-green-600
+    },
+    textBlue600: {
+        color: '#2563eb', // text-blue-600
+    },
+    textRed600: {
+        color: '#dc2626', // text-red-600
+    },
+    textSlate600: {
+        color: '#475569', // text-slate-600
+    },
+    cardMargin: {
+        marginBottom: 32,
+    },
+    cardHeader: {
+        padding: 24, // p-6
+        borderBottomWidth: 1,
+        borderBottomColor: '#e2e8f0', // border-b-slate-200
+    },
+    cardTitle: {
+        fontSize: 20, // text-xl
+        fontWeight: 'bold',
+        color: '#1e293b', // text-slate-800
+    },
+    separator: {
+        height: 1,
+        backgroundColor: '#e2e8f0', // divide-slate-200
+    },
+    orderListItem: {
+        flexDirection: 'column', // sm:flex-row
+        alignItems: 'flex-start', // sm:items-start
+        padding: 16, // p-4
+        gap: 16, // sm:gap-4
+        justifyContent: 'space-between',
+    },
+    orderInfo: {
+        flexGrow: 1,
+    },
+    orderNameRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8, // gap-2
+        marginBottom: 4, // mb-1
+    },
+    orderCustomerName: {
+        fontSize: 16,
+        fontWeight: '600', // font-semibold
+        color: '#4f46e5', // text-indigo-600
+    },
+    orderPhone: {
+        fontSize: 14, // text-sm
+        color: '#64748b', // text-slate-500
+    },
+    orderDate: {
+        fontSize: 12, // text-xs
+        color: '#64748b', // text-slate-500
+        marginTop: 4, // mt-1
+    },
+    orderDueDate: {
+        fontSize: 14, // text-sm
+        marginTop: 4, // mt-1
+        fontWeight: '600', // font-semibold
+        color: '#dc2626', // text-red-600
+    },
+    orderDueDateOverdue: {
+        fontWeight: 'bold',
+    },
+    orderActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8, // gap-2
+        alignSelf: 'flex-end', // sm:self-auto
+        width: '100%', // w-full sm:w-auto
+        marginTop: 16, // Added for mobile spacing
+    },
+    orderAdvance: {
+        textAlign: 'right',
+        flexGrow: 1, // flex-grow for mobile
+        marginRight: 8,
+    },
+    orderAdvanceLabel: {
+        fontSize: 12, // text-xs
+    },
+    orderAdvanceAmount: {
+        fontWeight: '600', // font-semibold
+    },
+    generateInvoiceButton: {
+        paddingVertical: 8, // !py-2
+        paddingHorizontal: 12, // !px-3
+        fontSize: 14, // text-sm
+    },
+    deleteButton: {
+        padding: 8, // p-2
+        borderRadius: 6, // rounded-lg
+        backgroundColor: '#ef4444', // bg-red-500
+        // hover:bg-red-600
+    },
+    deleteIcon: {
+        color: '#ffffff', // text-white
+    },
+    chartSection: {
+        flexDirection: Platform.OS === 'web' ? 'row' : 'column', // lg:grid grid-cols-1 lg:grid-cols-3
+        gap: 24, // gap-6
+        marginBottom: 32,
+    },
+    chartCard: {
+        flex: 2, // lg:col-span-2
+        padding: 24, // p-4 md:p-6
+        minHeight: 300,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    chartColumn: {
+        flex: 1,
+        flexDirection: 'column',
+        gap: 24,
+    },
+    chartCardColumn: {
+        flex: 1,
+        padding: 24,
+        minHeight: 200,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    chartPlaceholderText: {
+        fontSize: 16,
+        color: '#64748b', // text-slate-500
+        textAlign: 'center',
+        marginTop: 10,
+    },
+    topServicesList: {
+        gap: 12, // space-y-3
+    },
+    topServiceItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        fontSize: 14, // text-sm
+    },
+    topServiceText: {
+        fontWeight: '500', // font-medium
+        color: '#475569', // text-slate-700
+    },
+    topServiceCount: {
+        fontWeight: 'bold',
+        color: '#1e293b', // text-slate-800
+    },
+    noServiceData: {
+        fontSize: 14, // text-sm
+        color: '#64748b', // text-slate-500
+        textAlign: 'center',
+    },
+    invoiceListItem: {
+        width: '100%', // w-full
+        paddingHorizontal: 24, // px-6
+        paddingVertical: 16, // py-4
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        // hover:bg-slate-50 handled by TouchableOpacity activeOpacity
+    },
+    invoiceListItemCustomerName: {
+        fontSize: 16,
+        fontWeight: '600', // font-semibold
+        color: '#4f46e5', // text-indigo-600
+    },
+    invoiceListItemDetails: {
+        fontSize: 14, // text-sm
+        color: '#64748b', // text-slate-500
+    },
+    invoiceListItemRight: {
+        alignItems: 'flex-end',
+    },
+    invoiceListItemAmount: {
+        fontWeight: 'bold',
+        color: '#1e293b', // text-slate-800
+    },
+    emptyStatePadding: {
+        padding: 16, // p-4
+    }
+});

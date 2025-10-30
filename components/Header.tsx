@@ -1,0 +1,1 @@
+// This file is no longer needed as the header logic is integrated directly into MainLayout for React Native.

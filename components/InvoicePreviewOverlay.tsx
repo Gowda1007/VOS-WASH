@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Platform, ScrollView, Dimensions } from 'react-native';
 import type { Invoice, Language } from '../types';
 import { InvoicePreview } from './InvoicePreview';
 import { Button, Icon } from './Common';
 import { useToast } from '../hooks/useToast';
-import { downloadPDF } from '../services/pdfService';
+import { downloadPDF } from '../services/pdfService'; // This will trigger native Alert
 import { calculateRemainingBalance } from '../hooks/useInvoices';
 import { useLanguage } from '../hooks/useLanguage';
+import { useTheme } from '../hooks/useTheme';
+
+const { width, height } = Dimensions.get('window');
 
 interface InvoicePreviewOverlayProps {
   invoice: Invoice;
@@ -13,61 +17,200 @@ interface InvoicePreviewOverlayProps {
   onCollect: (invoiceId: number) => void;
 }
 
-const InvoiceLanguageToggle: React.FC<{ value: Language, onChange: (lang: Language) => void }> = ({ value, onChange }) => (
-    <div className="flex items-center justify-center p-1 bg-slate-200 dark:bg-slate-700 rounded-lg">
-        <button onClick={() => onChange('en')} className={`px-4 py-1.5 text-sm rounded-md ${value === 'en' ? 'bg-white dark:bg-slate-800 shadow' : ''}`}>English</button>
-        <button onClick={() => onChange('kn')} className={`px-4 py-1.5 text-sm rounded-md ${value === 'kn' ? 'bg-white dark:bg-slate-800 shadow' : ''}`}>ಕನ್ನಡ</button>
-    </div>
-);
+interface InvoiceLanguageToggleProps {
+  value: Language;
+  onChange: (lang: Language) => void;
+  isDarkMode: boolean;
+}
+
+const InvoiceLanguageToggle: React.FC<InvoiceLanguageToggleProps> = ({ value, onChange, isDarkMode }) => {
+    const { t } = useLanguage();
+    return (
+        <View style={[styles.langToggleContainer, isDarkMode ? styles.bgSlate700 : styles.bgSlate200]}>
+            <TouchableOpacity onPress={() => onChange('en')} style={[styles.langToggleButton, value === 'en' && (isDarkMode ? styles.langToggleActiveDark : styles.langToggleActiveLight)]}>
+                <Text style={styles.langToggleButtonText}>{t('english')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => onChange('kn')} style={[styles.langToggleButton, value === 'kn' && (isDarkMode ? styles.langToggleActiveDark : styles.langToggleActiveLight)]}>
+                <Text style={styles.langToggleButtonText}>{t('kannada')}</Text>
+            </TouchableOpacity>
+        </View>
+    );
+};
 
 export const InvoicePreviewOverlay: React.FC<InvoicePreviewOverlayProps> = ({ invoice, onClose, onCollect }) => {
     const toast = useToast();
     const { t } = useLanguage();
+    const { resolvedTheme } = useTheme();
+    const isDarkMode = resolvedTheme === 'dark';
     const balanceDue = calculateRemainingBalance(invoice);
     const [invoiceLanguage, setInvoiceLanguage] = useState<Language>(invoice.language || 'en');
 
     const handleDownload = async () => {
-        const elementToPrint = document.getElementById('invoice-preview-content');
-        if (elementToPrint) {
-            await downloadPDF(invoice, elementToPrint);
-            toast.success('Invoice saved to your Downloads folder.');
-        } else {
-            toast.error('Could not find invoice content to download.');
-        }
+        // pdfService.ts already has an Alert stub for downloadPDF
+        await downloadPDF(invoice); 
     };
 
     return (
-        <div className="fixed inset-0 bg-black/60 z-40 flex justify-center items-start p-4 overflow-y-auto" onClick={onClose}>
-            <div 
-                className="relative w-full max-w-4xl bg-slate-100 dark:bg-slate-900 rounded-lg shadow-xl my-8"
-                onClick={e => e.stopPropagation()}
+        <View style={styles.overlay} >
+            <TouchableOpacity 
+                style={styles.overlayTouchable} 
+                activeOpacity={1} 
+                onPress={onClose} 
             >
-                <div className="absolute top-2 left-2 right-2 z-10 flex justify-between print-hidden">
-                    <InvoiceLanguageToggle value={invoiceLanguage} onChange={setInvoiceLanguage} />
-                    <button 
-                        onClick={onClose} 
-                        className="p-2 rounded-full bg-slate-200/50 dark:bg-slate-700/50 hover:bg-slate-300 dark:hover:bg-slate-600"
-                        aria-label="Close preview"
-                    >
-                        <Icon name="x-mark" className="w-6 h-6"/>
-                    </button>
-                </div>
-                
-                <div className="p-4 sm:p-8 pt-16 sm:pt-16 bg-slate-200 dark:bg-slate-800">
-                    <InvoicePreview invoiceData={invoice} language={invoiceLanguage} />
-                </div>
-                 <div className="flex flex-col sm:flex-row justify-center items-center gap-4 p-4 border-t border-slate-200 dark:border-slate-700 print-hidden">
-                    <Button onClick={handleDownload}>
-                         <Icon name="document-duplicate" className="w-5 h-5"/>
-                        {t('download-pdf')}
-                    </Button>
-                    {balanceDue > 0 && (
-                        <Button onClick={() => onCollect(invoice.id)} className="bg-green-600 hover:bg-green-700 focus:ring-green-500">
-                            <Icon name="banknotes" className="w-5 h-5"/> {t('collect-payment')}
+                <View 
+                    style={[styles.modalContent, isDarkMode ? styles.bgSlate900 : styles.bgSlate100]}
+                    onTouchStart={e => e.stopPropagation()} // Prevent closing when interacting with modal content
+                >
+                    <View style={styles.headerControls}>
+                        <InvoiceLanguageToggle value={invoiceLanguage} onChange={setInvoiceLanguage} isDarkMode={isDarkMode}/>
+                        <TouchableOpacity 
+                            onPress={onClose} 
+                            style={[styles.closeButton, isDarkMode ? styles.closeButtonDark : styles.closeButtonLight]}
+                            accessibilityLabel="Close preview"
+                        >
+                            <Icon name="x-mark" size={24} style={isDarkMode ? styles.iconDark : styles.iconLight}/>
+                        </TouchableOpacity>
+                    </View>
+                    
+                    <ScrollView style={[styles.invoicePreviewArea, isDarkMode ? styles.bgSlate800 : styles.bgSlate200]}>
+                        <InvoicePreview invoiceData={invoice} language={invoiceLanguage} />
+                    </ScrollView>
+
+                     <View style={[styles.footerActions, isDarkMode ? styles.borderSlate700 : styles.borderSlate200]}>
+                        <Button onPress={handleDownload} style={styles.fullWidthButton}>
+                             <Icon name="document-duplicate" size={20} style={isDarkMode ? styles.iconDark : styles.iconLight}/>
+                            <Text>{t('download-pdf')}</Text>
                         </Button>
-                    )}
-                </div>
-            </div>
-        </div>
+                        {balanceDue > 0 && (
+                            <Button onPress={() => onCollect(invoice.id)} style={styles.collectPaymentButton}>
+                                <Icon name="banknotes" size={20} style={styles.collectPaymentIcon}/> <Text>{t('collect-payment')}</Text>
+                            </Button>
+                        )}
+                    </View>
+                </View>
+            </TouchableOpacity>
+        </View>
     );
 };
+
+const styles = StyleSheet.create({
+    overlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.6)', // bg-black/60
+        zIndex: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 16, // p-4
+    },
+    overlayTouchable: {
+        flex: 1, // Make it cover the whole area
+        width: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    modalContent: {
+        width: '100%', // w-full
+        maxWidth: 768, // max-w-4xl
+        borderRadius: 8, // rounded-lg
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 5,
+        elevation: 5,
+        marginVertical: 32, // my-8
+        maxHeight: height * 0.9, // Limit height to avoid overflowing screen
+        flexDirection: 'column',
+    },
+    bgSlate100: { backgroundColor: '#f1f5f9' },
+    bgSlate900: { backgroundColor: '#0f172a' },
+
+    headerControls: {
+        position: 'absolute',
+        top: 8, // top-2
+        left: 8, // left-2
+        right: 8, // right-2
+        zIndex: 10,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        // paddingTop: 16, // pt-16
+    },
+    langToggleContainer: {
+        flexDirection: 'row',
+        padding: 4, // p-1
+        borderRadius: 8, // rounded-lg
+    },
+    bgSlate200: { backgroundColor: '#e2e8f0' },
+    bgSlate700: { backgroundColor: '#334155' },
+
+    langToggleButton: {
+        paddingHorizontal: 16, // px-4
+        paddingVertical: 6, // py-1.5
+        borderRadius: 6, // rounded-md
+        // transition - activeOpacity handles it
+    },
+    langToggleButtonText: {
+        fontSize: 14, // text-sm
+    },
+    langToggleActiveLight: {
+        backgroundColor: '#ffffff', // bg-white
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 1,
+        elevation: 2,
+    },
+    langToggleActiveDark: {
+        backgroundColor: '#1e293b', // dark:bg-slate-800
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 1,
+        elevation: 2,
+    },
+
+    closeButton: {
+        padding: 8, // p-2
+        borderRadius: 9999, // rounded-full
+    },
+    closeButtonLight: {
+        backgroundColor: 'rgba(226, 232, 240, 0.5)', // bg-slate-200/50
+    },
+    closeButtonDark: {
+        backgroundColor: 'rgba(51, 65, 85, 0.5)', // dark:bg-slate-700/50
+    },
+    iconDark: { color: '#f8fafc' }, // text-white
+    iconLight: { color: '#1e293b' }, // text-black or default
+
+    invoicePreviewArea: {
+        paddingTop: 64, // pt-16 (to account for header controls)
+        paddingHorizontal: 16, // p-4 sm:p-8
+        flexGrow: 1,
+    },
+    bgSlate800: { backgroundColor: '#1e293b' },
+
+    footerActions: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 16, // gap-4
+        padding: 16, // p-4
+        borderTopWidth: 1,
+    },
+    borderSlate200: { borderColor: '#e2e8f0' },
+    borderSlate700: { borderColor: '#334155' },
+
+    fullWidthButton: {
+        flex: 1, // for equal width buttons
+    },
+    collectPaymentButton: {
+        backgroundColor: '#22c55e', // bg-green-600
+        flex: 1, // for equal width buttons
+    },
+    collectPaymentIcon: {
+        color: '#ffffff', // text-white
+    },
+});

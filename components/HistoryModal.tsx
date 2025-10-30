@@ -1,0 +1,1 @@
+// This file is no longer needed in the React Native version after refactoring.
