@@ -3,15 +3,15 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, Platform
 import type { Invoice, InvoiceStatus } from '../types';
 import { Card, Badge, Button, Icon, EmptyState } from './Common';
 import { calculateInvoiceTotal, calculateStatus, calculateRemainingBalance, calculateTotalPaid } from '../hooks/useInvoices';
-import { downloadListAsPDF } from '../services/pdfService'; // Updated import to native alert stub
+import { downloadListAsPDF } from '../services/pdfService';
 import { useToast } from '../hooks/useToast';
 import { useLanguage } from '../hooks/useLanguage';
 import { useTheme } from '../hooks/useTheme';
 
 interface InvoiceListPageProps {
   invoices: Invoice[];
-  onDelete: (invoice: Invoice) => void; // FIX: Changed type to Invoice
-  onCollect: (invoice: Invoice) => void; // FIX: Changed type to Invoice
+  onDelete: (invoice: Invoice) => void;
+  onCollect: (invoice: Invoice) => void;
   onPreview: (invoice: Invoice) => void;
   initialFilter?: 'all' | InvoiceStatus | 'outstanding';
 }
@@ -58,7 +58,7 @@ export const InvoiceListPage: React.FC<InvoiceListPageProps> = ({ invoices, onDe
         
         const matchesDate = (() => {
             if (!dateRange.start && !dateRange.end) return true;
-            const invDate = parseDate(inv.invoiceDate);
+            const invDate = parseDate(inv.invoiceDate) || new Date(0);
             if (!invDate) return false;
 
             const startDate = dateRange.start ? new Date(dateRange.start) : null;
@@ -106,7 +106,7 @@ export const InvoiceListPage: React.FC<InvoiceListPageProps> = ({ invoices, onDe
        <Text style={styles.infoText}>{t('you-have-total-invoices', 'You have {count} total invoices.').replace('{count}', invoices.length.toString())}</Text>
 
       <Card style={styles.card}>
-        <View style={styles.searchExportSection}>
+        <View style={[styles.searchExportSection, isDarkMode ? styles.borderSlate700 : styles.borderSlate200]}>
             <View style={styles.searchInputWrapper}>
                 <TextInput
                   placeholder={t('search-invoices-placeholder')}
@@ -126,7 +126,7 @@ export const InvoiceListPage: React.FC<InvoiceListPageProps> = ({ invoices, onDe
         <View style={styles.filterSection}>
              <View style={styles.dateRangeInputGroup}>
                 <TextInput 
-                    placeholder={t('start-date', 'Start Date')} // Add translation
+                    placeholder={t('start-date', 'Start Date')}
                     value={dateRange.start} 
                     onChangeText={text => setDateRange(p => ({...p, start: text}))} 
                     style={[styles.input, isDarkMode ? styles.inputDark : styles.inputLight]} 
@@ -134,7 +134,7 @@ export const InvoiceListPage: React.FC<InvoiceListPageProps> = ({ invoices, onDe
                     keyboardType="numeric" // To help with date input
                 />
                 <TextInput 
-                    placeholder={t('end-date', 'End Date')} // Add translation
+                    placeholder={t('end-date', 'End Date')}
                     value={dateRange.end} 
                     onChangeText={text => setDateRange(p => ({...p, end: text}))} 
                     style={[styles.input, isDarkMode ? styles.inputDark : styles.inputLight]} 
@@ -154,6 +154,7 @@ export const InvoiceListPage: React.FC<InvoiceListPageProps> = ({ invoices, onDe
             </View>
         </View>
         
+        {/* Always render mobile list as default for RN */}
         <View style={styles.mobileList}>
           {filteredInvoices.length > 0 ? (
             <FlatList
@@ -167,30 +168,6 @@ export const InvoiceListPage: React.FC<InvoiceListPageProps> = ({ invoices, onDe
           ) : (
               <EmptyState icon="document-text" title={t('no-invoices-found')} message={t('adjust-filters-message')} />
           )}
-        </View>
-
-        <View style={styles.desktopTable}>
-            {filteredInvoices.length > 0 ? (
-                <View>
-                    <View style={[styles.tableHeader, isDarkMode ? styles.tableHeaderDark : styles.tableHeaderLight]}>
-                        <Text style={styles.tableHeaderText}>{t('customer-name')}</Text>
-                        <Text style={styles.tableHeaderText}>{t('invoice-date', 'Date')}</Text>
-                        <Text style={[styles.tableHeaderText, styles.tableHeaderAmount]}>{t('invoice-total', 'Amount')}</Text>
-                        <Text style={[styles.tableHeaderText, styles.tableHeaderStatus]}>{t('status', 'Status')}</Text>
-                        <Text style={styles.tableHeaderText}>{t('actions', 'Actions')}</Text>
-                    </View>
-                    <FlatList
-                        data={filteredInvoices}
-                        keyExtractor={item => item.id.toString()}
-                        renderItem={({ item: inv }) => (
-                            <InvoiceRow invoice={inv} onDelete={onDelete} onCollect={onCollect} onPreview={onPreview}/>
-                        )}
-                        ItemSeparatorComponent={() => <View style={isDarkMode ? styles.tableRowSeparatorDark : styles.tableRowSeparatorLight} />} {/* FIX: Wrapped style in View */}
-                    />
-                </View>
-            ) : (
-                <EmptyState icon="document-text" title={t('no-invoices-found')} message={t('adjust-filters-message')} />
-            )}
         </View>
       </Card>
     </View>
@@ -216,7 +193,7 @@ const FilterButton: React.FC<{label: string; isActive: boolean; onClick: () => v
     );
 };
 
-const InvoiceRow: React.FC<{invoice: any, onDelete: (invoice: Invoice) => void, onCollect: (invoice: Invoice) => void, onPreview: (inv: Invoice) => void}> = ({ invoice, onDelete, onCollect, onPreview }) => { // FIX: Changed id to Invoice
+const InvoiceRow: React.FC<{invoice: any, onDelete: (invoice: Invoice) => void, onCollect: (invoice: Invoice) => void, onPreview: (inv: Invoice) => void}> = ({ invoice, onDelete, onCollect, onPreview }) => {
     const { resolvedTheme } = useTheme();
     const isDarkMode = resolvedTheme === 'dark';
     return (
@@ -236,7 +213,7 @@ const InvoiceRow: React.FC<{invoice: any, onDelete: (invoice: Invoice) => void, 
     </TouchableOpacity>
 );};
 
-const InvoiceCard: React.FC<{invoice: any, onDelete: (invoice: Invoice) => void, onCollect: (invoice: Invoice) => void, onPreview: (inv: Invoice) => void}> = ({ invoice, onDelete, onCollect, onPreview }) => { // FIX: Changed id to Invoice
+const InvoiceCard: React.FC<{invoice: any, onDelete: (invoice: Invoice) => void, onCollect: (invoice: Invoice) => void, onPreview: (inv: Invoice) => void}> = ({ invoice, onDelete, onCollect, onPreview }) => {
     const { resolvedTheme } = useTheme();
     const isDarkMode = resolvedTheme === 'dark';
     return (
@@ -249,14 +226,14 @@ const InvoiceCard: React.FC<{invoice: any, onDelete: (invoice: Invoice) => void,
       </View>
       <StatusBadge status={invoice.status} />
     </View>
-    <View style={styles.mobileCardFooter}>
+    <View style={[styles.mobileCardFooter, isDarkMode ? styles.borderSlate700 : styles.borderSlate200]}>
       <Text style={[styles.mobileCardAmount, isDarkMode ? styles.textLight : styles.textDark]}>₹{invoice.totalAmount.toLocaleString('en-IN')}</Text>
       <ActionButtons invoice={invoice} onCollect={onCollect} onDelete={onDelete} onPreview={onPreview} />
     </View>
   </View>
 );};
 
-const ActionButtons: React.FC<{invoice: any, onDelete: (invoice: Invoice) => void, onCollect: (invoice: Invoice) => void, onPreview: (inv: Invoice) => void}> = ({ invoice, onCollect, onDelete, onPreview }) => { // FIX: Changed id to Invoice
+const ActionButtons: React.FC<{invoice: any, onDelete: (invoice: Invoice) => void, onCollect: (invoice: Invoice) => void, onPreview: (inv: Invoice) => void}> = ({ invoice, onCollect, onDelete, onPreview }) => {
   const { resolvedTheme } = useTheme();
   const isDarkMode = resolvedTheme === 'dark';
   const iconColor = isDarkMode ? '#cbd5e1' : '#64748b'; // slate-300 / slate-500
@@ -265,10 +242,10 @@ const ActionButtons: React.FC<{invoice: any, onDelete: (invoice: Invoice) => voi
         <TouchableOpacity onPress={() => onPreview(invoice)} style={styles.actionButton} accessibilityLabel="View">
             <Icon name="eye" size={20} style={[styles.actionIcon, {color: iconColor}]} />
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => onCollect(invoice)} disabled={invoice.status === 'paid'} style={styles.actionButton} accessibilityLabel="Collect Payment"> {/* FIX: Passed entire invoice object */}
+        <TouchableOpacity onPress={() => onCollect(invoice)} disabled={invoice.status === 'paid'} style={styles.actionButton} accessibilityLabel="Collect Payment">
             <Icon name="banknotes" size={20} style={[styles.actionIcon, invoice.status === 'paid' ? styles.disabledIcon : {color: iconColor}]} />
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => onDelete(invoice)} style={styles.actionButton} accessibilityLabel="Delete"> {/* FIX: Passed entire invoice object */}
+        <TouchableOpacity onPress={() => onDelete(invoice)} style={styles.actionButton} accessibilityLabel="Delete">
             <Icon name="trash" size={20} style={[styles.actionIcon, {color: iconColor}]} />
         </TouchableOpacity>
     </View>
@@ -299,9 +276,15 @@ const styles = StyleSheet.create({
         flexDirection: 'column', // md:flex-row
         gap: 16, // gap-4
         borderBottomWidth: 1,
-        borderBottomColor: '#e2e8f0', // border-slate-200
+        // Fix: Removed direct borderBottomColor, now handled by conditional styles
         alignItems: 'flex-start',
     },
+    // Fix: Added missing border and text styles
+    borderSlate200: { borderColor: '#e2e8f0' },
+    borderSlate700: { borderColor: '#334155' },
+    textSlate400: { color: '#94a3b8' },
+    textSlate500: { color: '#64748b' },
+
     searchInputWrapper: {
         flexGrow: 1,
         width: '100%',
@@ -312,20 +295,20 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 12,
         fontSize: 16,
-        color: '#1e293b', // text-slate-800
-        width: '100%',
+        color: '#1e293b', // text
     },
     inputLight: {
         borderColor: '#cbd5e1', // border-slate-300
         backgroundColor: '#ffffff', // bg-white
+        color: '#1e293b', // text-slate-800
     },
     inputDark: {
         borderColor: '#475569', // dark:border-slate-600
         backgroundColor: '#0f172a', // dark:bg-slate-900
-        color: '#f8fafc', // dark:text-slate-50
+        color: '#f8fafc', // dark:text-slate-200
     },
     exportButtonWrapper: {
-        width: '100%', // w-full md:w-auto
+        width: '100%',
     },
     fullWidthButton: {
         width: '100%',
@@ -337,136 +320,82 @@ const styles = StyleSheet.create({
         color: '#e2e8f0',
     },
     filterSection: {
-        padding: 16, // p-4
-        flexDirection: 'column', // sm:flex-row
-        gap: 16, // gap-4
+        padding: 16,
+        flexDirection: 'column', // md:flex-row
+        gap: 16, // md:gap-4
         borderBottomWidth: 1,
         borderBottomColor: '#e2e8f0', // border-slate-200
     },
     dateRangeInputGroup: {
-        flexDirection: 'column', // sm:flex-row
-        gap: 8, // gap-2
+        flexDirection: 'row',
+        gap: 16,
         flexGrow: 1,
     },
     filterButtonGroup: {
         flexDirection: 'row',
+        gap: 8,
         flexWrap: 'wrap',
-        gap: 8, // gap-2
-        alignItems: 'center',
     },
+    mobileList: {
+        padding: 16,
+    },
+    mobileListItemSeparator: {
+        height: 1,
+        backgroundColor: '#e2e8f0',
+        marginVertical: 12,
+    },
+
     filterButtonBase: {
-        paddingHorizontal: 12, // px-3
-        paddingVertical: 6, // py-1.5
-        borderRadius: 6, // rounded-md
-        // transition - activeOpacity
-        // capitalize
-    },
-    filterButtonText: {
-        fontSize: 14, // text-sm
-        fontWeight: '600', // font-semibold
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 9999, // rounded-full
     },
     filterButtonActive: {
         backgroundColor: '#4f46e5', // bg-indigo-600
     },
-    filterButtonTextActive: {
-        color: '#ffffff', // text-white
-    },
     filterButtonInactiveLight: {
-        backgroundColor: '#ffffff', // bg-white
-        borderColor: '#cbd5e1', // border-slate-300
-        borderWidth: 1,
-        // hover:bg-slate-100
-    },
-    filterButtonTextInactiveLight: {
-        color: '#475569', // text-slate-600
+        backgroundColor: '#e2e8f0', // bg-slate-200
     },
     filterButtonInactiveDark: {
         backgroundColor: '#334155', // dark:bg-slate-700
-        borderColor: '#475569', // dark:border-slate-600
-        borderWidth: 1,
-        // dark:hover:bg-slate-600
+    },
+    filterButtonText: {
+        fontSize: 14,
+        fontWeight: '500',
+        textTransform: 'capitalize',
+    },
+    filterButtonTextActive: {
+        color: '#ffffff', // text-white
+    },
+    filterButtonTextInactiveLight: {
+        color: '#1e293b', // text-slate-800
     },
     filterButtonTextInactiveDark: {
         color: '#e2e8f0', // dark:text-slate-200
     },
 
-    mobileList: {
-        // md:hidden
-        display: Platform.OS === 'web' ? 'none' : 'flex',
-    },
-    mobileListItemSeparator: {
-        height: 1,
-        backgroundColor: '#e2e8f0', // divide-slate-200
-    },
-    
-    mobileCardBase: {
-        padding: 16, // p-4
-        borderRadius: 8, // rounded-lg
-        borderWidth: 1,
-        // bg-slate-50 dark:bg-slate-800/50
-        // border-slate-200 dark:border-slate-700
-    },
-    mobileCardLight: {
-        backgroundColor: '#f8fafc',
-        borderColor: '#e2e8f0',
-    },
-    mobileCardDark: {
-        backgroundColor: 'rgba(30, 41, 59, 0.5)', // bg-slate-800/50
-        borderColor: '#334155', // dark:border-slate-700
-    },
-    mobileCardHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-    },
-    mobileCardCustomerName: {
-        fontWeight: 'bold',
-    },
-    mobileCardInvoiceNumber: {
-        fontSize: 14,
-        color: '#64748b', // text-slate-500
-    },
-    mobileCardDate: {
-        fontSize: 12,
-        color: '#64748b', // text-slate-500
-    },
-    mobileCardFooter: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-end',
-        marginTop: 16, // mt-4
-        paddingTop: 8, // pt-2
-        borderTopWidth: 1,
-        borderColor: '#e2e8f0', // border-slate-200
-    },
-    mobileCardAmount: {
-        fontSize: 20, // text-xl
-        fontWeight: 'bold',
-    },
-
+    // Desktop Table Styles (Currently commented out in render, but styles are defined)
     desktopTable: {
-        // hidden md:block
-        display: Platform.OS === 'web' ? 'flex' : 'none',
-        overflow: 'hidden', // no-scrollbar
+        // These styles would be applied to the container if `Platform.OS === 'web'` was active
     },
     tableHeader: {
         flexDirection: 'row',
-        backgroundColor: '#f8fafc', // bg-slate-50
         padding: 16, // p-4
+        backgroundColor: '#f8fafc', // bg-slate-50
         borderBottomWidth: 1,
     },
     tableHeaderLight: {
-        borderBottomColor: '#e2e8f0', // border-b-slate-200
+        borderBottomColor: '#e2e8f0',
     },
     tableHeaderDark: {
         backgroundColor: 'rgba(30, 41, 59, 0.5)', // dark:bg-slate-800/50
-        borderBottomColor: '#334155', // dark:border-slate-700
+        borderBottomColor: '#334155',
     },
     tableHeaderText: {
-        fontSize: 14, // text-sm
-        fontWeight: '600', // font-semibold
-        color: '#475569', // text-slate-600
-        flex: 1, // Distribute space
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#475569',
+        flex: 1,
     },
     tableHeaderAmount: {
         textAlign: 'right',
@@ -474,67 +403,113 @@ const styles = StyleSheet.create({
     tableHeaderStatus: {
         textAlign: 'center',
     },
-    tableRowSeparatorLight: { // FIX: Renamed and added directly to styles
+    tableRowSeparatorLight: {
         height: 1,
-        backgroundColor: '#e2e8f0', // border-slate-200
+        backgroundColor: '#e2e8f0',
     },
-    tableRowSeparatorDark: { // FIX: Renamed and added directly to styles
+    tableRowSeparatorDark: {
         height: 1,
-        backgroundColor: '#334155', // dark:border-slate-700
+        backgroundColor: '#334155',
     },
     tableRowBase: {
         flexDirection: 'row',
         alignItems: 'center',
         padding: 16, // p-4
         borderBottomWidth: 1,
-        // hover:bg-slate-50 dark:hover:bg-slate-800/50
     },
     tableRowLight: {
-        borderColor: '#e2e8f0', // border-slate-200
+        backgroundColor: '#ffffff',
+        borderColor: '#e2e8f0',
     },
     tableRowDark: {
-        borderColor: '#334155', // dark:border-slate-700
-        backgroundColor: '#1e293b', // Ensure background for dark mode
+        backgroundColor: '#1e293b',
+        borderColor: '#334155',
     },
     tableCellCustomer: {
-        flex: 1,
+        flex: 1.5, // Wider column for customer info
     },
     tableCellCustomerName: {
-        fontWeight: '600', // font-semibold
-        color: '#1e293b', // text-slate-800
+        fontWeight: '600',
     },
     tableCellInvoiceNumber: {
-        fontSize: 14, // text-sm
+        fontSize: 12,
         color: '#64748b', // text-slate-500
     },
     tableCellDate: {
         flex: 1,
-        fontSize: 14, // text-sm
-        color: '#475569', // text-slate-600
+        fontSize: 14,
+        color: '#64748b', // text-slate-500
     },
     tableCellAmount: {
-        flex: 1,
-        fontWeight: '600', // font-semibold
+        flex: 0.7,
         textAlign: 'right',
+        fontWeight: '600',
     },
     tableCellStatus: {
-        flex: 1,
+        flex: 0.8,
         alignItems: 'center',
     },
     tableCellActions: {
         flex: 1,
         flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8, // gap-2
         justifyContent: 'flex-start',
+        gap: 8, // gap-2
     },
+
+    // Mobile Card Styles
+    mobileCardBase: {
+        padding: 16,
+        borderRadius: 8,
+        borderWidth: 1,
+    },
+    mobileCardLight: {
+        backgroundColor: '#ffffff', // bg-white
+        borderColor: '#e2e8f0', // border-slate-200
+    },
+    mobileCardDark: {
+        backgroundColor: '#1e293b', // bg-slate-800
+        borderColor: '#334155', // dark:border-slate-700
+    },
+    mobileCardHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: 8,
+    },
+    mobileCardCustomerName: {
+        fontWeight: 'bold',
+        fontSize: 16,
+    },
+    mobileCardInvoiceNumber: {
+        fontSize: 12,
+        color: '#64748b',
+    },
+    mobileCardDate: {
+        fontSize: 12,
+        color: '#64748b',
+        marginTop: 4,
+    },
+    mobileCardFooter: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: 12,
+        paddingTop: 8,
+        borderTopWidth: 1,
+    },
+    mobileCardAmount: {
+        fontSize: 18,
+        fontWeight: 'bold',
+    },
+
+    // Action Buttons
     actionButtonsContainer: {
         flexDirection: 'row',
-        alignItems: 'center',
         gap: 8, // gap-2
     },
     actionButton: {
-        padding: 4,
+        padding: 8, // p-2
+        borderRadius: 6, // rounded-md
     },
     actionIcon: {
         color: '#64748b', // text-slate-500
@@ -542,6 +517,8 @@ const styles = StyleSheet.create({
     disabledIcon: {
         opacity: 0.3,
     },
-    textDark: { color: '#1e293b' }, // FIX: Defined local color styles
-    textLight: { color: '#f8fafc' }, // FIX: Defined local color styles
+
+    // Common Text Colors (moved here to avoid repetition, could be global in a larger app)
+    textLight: { color: '#f8fafc' }, // dark:text-slate-100
+    textDark: { color: '#1e293b' }, // text-slate-800
 });

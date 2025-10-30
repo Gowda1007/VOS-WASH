@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Customer } from '../types';
 import * as apiService from '../services/apiService';
+import { useAsyncStorage } from './useAsyncStorage'; // FIX: Updated import
 
 export const useCustomers = () => {
     const [customers, setCustomers] = useState<Customer[]>([]);

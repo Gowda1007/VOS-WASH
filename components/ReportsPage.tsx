@@ -17,10 +17,10 @@ interface StatCardProps {
 }
 
 const StatCard: React.FC<StatCardProps> = ({ title, value, isDarkMode }) => (
-    <View style={[styles.statCard, isDarkMode ? styles.statCardDark : styles.statCardLight]}>
+    <Card style={styles.statCard}>
         <Text style={[styles.statCardTitle, isDarkMode ? styles.textSlate400 : styles.textSlate500]}>{title}</Text>
         <Text style={[styles.statCardValue, isDarkMode ? styles.textSlate100 : styles.textSlate800]}>{value}</Text>
-    </View>
+    </Card>
 );
 
 export const ReportsPage: React.FC<{ invoices: Invoice[] }> = ({ invoices }) => {

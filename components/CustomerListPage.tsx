@@ -87,57 +87,23 @@ export const CustomerListPage: React.FC<CustomerListPageProps> = ({ customers, i
                     </View>
                 </View>
                 
-                {/* Mobile View */}
-                {Platform.OS !== 'web' && (
-                    <View>
-                        {hasSearchResults ? (
-                            <FlatList
-                                data={filteredCustomers}
-                                keyExtractor={item => item.phone}
-                                renderItem={({ item }) => <CustomerCard customer={item} onView={onViewCustomer} isDarkMode={isDarkMode} />}
-                                ItemSeparatorComponent={() => <View style={isDarkMode ? styles.cardSeparatorDark : styles.cardSeparatorLight} />}
-                            />
-                        ) : (
-                             <EmptyState 
-                                icon="users" 
-                                title={hasCustomers ? t('no-customers-found') : t('you-have-no-customers')} 
-                                message={hasCustomers ? t('search-returned-no-results') : t('create-invoice-to-add-customer')} 
-                            />
-                        )}
-                    </View>
-                )}
-
-                {/* Desktop/Web View - using conditional rendering based on Platform */}
-                {Platform.OS === 'web' && (
-                    <View style={styles.desktopTableContainer}>
-                        {hasCustomers ? (
-                            <View>
-                                <View style={[styles.tableHeader, isDarkMode ? styles.tableHeaderDark : styles.tableHeaderLight]}>
-                                    <Text style={styles.tableHeaderText}>{t('customer-name')}</Text>
-                                    <Text style={styles.tableHeaderText}>{t('contact', 'Contact')}</Text>
-                                    <Text style={[styles.tableHeaderText, styles.tableHeaderTextCenter]}>{t('invoices')}</Text>
-                                    <Text style={[styles.tableHeaderText, styles.tableHeaderTextRight]}>{t('total-spent', 'Total Spent')}</Text>
-                                </View>
-                                {hasSearchResults ? (
-                                    <FlatList
-                                        data={filteredCustomers}
-                                        keyExtractor={item => item.phone}
-                                        renderItem={({ item }) => <CustomerRow customer={item} onView={onViewCustomer} isDarkMode={isDarkMode} />}
-                                        ItemSeparatorComponent={() => <View style={isDarkMode ? styles.tableRowSeparatorDark : styles.tableRowSeparatorLight} />}
-                                    />
-                                ) : (
-                                    <EmptyState icon="users" title={t('no-customers-found')} message={t('search-returned-no-results')} />
-                                )}
-                            </View>
-                        ) : (
-                            <EmptyState 
-                                icon="users" 
-                                title={t('you-have-no-customers')} 
-                                message={t('create-invoice-to-add-customer')} 
-                            />
-                        )}
-                    </View>
-                )}
+                {/* Always render mobile list as default for RN */}
+                <View>
+                    {hasSearchResults ? (
+                        <FlatList
+                            data={filteredCustomers}
+                            keyExtractor={item => item.phone}
+                            renderItem={({ item }) => <CustomerCard customer={item} onView={onViewCustomer} isDarkMode={isDarkMode} />}
+                            ItemSeparatorComponent={() => <View style={isDarkMode ? styles.cardSeparatorDark : styles.cardSeparatorLight} />}
+                        />
+                    ) : (
+                         <EmptyState 
+                            icon="users" 
+                            title={hasCustomers ? t('no-customers-found') : t('you-have-no-customers')} 
+                            message={hasCustomers ? t('search-returned-no-results') : t('create-invoice-to-add-customer')} 
+                        />
+                    )}
+                </View>
             </Card>
         </View>
     );

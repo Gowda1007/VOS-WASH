@@ -1,4 +1,5 @@
 
+
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, FlatList, Platform } from 'react-native';
 import type { AnalyticsData, Invoice, PendingOrder } from '../types';
@@ -12,7 +13,7 @@ const KpiCard: React.FC<{ title: string; value: string | number; icon: React.Com
         <TouchableOpacity onPress={onClick} disabled={!onClick} style={styles.kpiCardContent}>
             <View>
                 <Text style={styles.kpiCardTitle}>{title}</Text>
-                <Text style={[styles.kpiCardValue, colorStyle]}>₹{value}</Text> {/* FIX: Corrected typo 'kkpiCardValue' to 'kpiCardValue' */}
+                <Text style={[styles.kpiCardValue, colorStyle]}>₹{value}</Text>
             </View>
             <View style={[styles.kpiCardIconContainer, colorStyle, { opacity: 0.2 }]}>
                 <Icon name={icon} size={24} style={colorStyle} />
@@ -27,7 +28,7 @@ interface DashboardPageProps {
     pendingOrders: PendingOrder[];
     onPreviewInvoice: (invoice: Invoice) => void;
     onGenerateInvoice: (order: PendingOrder) => void;
-    onDeleteOrder: (order: PendingOrder) => void; // FIX: Changed type to PendingOrder
+    onDeleteOrder: (order: PendingOrder) => void;
     onNavigateToUnpaid: () => void;
 }
 
@@ -123,7 +124,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ analytics, recentI
                                         <Button onPress={() => onGenerateInvoice(order)} variant="primary" style={styles.generateInvoiceButton}>
                                             {t('generate-invoice')}
                                         </Button>
-                                        <TouchableOpacity onPress={() => onDeleteOrder(order)} style={styles.deleteButton} accessibilityLabel={t('delete')}> {/* FIX: Passed entire order object */}
+                                        <TouchableOpacity onPress={() => onDeleteOrder(order)} style={styles.deleteButton} accessibilityLabel={t('delete')}>
                                             <Icon name="trash" size={20} style={styles.deleteIcon}/>
                                         </TouchableOpacity>
                                     </View>
@@ -345,7 +346,7 @@ const styles = StyleSheet.create({
         color: '#ffffff', // text-white
     },
     chartSection: {
-        flexDirection: Platform.OS === 'web' ? 'row' : 'column', // lg:grid grid-cols-1 lg:grid-cols-3
+        flexDirection: 'column', // lg:grid grid-cols-1 lg:grid-cols-3
         gap: 24, // gap-6
         marginBottom: 32,
     },

@@ -1,1 +1,0 @@
-// This file is no longer needed as the footer logic is integrated directly into MainLayout for React Native.

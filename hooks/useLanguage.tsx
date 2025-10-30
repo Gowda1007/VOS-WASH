@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Language } from '../types';
+import { useAsyncStorage } from './useAsyncStorage'; // FIX: Updated import for useAsyncStorage
 
 interface LanguageContextType {
   language: Language;
@@ -50,7 +51,7 @@ const translations: Record<string, Record<Language, string>> = {
     'kannada': { en: 'Kannada', kn: 'ಕನ್ನಡ' },
     'price': { en: 'Price', kn: 'ಬೆಲೆ' },
     'quantity': { en: 'Quantity', kn: 'ಪ್ರಮಾಣ' },
-    'amount': { en: 'Amount', kn: 'ಮೊತ್ತ' },
+    'amount': { en: 'ಮೊತ್ತ', kn: 'ಮೊತ್ತ' },
     'from': { en: 'From', kn: 'ಇವರಿಂದ' },
     'actions': { en: 'Actions', kn: 'ಕ್ರಿಯೆಗಳು' },
     'status': { en: 'Status', kn: 'ಸ್ಥಿತಿ' },

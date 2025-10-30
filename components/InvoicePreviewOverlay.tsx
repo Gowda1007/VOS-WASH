@@ -14,7 +14,8 @@ const { width, height } = Dimensions.get('window');
 interface InvoicePreviewOverlayProps {
   invoice: Invoice;
   onClose: () => void;
-  onCollect: (invoiceId: number) => void;
+  // Fix: Change prop type to accept the full Invoice object
+  onCollect: (invoice: Invoice) => void;
 }
 
 interface InvoiceLanguageToggleProps {
@@ -82,7 +83,11 @@ export const InvoicePreviewOverlay: React.FC<InvoicePreviewOverlayProps> = ({ in
                             <Text>{t('download-pdf')}</Text>
                         </Button>
                         {balanceDue > 0 && (
-                            <Button onPress={() => onCollect(invoice.id)} style={styles.collectPaymentButton}>
+                            <Button 
+                                // Fix: Pass the entire invoice object to the onCollect handler
+                                onPress={() => onCollect(invoice)} 
+                                style={styles.collectPaymentButton}
+                            >
                                 <Icon name="banknotes" size={20} style={styles.collectPaymentIcon}/> <Text>{t('collect-payment')}</Text>
                             </Button>
                         )}

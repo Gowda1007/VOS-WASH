@@ -14,15 +14,15 @@ import { SplashScreen } from './components/SplashScreen';
 import { ConfirmationModal } from './components/ConfirmationModal';
 import { InvoicePreviewOverlay } from './components/InvoicePreviewOverlay';
 import { useInvoices, calculateRemainingBalance } from './hooks/useInvoices';
-import { calculateAnalytics } from './services/analyticsService'; // FIX: Corrected import path for calculateAnalytics
+import { calculateAnalytics } from './services/analyticsService';
 import { useCustomers } from './hooks/useCustomers';
 import { useServices } from './hooks/useServices';
 import { useAppSettings } from './hooks/useAppSettings';
 import { usePendingOrders } from './hooks/usePendingOrders';
 import { ThemeProvider, useTheme } from './hooks/useTheme';
-import { ToastProvider, useToast, ToastContainer } from './hooks/useToast'; // FIX: Import ToastContainer from useToast hook
+import { ToastProvider, useToast } from './hooks/useToast';
 import { LanguageProvider, useLanguage } from './hooks/useLanguage';
-import type { View as AppView, Invoice, Customer, ServiceSets, AppSettings, PendingOrder, ConfirmModalState, InvoiceStatus, PaymentMethod } from './types'; // FIX: Imported PaymentMethod
+import type { View as AppView, Invoice, Customer, ServiceSets, AppSettings, PendingOrder, ConfirmModalState, InvoiceStatus, PaymentMethod } from './types';
 import * as apiService from './services/apiService';
 
 const AppContent: React.FC = () => {
@@ -44,23 +44,6 @@ const AppContent: React.FC = () => {
   // Loading State
   const [isLoading, setIsLoading] = useState(true);
   const [progress, setProgress] = useState(0);
-
-  // Toast management for direct rendering - This block is no longer needed after refactoring ToastContainer to use context
-  // const [toasts, setToasts] = useState([]);
-  // const addToast = useCallback((message, type) => {
-  //   const id = Date.now();
-  //   setToasts(prevToasts => [...prevToasts, { id, message, type }]);
-  // }, []);
-  // const removeToast = useCallback((id) => {
-  //   setToasts(prevToasts => prevToasts.filter(toast => toast.id !== id));
-  // }, []);
-
-  useEffect(() => {
-    // Override Toast context addToast with local implementation that updates this AppContent's state
-    // This is a workaround since useToast cannot directly modify AppContent's state via context in a pure RN render
-    // A more robust solution might involve a global state manager or a different ToastProvider structure.
-    // For now, it will use the context's addToast, and ToastProvider will render its own ToastContainer.
-  }, []); // FIX: Removed [addToast] as it's no longer necessary
 
   useEffect(() => {
     const loadData = async () => {
@@ -123,7 +106,6 @@ const AppContent: React.FC = () => {
         toast.error(t('enter-valid-amount', 'Please enter a valid amount.'));
         return;
       }
-      // FIX: Ensure 'method' is explicitly typed as PaymentMethod
       const newPayment = { amount: amount, date: new Date().toLocaleDateString("en-IN"), method: method as PaymentMethod };
       await updateInvoice(confirmModalState.invoice.id, {
         payments: [...confirmModalState.invoice.payments, newPayment]
@@ -207,8 +189,7 @@ const AppContent: React.FC = () => {
     return newInvoice;
   }, [addInvoice, addOrUpdateCustomer, customers]);
 
-  const handleUpdatePayment = useCallback(async (invoiceId: number, amount: number, method: string) => {
-    // FIX: Ensure 'method' is explicitly typed as PaymentMethod
+  const handleUpdatePayment = useCallback(async (invoiceId: number, amount: number, method: PaymentMethod) => {
     const newPayment = { amount, date: new Date().toLocaleDateString("en-IN"), method: method as PaymentMethod };
     const updatedInvoice = await updateInvoice(invoiceId, {
       payments: [...(invoices.find(inv => inv.id === invoiceId)?.payments || []), newPayment],
@@ -263,7 +244,7 @@ const AppContent: React.FC = () => {
             pendingOrders={pendingOrders}
             onPreviewInvoice={(inv) => { setSelectedInvoice(inv); }}
             onGenerateInvoice={handleGenerateInvoiceFromOrder}
-            onDeleteOrder={openDeleteOrderModal} // FIX: Now passes PendingOrder object
+            onDeleteOrder={openDeleteOrderModal}
             onNavigateToUnpaid={() => { setCurrentView('invoices'); }}
           />
         );
@@ -271,8 +252,8 @@ const AppContent: React.FC = () => {
         return (
           <InvoiceListPage
             invoices={invoices}
-            onDelete={openDeleteInvoiceModal} // FIX: Now passes Invoice object
-            onCollect={openCollectPaymentModal} // FIX: Now passes Invoice object
+            onDelete={openDeleteInvoiceModal}
+            onCollect={openCollectPaymentModal}
             onPreview={(inv) => { setSelectedInvoice(inv); }}
           />
         );
@@ -317,7 +298,7 @@ const AppContent: React.FC = () => {
             customer={selectedCustomer}
             invoices={invoices.filter(inv => inv.customerPhone === selectedCustomer.phone)}
             onNavigateBack={() => handleNavigate('customers')}
-            onCollectInvoice={openCollectPaymentModal} // FIX: Now passes Invoice object
+            onCollectInvoice={openCollectPaymentModal}
             onPreviewInvoice={(inv) => { setSelectedInvoice(inv); }}
             onDeleteCustomer={openDeleteCustomerModal}
           />
@@ -327,7 +308,6 @@ const AppContent: React.FC = () => {
           <DayBookPage
             invoices={invoices}
             onPreviewInvoice={(inv) => { setSelectedInvoice(inv); }}
-            // onCollectInvoice={openCollectPaymentModal} // Removed, not relevant for DayBook
           />
         );
       case 'reports':
@@ -357,11 +337,10 @@ const AppContent: React.FC = () => {
         <InvoicePreviewOverlay
           invoice={selectedInvoice}
           onClose={() => setSelectedInvoice(null)}
+          {/* Fix: Pass the entire invoice object to onCollect, as openCollectPaymentModal expects it */}
           onCollect={openCollectPaymentModal}
         />
       )}
-      {/* ToastContainer must be rendered at the top level to act as an overlay */}
-      <ToastContainer /> {/* FIX: ToastContainer now uses context directly, no props needed */}
     </SafeAreaView>
   );
 };

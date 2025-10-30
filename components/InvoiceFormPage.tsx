@@ -851,6 +851,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16, // px-4
         paddingVertical: 6, // py-1.5
         borderRadius: 6, // rounded-md
+        // transition - activeOpacity handles it
     },
     langToggleButtonText: {
         fontSize: 14,

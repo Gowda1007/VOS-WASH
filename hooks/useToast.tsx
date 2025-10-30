@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react'; // FIX: Imported useEffect
+import React, { createContext, useContext, useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing } from 'react-native';
 import { Icon } from '../components/Common'; // Assuming Icon is now RN compatible
 
@@ -12,98 +12,10 @@ export interface ToastMessage {
 
 interface ToastContextType {
   addToast: (message: string, type: ToastType) => void;
-  // FIX: These are removed from the context interface
-  // toasts: ToastMessage[]; // Expose toasts for direct rendering
-  // removeToast: (id: number) => void; // Expose removeToast for direct rendering
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
-// --- Toast Components ---
-// This ToastContainer is now designed to be rendered directly in the App.tsx
-// It's not using portals, but absolute positioning
-// FIX: Moved ToastContainer and ToastItem back to Common.tsx
-/*
-export const ToastContainer: React.FC = () => {
-    const context = useContext(ToastContext);
-    if (!context) return null; // Should not happen if used within provider
-
-    const { toasts, removeToast } = context;
-
-    return (
-        <View style={styles.toastContainer}>
-            {toasts.map(toast => (
-                <ToastItem key={toast.id} {...toast} onDismiss={() => removeToast(toast.id)} />
-            ))}
-        </View>
-    );
-};
-
-const ToastItem: React.FC<ToastMessage & { onDismiss: () => void }> = ({ message, type, onDismiss }) => {
-    const fadeAnim = useRef(new Animated.Value(0)).current; // Initial opacity 0
-    const slideAnim = useRef(new Animated.Value(50)).current; // Initial slide from right
-
-    useEffect(() => {
-        Animated.parallel([
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 300,
-                easing: Easing.out(Easing.ease),
-                useNativeDriver: true,
-            }),
-            Animated.timing(slideAnim, {
-                toValue: 0,
-                duration: 300,
-                easing: Easing.out(Easing.ease),
-                useNativeDriver: true,
-            }),
-        ]).start();
-
-        const timer = setTimeout(() => {
-            Animated.parallel([
-                Animated.timing(fadeAnim, {
-                    toValue: 0,
-                    duration: 300,
-                    easing: Easing.in(Easing.ease),
-                    useNativeDriver: true,
-                }),
-                Animated.timing(slideAnim, {
-                    toValue: 50,
-                    duration: 300,
-                    easing: Easing.in(Easing.ease),
-                    useNativeDriver: true,
-                }),
-            ]).start(() => onDismiss());
-        }, 5000); // Auto-dismiss after 5 seconds
-
-        return () => clearTimeout(timer);
-    }, [fadeAnim, slideAnim, onDismiss]);
-
-    const typeStyles = {
-        success: { bg: styles.bgGreen500, icon: 'check-circle' },
-        error: { bg: styles.bgRed500, icon: 'exclamation-triangle' },
-        info: { bg: styles.bgBlue500, icon: 'info-circle' },
-    };
-
-    const iconType = typeStyles[type].icon as React.ComponentProps<typeof Icon>['name'];
-
-    return (
-        <Animated.View 
-            style={[
-                styles.toastItemBase, 
-                typeStyles[type].bg, 
-                { opacity: fadeAnim, transform: [{ translateX: slideAnim }] }
-            ]}
-        >
-            <Icon name={iconType} size={24} style={styles.toastIcon} />
-            <Text style={styles.toastMessage}>{message}</Text>
-            <TouchableOpacity onPress={onDismiss} style={styles.toastDismissButton}>
-                <Icon name="x-mark" size={16} style={styles.toastDismissIcon}/>
-            </TouchableOpacity>
-        </Animated.View>
-    );
-};
-*/
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
@@ -116,14 +28,11 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setToasts(prevToasts => prevToasts.filter(toast => toast.id !== id));
   }, []);
 
-  // FIX: `toasts` and `removeToast` are no longer part of the context value for external consumption
-  // They are used internally by the ToastContainer if it were in this file.
-  const contextValue = React.useMemo(() => ({ addToast /* FIX: removed toasts, removeToast */ }), [addToast /* FIX: removed toasts, removeToast */]);
+  const contextValue = useMemo(() => ({ addToast }), [addToast]);
 
   return (
     <ToastContext.Provider value={contextValue}>
       {children}
-      {/* FIX: Moved ToastContainer here so it can directly access toasts state from the provider */}
       <ToastContainer toasts={toasts} removeToast={removeToast} />
     </ToastContext.Provider>
   );
@@ -142,9 +51,6 @@ export const useToast = () => {
   };
 };
 
-// FIX: Added ToastContainer and ToastItem back into this file as they are coupled with the state
-// and `App.tsx` expects to import ToastContainer from here. This is a common pattern when
-// the component manages its own state from context rather than receiving it as props.
 export const ToastContainer: React.FC<{ toasts: ToastMessage[]; removeToast: (id: number) => void; }> = ({ toasts, removeToast }) => {
     return (
         <View style={styles.toastContainer}>

@@ -10,7 +10,7 @@ interface CustomerDetailPageProps {
     customer: Customer;
     invoices: Invoice[];
     onNavigateBack: () => void;
-    onCollectInvoice: (invoiceId: number) => void;
+    onCollectInvoice: (invoice: Invoice) => void; // FIX: Changed to pass full Invoice object
     onPreviewInvoice: (invoice: Invoice) => void;
     onDeleteCustomer: (customer: Customer) => void; // New prop
 }
@@ -84,7 +84,7 @@ export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({ customer
 interface InvoicesListProps {
     invoices: Invoice[];
     onPreview: (inv: Invoice) => void;
-    onCollect: (id: number) => void;
+    onCollect: (invoice: Invoice) => void; // FIX: Changed to pass full Invoice object
     isDarkMode: boolean;
 }
 
@@ -117,7 +117,7 @@ const InvoicesList: React.FC<InvoicesListProps> = ({ invoices, onPreview, onColl
 interface InvoiceRowProps {
     invoice: Invoice;
     onPreview: (inv: Invoice) => void;
-    onCollect: (id: number) => void;
+    onCollect: (invoice: Invoice) => void; // FIX: Changed to pass full Invoice object
     isDarkMode: boolean;
 }
 
@@ -134,7 +134,7 @@ const InvoiceRow: React.FC<InvoiceRowProps> = ({ invoice, onPreview, onCollect, 
                 <TouchableOpacity onPress={() => onPreview(invoice)} style={styles.actionButton} accessibilityLabel="View">
                     <Icon name="eye" size={20} style={[styles.actionIcon, isDarkMode ? styles.iconDark : styles.iconLight]}/>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => onCollect(invoice.id)} disabled={status === 'paid'} style={styles.actionButton} accessibilityLabel="Collect Payment">
+                <TouchableOpacity onPress={() => onCollect(invoice)} disabled={status === 'paid'} style={styles.actionButton} accessibilityLabel="Collect Payment"> {/* FIX: Pass full Invoice object */}
                     <Icon name="banknotes" size={20} style={[styles.actionIcon, status === 'paid' ? styles.disabledIcon : (isDarkMode ? styles.iconDark : styles.iconLight)]}/>
                 </TouchableOpacity>
             </View>

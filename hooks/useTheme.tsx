@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react'; // FIX: Imported useCallback
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { Appearance,ColorSchemeName } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// FIX: Updated import for useAsyncStorage and removed direct AsyncStorage import
+import { useAsyncStorage } from './useAsyncStorage';
 
 type Theme = 'light' | 'dark' | 'system';
 type ResolvedTheme = 'light' | 'dark';
@@ -16,23 +17,9 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 const THEME_STORAGE_KEY = 'vosWashTheme';
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setThemeState] = useState<Theme>('system'); // Default to system until loaded
+  // FIX: Use useAsyncStorage for theme state management
+  const [theme, setThemeState] = useAsyncStorage<Theme>(THEME_STORAGE_KEY, 'system');
   const [isSystemDark, setIsSystemDark] = useState<boolean>(() => Appearance.getColorScheme() === 'dark');
-
-  // Load theme from AsyncStorage on component mount
-  useEffect(() => {
-    const loadTheme = async () => {
-      try {
-        const storedTheme = await AsyncStorage.getItem(THEME_STORAGE_KEY);
-        if (storedTheme) {
-          setThemeState(storedTheme as Theme);
-        }
-      } catch (error) {
-        console.error('Failed to load theme from AsyncStorage:', error);
-      }
-    };
-    loadTheme();
-  }, []);
 
   // Effect to listen for OS theme changes
   useEffect(() => {
@@ -51,19 +38,12 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return theme === 'system' ? (isSystemDark ? 'dark' : 'light') : theme;
   }, [theme, isSystemDark]);
 
-  // Function to set theme and save to AsyncStorage
-  const setTheme = useCallback(async (newTheme: Theme) => {
+  // FIX: Function to set theme now simply calls setThemeState from useAsyncStorage
+  const setTheme = useCallback((newTheme: Theme) => {
     setThemeState(newTheme);
-    try {
-      if (newTheme === 'system') {
-        await AsyncStorage.removeItem(THEME_STORAGE_KEY);
-      } else {
-        await AsyncStorage.setItem(THEME_STORAGE_KEY, newTheme);
-      }
-    } catch (error) {
-      console.error('Failed to save theme to AsyncStorage:', error);
-    }
-  }, []);
+    // useAsyncStorage's setValue handles the persistence logic,
+    // including removing from storage if `newTheme` is 'system'
+  }, [setThemeState]);
 
   const contextValue = useMemo(() => ({ theme, setTheme, resolvedTheme }), [theme, setTheme, resolvedTheme]);
 

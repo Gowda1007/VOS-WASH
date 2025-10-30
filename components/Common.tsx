@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, Modal as RNModal, Animated, Easing, ScrollView } from 'react-native'; // FIX: Imported ScrollView
+import { View, Text, StyleSheet, TouchableOpacity, Image, Modal as RNModal, Animated, Easing, ScrollView } from 'react-native';
 import { FontAwesome5, MaterialCommunityIcons } from './VectorIcons'; // Custom import for icons
 import type { ToastMessage } from '../hooks/useToast';
 import { useTheme } from '../hooks/useTheme';
@@ -60,6 +60,7 @@ export const Icon: React.FC<{ name: string, size?: number, style?: object }> = (
         'clipboard-document-list': { type: 'fa5', name: 'clipboard-list' },
         // Fallback for icons not explicitly mapped or using MaterialCommunityIcons
         'hamburger': { type: 'mci', name: 'menu' }, // Example MaterialCommunityIcons
+        'check': { type: 'fa5', name: 'check' },
     };
 
     const iconInfo = iconMapping[name];
@@ -159,84 +160,6 @@ export const Button: React.FC<{
     );
 };
 
-// --- Toast Components ---
-// FIX: Removed ToastContainer and ToastItem from Common.tsx as they are now in hooks/useToast.tsx
-/*
-export const ToastContainer: React.FC<{ toasts: ToastMessage[]; removeToast: (id: number) => void; }> = ({ toasts, removeToast }) => {
-    return (
-        <View style={styles.toastContainer}>
-            {toasts.map(toast => (
-                <ToastItem key={toast.id} {...toast} onDismiss={() => removeToast(toast.id)} />
-            ))}
-        </View>
-    );
-};
-
-const ToastItem: React.FC<ToastMessage & { onDismiss: () => void }> = ({ message, type, onDismiss }) => {
-    const [fadeAnim] = useState(new Animated.Value(0)); // Initial opacity 0
-    const [slideAnim] = useState(new Animated.Value(50)); // Initial slide from right
-
-    useEffect(() => {
-        Animated.parallel([
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 300,
-                easing: Easing.out(Easing.ease),
-                useNativeDriver: true,
-            }),
-            Animated.timing(slideAnim, {
-                toValue: 0,
-                duration: 300,
-                easing: Easing.out(Easing.ease),
-                useNativeDriver: true,
-            }),
-        ]).start();
-
-        const timer = setTimeout(() => {
-            Animated.parallel([
-                Animated.timing(fadeAnim, {
-                    toValue: 0,
-                    duration: 300,
-                    easing: Easing.in(Easing.ease),
-                    useNativeDriver: true,
-                }),
-                Animated.timing(slideAnim, {
-                    toValue: 50,
-                    duration: 300,
-                    easing: Easing.in(Easing.ease),
-                    useNativeDriver: true,
-                }),
-            ]).start(() => onDismiss());
-        }, 5000); // Auto-dismiss after 5 seconds
-
-        return () => clearTimeout(timer);
-    }, [fadeAnim, slideAnim, onDismiss]);
-
-    const typeStyles = {
-        success: { bg: styles.bgGreen500, icon: 'check-circle' },
-        error: { bg: styles.bgRed500, icon: 'exclamation-triangle' },
-        info: { bg: styles.bgBlue500, icon: 'info-circle' },
-    };
-
-    const iconType = typeStyles[type].icon as React.ComponentProps<typeof Icon>['name'];
-
-    return (
-        <Animated.View 
-            style={[
-                styles.toastItemBase, 
-                typeStyles[type].bg, 
-                { opacity: fadeAnim, transform: [{ translateX: slideAnim }] }
-            ]}
-        >
-            <Icon name={iconType} size={24} style={styles.toastIcon} />
-            <Text style={styles.toastMessage}>{message}</Text>
-            <TouchableOpacity onPress={onDismiss} style={styles.toastDismissButton}>
-                <Icon name="x-mark" size={16} style={styles.toastDismissIcon}/>
-            </TouchableOpacity>
-        </Animated.View>
-    );
-};
-*/
 // --- Modal Component ---
 interface ModalProps {
     isOpen: boolean;
@@ -447,57 +370,6 @@ const styles = StyleSheet.create({
     buttonDangerHover: { // hover:bg-red-700
         // No direct RN equivalent
     },
-
-    // Toast Container - FIX: Removed from here. It's now in hooks/useToast.tsx
-    /*
-    toastContainer: {
-        position: 'absolute',
-        bottom: 20,
-        right: 20,
-        zIndex: 100,
-        gap: 12, // space-y-3
-        width: 320, // w-80
-    },
-    toastItemBase: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16, // p-4
-        borderRadius: 8, // rounded-lg
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
-        color: '#ffffff', // text-white
-    },
-    toastIcon: {
-        width: 24, // w-6
-        height: 24, // h-6
-        marginRight: 12, // mr-3
-        flexShrink: 0,
-        color: '#ffffff',
-    },
-    toastMessage: {
-        fontSize: 14, // text-sm
-        fontWeight: '500', // font-medium
-        flexGrow: 1,
-        color: '#ffffff',
-    },
-    toastDismissButton: {
-        marginLeft: 12, // ml-3
-        padding: 4, // p-1
-        borderRadius: 9999, // rounded-full
-        // hover:bg-black/20 - No direct RN equivalent
-    },
-    toastDismissIcon: {
-        width: 16, // w-4
-        height: 16, // h-4
-        color: '#ffffff',
-    },
-    bgGreen500: { backgroundColor: '#22c55e' },
-    bgRed500: { backgroundColor: '#ef4444' },
-    bgBlue500: { backgroundColor: '#3b82f6' },
-    */
 
     // Modal
     modalOverlay: {
