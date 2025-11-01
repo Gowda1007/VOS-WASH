@@ -1,0 +1,31 @@
+{
+  "name": "vos-wash",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "build:android": "eas build -p android --profile production",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "chart.js": "^4.5.1",
+    "expo": "^54.0.21",
+    "expo-status-bar": "^3.0.8",
+    "firebase": "^12.5.0",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^3.0.3",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-native": "^0.82.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0"
+  }
+}

@@ -1,0 +1,38 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Expo/EAS specific ignores
+.expo/
+.expo-shared/
+eas.json
+build/
+*.apk
+*.aab
+
+# Ignore AppData/Local/Google/Chrome cache if it's being picked up
+# This is a workaround for the current environment issue
+AppData/
+AppData/Local/
+Temp/
