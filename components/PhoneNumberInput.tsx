@@ -15,7 +15,7 @@ export const PhoneNumberInput: React.FC<PhoneNumberInputProps> = ({ value, onCha
 
     return (
         <div className="relative">
-            <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-500 dark:text-slate-400">+91</span>
+            <span className="absolute left-4 inset-y-0 flex items-center text-slate-500 dark:text-slate-400">+91</span>
             <input
                 type="tel"
                 maxLength={10}

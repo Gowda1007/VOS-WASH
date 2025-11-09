@@ -1,9 +1,0 @@
-
-{
-  "name": "VOS WASH",
-  "description": "A streamlined, admin-only financial management application for VOS WASH. Core features include invoice generation, customer management, order taking, customizable services, a day book, and an analytics dashboard. Designed as a standalone tool with a modern, mobile-first interface and automatic dark mode.",
-  "requestFramePermissions": [
-    "storage",
-    "notifications"
-  ]
-}

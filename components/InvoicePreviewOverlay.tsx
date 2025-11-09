@@ -3,14 +3,14 @@ import type { Invoice, Language } from '../types';
 import { InvoicePreview } from './InvoicePreview';
 import { Button, Icon } from './Common';
 import { useToast } from '../hooks/useToast';
-import { downloadPDF } from '../services/pdfService';
+import { downloadPDF, generatePdfAsFile, blobToBase64 } from '../services/pdfService';
 import { calculateRemainingBalance } from '../hooks/useInvoices';
 import { useLanguage } from '../hooks/useLanguage';
 
 interface InvoicePreviewOverlayProps {
   invoice: Invoice;
   onClose: () => void;
-  onCollect: (invoiceId: number) => void;
+  onCollect: (invoiceNumber: string) => void;
 }
 
 const InvoiceLanguageToggle: React.FC<{ value: Language, onChange: (lang: Language) => void }> = ({ value, onChange }) => (
@@ -25,6 +25,7 @@ export const InvoicePreviewOverlay: React.FC<InvoicePreviewOverlayProps> = ({ in
     const { t } = useLanguage();
     const balanceDue = calculateRemainingBalance(invoice);
     const [invoiceLanguage, setInvoiceLanguage] = useState<Language>(invoice.language || 'en');
+    const [isLoading, setIsLoading] = useState(false);
 
     const handleDownload = async () => {
         const elementToPrint = document.getElementById('invoice-preview-content');
@@ -33,6 +34,64 @@ export const InvoicePreviewOverlay: React.FC<InvoicePreviewOverlayProps> = ({ in
             toast.success('Invoice saved to your Downloads folder.');
         } else {
             toast.error('Could not find invoice content to download.');
+        }
+    };
+
+    const handleShare = async () => {
+        const elementToPrint = document.getElementById('invoice-preview-content');
+        if (!elementToPrint) {
+            toast.error(t('could-not-find-invoice-content-to-share', 'Could not find invoice content to share.'));
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            const pdfFile = await generatePdfAsFile(invoice, elementToPrint);
+
+            if (!pdfFile) {
+                toast.error(t('pdf-generation-failed', 'PDF generation failed.'));
+                return;
+            }
+
+            const customerPhone = invoice.customerPhone.replace(/\D/g, '');
+            const messageText = t("whatsapp-share-message")
+                .replace("{customerName}", invoice.customerName)
+                .replace("{invoiceNumber}", invoice.invoiceNumber);
+
+            // 1. Check if the AndroidBridge is available (only in Android WebView)
+            if (window.AndroidBridge?.sharePdfViaWhatsApp) {
+                const base64Pdf = await blobToBase64(pdfFile);
+                window.AndroidBridge.sharePdfViaWhatsApp(
+                    base64Pdf,
+                    customerPhone,
+                    messageText
+                );
+                toast.success(t('invoice-shared-via-whatsapp', 'Invoice shared via WhatsApp.'));
+            }
+            // 2. Fallback for web browsers supporting Web Share API (for file sharing)
+            else if (navigator.share && navigator.canShare({ files: [pdfFile] })) {
+                await navigator.share({
+                    files: [pdfFile],
+                    title: `Invoice ${invoice.invoiceNumber}`,
+                    text: messageText,
+                });
+                toast.success(t('invoice-shared-via-web-share', 'Invoice shared successfully.'));
+            }
+            // 3. If neither native bridge nor Web Share API is available, throw an error.
+            else {
+                throw new Error("File sharing is not supported on this device/browser.");
+            }
+
+        } catch (error) {
+            if (error instanceof DOMException && error.name === "AbortError") {
+                // User dismissed the share dialog, no error toast needed
+            } else {
+                console.error("Error sharing via WhatsApp:", error);
+                const errorMessage = error instanceof Error ? error.message : 'Could not share via WhatsApp.';
+                toast.error(t('could-not-share-via-whatsapp', errorMessage));
+            }
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -61,8 +120,16 @@ export const InvoicePreviewOverlay: React.FC<InvoicePreviewOverlayProps> = ({ in
                          <Icon name="document-duplicate" className="w-5 h-5"/>
                         {t('download-pdf')}
                     </Button>
+                    <Button onClick={handleShare} disabled={isLoading} className="bg-green-500 hover:bg-green-600 focus:ring-green-400">
+                        {isLoading ? (
+                            <Icon name="arrow-path" className="w-5 h-5 animate-spin" />
+                        ) : (
+                            <Icon name="share" className="w-5 h-5"/>
+                        )}
+                        {t('share-via-whatsapp', 'Share via WhatsApp')}
+                    </Button>
                     {balanceDue > 0 && (
-                        <Button onClick={() => onCollect(invoice.id)} className="bg-green-600 hover:bg-green-700 focus:ring-green-500">
+                        <Button onClick={() => onCollect(invoice.invoiceNumber)} className="bg-green-600 hover:bg-green-700 focus:ring-green-500">
                             <Icon name="banknotes" className="w-5 h-5"/> {t('collect-payment')}
                         </Button>
                     )}

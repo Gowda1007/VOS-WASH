@@ -22,8 +22,8 @@ export interface Service {
 }
 
 export interface Invoice {
-  id: string;
-  invoiceNumber: string;
+  _id?: string; // MongoDB ID, added for reliable updates
+  invoiceNumber: string; // Re-added as the sole identifier
   invoiceDate: string;
   customerName: string;
   customerPhone: string;
@@ -44,7 +44,7 @@ export interface PendingOrder {
   customerAddress: string;
   customerType: CustomerType;
   services: Service[];
-  advancePaid: { amount: number };
+  advancePaid: { amount: number; date?: string };
   dueDate?: string;
   isUrgent?: boolean;
 }
@@ -84,4 +84,8 @@ export interface ConfirmModalState {
   title?: string;
   message?: string;
   onConfirm?: (...args: any[]) => void | Promise<void>;
+}
+
+export interface AndroidBridge {
+  sharePdfViaWhatsApp: (base64Pdf: string, fileName: string, message: string, phoneNumber: string) => void;
 }

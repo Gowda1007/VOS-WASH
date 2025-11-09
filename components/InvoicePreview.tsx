@@ -5,16 +5,6 @@ import { calculateInvoiceTotal, calculateRemainingBalance } from '../hooks/useIn
 import { Logo, Vari } from './Common';
 import { useLanguage } from '../hooks/useLanguage';
 
-// Removed global declarations for html2canvas, jspdf, Chart
-// They are now either imported where needed or handled by the bundling process.
-// declare global {
-//     interface Window {
-//         html2canvas: any;
-//         jspdf: any;
-//         Chart: any;
-//     }
-// }
-
 
 const useResponsiveScaling = (
     contentRef: React.RefObject<HTMLDivElement>,
@@ -48,31 +38,114 @@ const useResponsiveScaling = (
 
 const formatDateForDisplay = (dateStr: string | undefined): string => {
     if (!dateStr) return '';
-    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) return `(${dateStr})`;
-    if (dateStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
-         const [d, m, y] = dateStr.split('/');
-         return `(${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')})`;
+    
+    // Strip time component if present (e.g., "YYYY-MM-DD HH:MM:SS" or "D/M/YYYY HH:MM:SS")
+    const dateOnlyStr = dateStr.split(' ')[0].split('T')[0];
+
+    let d: string, m: string, y: string;
+
+    // Handle YYYY-MM-DD format
+    if (dateOnlyStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        [y, m, d] = dateOnlyStr.split('-');
     }
-    return `(${dateStr})`;
+    // Handle D/M/YYYY format
+    else if (dateOnlyStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+         [d, m, y] = dateOnlyStr.split('/');
+    } else {
+        // Return empty string if format is unknown or invalid date
+        return '';
+    }
+
+    d = d.padStart(2, '0');
+    m = m.padStart(2, '0');
+    y = y;
+
+    // Return (DD-MM-YYYY) format
+    return `(${d}-${m}-${y})`;
+};
+
+const capitalizeWords = (str: string): string => {
+    if (!str) return '';
+    return str.toLowerCase().split(' ').map(word => 
+        word.charAt(0).toUpperCase() + word.slice(1)
+    ).join(' ');
+};
+
+// Utility function to check if a date string represents today's date (DD-MM-YYYY or YYYY-MM-DD or D/M/YYYY)
+const isToday = (dateStr: string | undefined): boolean => {
+    if (!dateStr) return false;
+    
+    // Strip time component if present
+    const dateOnlyStr = dateStr.split(' ')[0].split('T')[0];
+    
+    let dateParts: string[];
+    let year: number, month: number, day: number;
+
+    if (dateOnlyStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        // YYYY-MM-DD format
+        dateParts = dateOnlyStr.split('-');
+        year = parseInt(dateParts[0], 10);
+        month = parseInt(dateParts[1], 10) - 1; // Month is 0-indexed
+        day = parseInt(dateParts[2], 10);
+    } else if (dateOnlyStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+        // D/M/YYYY format
+        dateParts = dateOnlyStr.split('/');
+        day = parseInt(dateParts[0], 10);
+        month = parseInt(dateParts[1], 10) - 1;
+        year = parseInt(dateParts[2], 10);
+    } else {
+        return false; // Unknown format
+    }
+
+    // Create Date object using local time components
+    const inputDate = new Date(year, month, day);
+    
+    // Get today's date (local time)
+    const today = new Date();
+    
+    // Compare year, month, and day
+    return inputDate.getFullYear() === today.getFullYear() &&
+           inputDate.getMonth() === today.getMonth() &&
+           inputDate.getDate() === today.getDate();
 };
 
 const FinancialEntry: React.FC<{
   label: string;
+  labelKey: string; // Original key for conditional logic
+  t: (key: string) => string; // Translation function
   amount: number;
   date?: string;
   sign: '+' | '-';
   color: 'red' | 'green' | 'blue';
-}> = ({ label, amount, date, sign, color }) => {
+}> = ({ label, labelKey, t, amount, date, sign, color }) => {
   const colorClasses = {
     red: 'text-red-600',
     green: 'text-green-600',
     blue: 'text-blue-600',
   };
 
+  let displayLabel = label;
+  let displayDate = formatDateForDisplay(date);
+
+  // Apply special logic only for payments and advance payments
+  if (date && (labelKey === 'payment' || labelKey === 'advance-paid')) {
+    if (isToday(date)) {
+      // If paid today, show "Now Paid"
+      displayLabel = "Now Paid";
+      displayDate = ''; // Do not show date if 'Now Paid'
+    } else {
+      // If not today, show "Paid(dd-mm-yyyy)"
+      displayLabel = "Paid";
+      // displayDate already contains (dd-mm-yyyy)
+    }
+  }
+
   return (
     <div className={`flex justify-between mb-2 text-lg ${colorClasses[color]}`}>
-      <span>{label} {formatDateForDisplay(date)}</span>
-      <span>{sign} ₹{amount.toFixed(2)}</span>
+      <span>{displayLabel} {displayDate}</span>
+      <div className="flex flex-col items-end">
+        <span>{sign} ₹{amount.toFixed(2)}</span>
+      </div>
     </div>
   );
 };
@@ -106,12 +179,12 @@ export const InvoicePreview: React.FC<{ invoiceData: Invoice, language?: Languag
         className="absolute top-0 left-0 bg-white text-gray-800 shadow-xl font-sans flex flex-col transform-gpu"
         style={{ width: `${BASE_INVOICE_WIDTH}px`, height: `${BASE_INVOICE_WIDTH * 1.414}px`, transformOrigin: 'top left' }}
       >
-        <div className="p-12 m-0 flex-grow flex flex-col">
-            <div className="flex-grow">
+        <div className="p-12 m-0 grow flex flex-col">
+            <div className="grow">
               <header className="text-center mb-5 border-b pb-4">
-                  <Vari className="w-56 mx-auto mb-2" />
+                  <Vari className="w-56 mx-auto mb-2 ml-[-15]"/>
                   <div className="flex items-center justify-center">
-                      <Logo className="w-24" />
+                      <Logo className="w-20"/>
                       <div className="flex flex-col">
                           <h1 className="text-5xl font-bold text-blue-700">{t('app-name-invoice')}</h1>
                           <p className="text-xl text-right">{t('app-tagline')}</p>
@@ -122,7 +195,7 @@ export const InvoicePreview: React.FC<{ invoiceData: Invoice, language?: Languag
               <section className="flex justify-between items-start mb-4 text-lg">
                 <div>
                   <h2 className="font-bold text-xl text-gray-700 mb-2">{t('bill-to')}</h2>
-                  <p>{customerName}</p>
+                  <p className="font-bold">{capitalizeWords(customerName)}</p>
                   <p>{customerAddress && customerAddress !== 'N/A' ? customerAddress : ''}</p>
                   <p>{customerPhone}</p>
                 </div>
@@ -175,19 +248,19 @@ export const InvoicePreview: React.FC<{ invoiceData: Invoice, language?: Languag
                       
                       {hasFinancialDetails && (
                           <div className="mt-2 pt-2 border-t border-b border-dashed border-gray-400 pb-2">
-                            {oldBalance && oldBalance.amount > 0 && 
-                                <FinancialEntry label={t('old-balance')} amount={oldBalance.amount} date={oldBalance.date} sign="+" color="red" />}
+                            {oldBalance && oldBalance.amount > 0 &&
+                                <FinancialEntry label={t('old-balance')} labelKey='old-balance' t={t} amount={oldBalance.amount} date={oldBalance.date} sign="+" color="red" />}
                             {advancePaid && advancePaid.amount > 0 &&
-                                <FinancialEntry label={t('advance-paid')} amount={advancePaid.amount} date={advancePaid.date} sign="-" color="green" />}
-                            {payments.map((p, i) => 
-                                <FinancialEntry key={i} label={t('now-paid')} amount={p.amount} date={p.date} sign="-" color="blue" />)}
+                                <FinancialEntry label={t('advance-paid')} labelKey='advance-paid' t={t} amount={advancePaid.amount} date={advancePaid.date} sign="-" color="green" />}
+                            {payments.map((p, i) =>
+                                <FinancialEntry key={i} label={t('payment')} labelKey='payment' t={t} amount={p.amount} date={p.date} sign="-" color="blue" />)}
                           </div>
                       )}
                       
                       {hasFinancialDetails && (
                           <div className="flex justify-between font-extrabold text-xl mt-2 pt-2 border-t-4 border-double border-blue-600">
                               <p className="text-blue-800">{t('balance-due')}</p>
-                              <p className="text-blue-800">₹{balanceDue.toFixed(2)}</p>
+                              <p className="text-blue-800">₹{Math.max(0, balanceDue).toFixed(2)}</p>
                           </div>
                        )}
                   </div>

@@ -1,39 +1,39 @@
 import { useState, useEffect } from 'react';
 import type { PendingOrder } from '../types';
 import * as apiService from '../services/apiService';
-import { db } from '../services/firebaseService';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
-
 export const usePendingOrders = () => {
     const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>([]);
 
+    const fetchOrders = () => {
+        apiService.getPendingOrders()
+            .then(setPendingOrders)
+            .catch(error => {
+                console.error("Error fetching pending orders:", error);
+                setPendingOrders([]);
+            });
+    };
+
     useEffect(() => {
-        const ordersCollection = collection(db, 'pendingOrders');
-        // Order by orderDate or updatedAt descending
-        const q = query(ordersCollection, orderBy('updatedAt', 'desc'));
-
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const fetchedOrders: PendingOrder[] = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data() as Omit<PendingOrder, 'id'>
-            }));
-            setPendingOrders(fetchedOrders);
-        }, (error) => {
-            console.error("Error fetching pending orders:", error);
-        });
-
-        return () => unsubscribe();
+        // Replace real-time listener with a one-time fetch
+        fetchOrders();
+        
+        // NOTE: If real-time sync is required, a polling mechanism or WebSockets must be implemented here.
+        // For now, we rely on manual refresh or state updates after CRUD operations.
     }, []);
 
     const addPendingOrder = async (orderData: Omit<PendingOrder, 'id'>) => {
-        // We rely on the onSnapshot listener to update the state (setPendingOrders)
         const newOrder = await apiService.addPendingOrder(orderData);
+        // Manually refresh data after write operation
+        fetchOrders();
         return newOrder;
     };
     
     const deletePendingOrder = async (orderId: string) => {
-        // We rely on the onSnapshot listener to update the state (setPendingOrders)
         await apiService.deletePendingOrder(orderId);
+        // Immediately update local state
+        setPendingOrders(prev => prev.filter(order => order.id !== orderId));
+        // Background refresh to ensure full synchronization
+        fetchOrders();
     };
 
     return { pendingOrders, addPendingOrder, deletePendingOrder };

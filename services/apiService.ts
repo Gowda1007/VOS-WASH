@@ -1,150 +1,189 @@
-import { db } from './firebaseService';
-import { 
-    collection, 
-    doc, 
-    setDoc, 
-    deleteDoc, 
-    getDoc, 
-    query, 
-    where, 
-    getDocs,
-    serverTimestamp,
-    Timestamp,
-    orderBy
-} from 'firebase/firestore';
 import type { 
     Invoice, 
-    Customer, 
-    ServiceSets, 
+    Customer,
+    ServiceSets,
     AppSettings,
-    PendingOrder
+    PendingOrder,
+    PaymentMethod
 } from '../types';
 import { DEFAULT_SERVICE_SETS } from '../constants';
 
-// --- Firestore Collection References ---
-const INVOICES_COLLECTION = 'invoices';
-const CUSTOMERS_COLLECTION = 'customers';
-const SERVICES_COLLECTION = 'services';
-const SETTINGS_COLLECTION = 'settings';
-const PENDING_ORDERS_COLLECTION = 'pendingOrders';
+const API_BASE_URL = `${import.meta.env.VITE_SERVER_URL}/api`;
+console.log('[API] Base URL:', API_BASE_URL); 
 
-// --- Generic CRUD Operations ---
+// --- API Utility Functions ---
 
-// Saves or updates a document. If id is provided, it updates; otherwise, it creates a new document with a generated ID.
-const saveDocument = async <T extends { id?: string }>(collectionName: string, data: Omit<T, 'id'> & { id?: string }): Promise<T> => {
-    const docRef = data.id ? doc(db, collectionName, data.id) : doc(collection(db, collectionName));
-    const id = docRef.id;
-    
-    // Clean data for Firestore (remove undefined/null fields if necessary, add timestamp)
-    const dataToSave = {
-        ...data,
-        id: id,
-        updatedAt: serverTimestamp(),
-    };
+const handleResponse = async <T>(response: Response): Promise<T> => {
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`API Error: ${response.status} - ${errorText}`);
+    }
 
-    await setDoc(docRef, dataToSave);
-    // Use double assertion to satisfy TypeScript compiler for complex generic return type
-    return { ...dataToSave, id } as unknown as T;
+    // Handle 204 No Content
+    if (response.status === 204) {
+        return {} as T;
+    }
+
+    const text = await response.text(); // read raw text
+    if (!text) {
+        // If the response is empty, return an empty array/object based on context.
+        // Since most endpoints return arrays, returning [] is safer than {}
+        // to prevent `forEach is not a function` errors.
+        return [] as T;
+    }
+
+    try {
+        return JSON.parse(text) as T;
+    } catch (e) {
+        console.warn("⚠️ Could not parse JSON response:", text);
+        // If parsing fails (e.g., server returns HTML), return an empty array
+        // as a safe fallback for array-returning endpoints.
+        return [] as T;
+    }
 };
 
-const deleteDocument = async (collectionName: string, id: string): Promise<void> => {
-    await deleteDoc(doc(db, collectionName, id));
+
+const apiFetch = async <T>(endpoint: string, options: RequestInit = {}): Promise<T> => {
+    const url = `${API_BASE_URL}${endpoint}`;
+    const defaultHeaders = {
+        'Content-Type': 'application/json',
+    };
+
+    try {
+        const response = await fetch(url, {
+            ...options,
+            headers: {
+                ...defaultHeaders,
+                ...options.headers,
+            },
+        });
+
+        return handleResponse<T>(response);
+    } catch (error) {
+        console.error(`[APIService] Failed to fetch ${url}:`, error);
+        throw error;
+    }
 };
 
 // --- Invoices ---
 
-// Note: getInvoices is replaced by real-time listener in useInvoices.ts
-export const addInvoice = async (invoiceData: Omit<Invoice, 'id'>): Promise<Invoice> => {
-    return saveDocument<Invoice>(INVOICES_COLLECTION, invoiceData);
+export const getInvoices = async (): Promise<Invoice[]> => {
+    return apiFetch<Invoice[]>('/invoices');
 };
 
-export const updateInvoice = async (invoiceId: string, updatedData: Partial<Invoice>): Promise<Invoice | null> => {
-    // We rely on the real-time listener in useInvoices to update the state.
-    // This function only performs the write operation.
-    const docRef = doc(db, INVOICES_COLLECTION, invoiceId);
-    const dataToSave = { ...updatedData, updatedAt: serverTimestamp() };
-    await setDoc(docRef, dataToSave, { merge: true });
-    
-    // Fetch the updated document to return (optional, but useful for immediate feedback)
-    const docSnap = await getDoc(docRef);
-    return docSnap.exists() ? { ...docSnap.data() as Invoice, id: docSnap.id } : null;
+export const addInvoice = async (invoiceData: Invoice): Promise<Invoice> => {
+    // Since 'id' is removed from Invoice type, we pass the full Invoice object.
+    return apiFetch<Invoice>('/invoices', {
+        method: 'POST',
+        body: JSON.stringify(invoiceData),
+    });
 };
 
-export const deleteInvoice = async (invoiceId: string): Promise<void> => {
-    await deleteDocument(INVOICES_COLLECTION, invoiceId);
+export const updateInvoice = async (invoiceNumber: string, updatedData: Partial<Invoice>): Promise<Invoice | null> => {
+    return apiFetch<Invoice | null>(`/invoices/${invoiceNumber}`, {
+        method: 'PUT',
+        body: JSON.stringify(updatedData),
+    });
+};
+
+
+export const recordInvoicePayment = async (
+  invoiceNumber: string,
+  amount: number,
+  method: PaymentMethod,
+  referenceNumber?: string
+): Promise<Invoice | null> => {
+  const paymentData = { amount, method, referenceNumber };
+
+  return await apiFetch<Invoice | null>(`/invoices/${invoiceNumber}/payments`, { 
+    method: 'POST',
+    body: JSON.stringify(paymentData),
+  });
+};
+
+
+export const deleteInvoice = async (invoiceNumber: string): Promise<void> => {
+    return apiFetch<void>(`/invoices/${invoiceNumber}`, {
+        method: 'DELETE',
+    });
 };
 
 // --- Customers ---
 
-// Note: getCustomers is replaced by real-time listener in useCustomers.ts
-export const addOrUpdateCustomer = async (customer: Customer): Promise<Customer> => {
-    // Use phone number as the document ID for customers for easy lookup/update
-    const docRef = doc(db, CUSTOMERS_COLLECTION, customer.phone);
-    
-    const dataToSave = {
-        ...customer,
-        updatedAt: serverTimestamp(),
-    };
-    
-    await setDoc(docRef, dataToSave, { merge: true });
-    return customer;
+export const getCustomers = async (): Promise<Customer[]> => {
+    return apiFetch<Customer[]>('/customers');
 };
 
-export const isCustomerExists = async (phone: string): Promise<boolean> => {
-    const docSnap = await getDoc(doc(db, CUSTOMERS_COLLECTION, phone));
-    return docSnap.exists();
+export const addOrUpdateCustomer = async (customer: Customer): Promise<Customer> => {
+    // The server handles upsert logic based on the 'phone' field in the POST body
+    return apiFetch<Customer>('/customers', {
+        method: 'POST',
+        body: JSON.stringify(customer),
+    });
 };
+
 
 export const deleteCustomer = async (phone: string): Promise<void> => {
-    await deleteDocument(CUSTOMERS_COLLECTION, phone);
+    return apiFetch<void>(`/customers/${phone}`, {
+        method: 'DELETE',
+    });
 };
 
-// --- Services (Managed as a single document for simplicity) ---
-
-const SERVICES_DOC_ID = 'service_sets';
+// --- Services (Managed as a single document) ---
 
 export const getServiceSets = async (): Promise<ServiceSets> => {
-    const docSnap = await getDoc(doc(db, SETTINGS_COLLECTION, SERVICES_DOC_ID));
-    if (docSnap.exists()) {
-        return docSnap.data() as ServiceSets;
+    const serviceSets = await apiFetch<ServiceSets>('/services');
+    
+    if (Object.keys(serviceSets).length === 0) {
+        // If the server returns an empty object (no service sets found), initialize with defaults
+        await saveServiceSets(DEFAULT_SERVICE_SETS);
+        return DEFAULT_SERVICE_SETS;
     }
-    // Initialize if not found
-    await setDoc(doc(db, SETTINGS_COLLECTION, SERVICES_DOC_ID), DEFAULT_SERVICE_SETS);
-    return DEFAULT_SERVICE_SETS;
+    return serviceSets;
 };
 
 export const saveServiceSets = async (newServiceSets: ServiceSets): Promise<ServiceSets> => {
-    await setDoc(doc(db, SETTINGS_COLLECTION, SERVICES_DOC_ID), newServiceSets);
-    return newServiceSets;
+    return apiFetch<ServiceSets>('/services', {
+        method: 'POST',
+        body: JSON.stringify(newServiceSets),
+    });
 };
 
 // --- App Settings (Managed as a single document) ---
 
-const APP_SETTINGS_DOC_ID = 'app_settings';
-const DEFAULT_SETTINGS: AppSettings = { upiId: '9845418725@ybl' };
-
 export const getSettings = async (): Promise<AppSettings> => {
-    const docSnap = await getDoc(doc(db, SETTINGS_COLLECTION, APP_SETTINGS_DOC_ID));
-    if (docSnap.exists()) {
-        return docSnap.data() as AppSettings;
+    const settings = await apiFetch<AppSettings>('/settings');
+    
+    if (Object.keys(settings).length === 0) {
+        // If the server returns an empty object (no settings found), return default
+        const DEFAULT_SETTINGS: AppSettings = { upiId: '9845418725@ybl' };
+        return DEFAULT_SETTINGS;
     }
-    // Initialize if not found
-    await setDoc(doc(db, SETTINGS_COLLECTION, APP_SETTINGS_DOC_ID), DEFAULT_SETTINGS);
-    return DEFAULT_SETTINGS;
+    return settings;
 };
 
 export const saveSettings = async (newSettings: AppSettings): Promise<AppSettings> => {
-    await setDoc(doc(db, SETTINGS_COLLECTION, APP_SETTINGS_DOC_ID), newSettings);
-    return newSettings;
+    return apiFetch<AppSettings>('/settings', {
+        method: 'POST',
+        body: JSON.stringify(newSettings),
+    });
 };
 
 // --- Pending Orders ---
 
-// Note: getPendingOrders is replaced by real-time listener in usePendingOrders.ts
+export const getPendingOrders = async (): Promise<PendingOrder[]> => {
+    return apiFetch<PendingOrder[]>('/pending-orders');
+};
+
 export const addPendingOrder = async (orderData: Omit<PendingOrder, 'id'>): Promise<PendingOrder> => {
-    return saveDocument<PendingOrder>(PENDING_ORDERS_COLLECTION, orderData);
+    return apiFetch<PendingOrder>('/pending-orders', {
+        method: 'POST',
+        body: JSON.stringify(orderData),
+    });
 };
 
 export const deletePendingOrder = async (orderId: string): Promise<void> => {
-    await deleteDocument(PENDING_ORDERS_COLLECTION, orderId);
+    return apiFetch<void>(`/pending-orders/${orderId}`, {
+        method: 'DELETE',
+    });
 };

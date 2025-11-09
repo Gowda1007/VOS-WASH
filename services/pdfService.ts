@@ -1,8 +1,20 @@
-
 import type { Invoice } from "../types";
 import html2canvas from 'html2canvas'; // Dynamically imported
 import { jsPDF } from 'jspdf'; // Dynamically imported
 
+export const blobToBase64 = (blob: Blob): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            // The result is a data URL (e.g., "data:application/pdf;base64,...")
+            // We only want the base64 part
+            const base64String = (reader.result as string).split(',')[1];
+            resolve(base64String);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+};
 // No longer need declare global for window object, import directly
 // declare global {
 //     interface Window {
@@ -29,10 +41,11 @@ const generatePdfFromHtmlElement = async (element: HTMLElement, filename: string
             scale: 2,
             logging: false,
             useCORS: true,
+            allowTaint: true, // Allow cross-origin content to taint the canvas, potentially fixing image loading issues
             backgroundColor: '#ffffff', // Ensure a white background for consistency
         });
 
-        const imgData = canvas.toDataURL("image/png");
+        const imgData = canvas.toDataURL("image/jpeg", 0.9);
 
         const pdf = new jsPDF({
             orientation: "portrait",
@@ -43,7 +56,7 @@ const generatePdfFromHtmlElement = async (element: HTMLElement, filename: string
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
-        pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+        pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight);
         
         if (outputType === 'datauristring') {
             return pdf.output('datauristring');
@@ -82,7 +95,6 @@ export const downloadPDF = async (invoiceData: Pick<Invoice, 'invoiceNumber' | '
         alert(error instanceof Error ? error.message : "Could not generate PDF. Check console for details.");
     }
 };
-
 export const generatePdfAsFile = async (invoiceData: Pick<Invoice, 'invoiceNumber' | 'customerName'>, elementToPrint: HTMLElement | null): Promise<File | null> => {
     try {
         const filename = `VOS-WASH-Invoice-${invoiceData.invoiceNumber}-${invoiceData.customerName.replace(/ /g, '_')}.pdf`;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+ import React, { useState, useEffect } from 'react';
 import type { Invoice, PaymentMethod, AppSettings, PendingOrder, Customer, ConfirmModalState } from '../types';
 import { calculateRemainingBalance } from '../hooks/useInvoices';
 import { useLanguage } from '../hooks/useLanguage';
@@ -13,6 +13,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ state, set
   const { isOpen, action, invoice, title, message, onConfirm } = state;
   const [amount, setAmount] = useState(0);
   const [method, setMethod] = useState<PaymentMethod>('cash');
+  const [referenceNumber, setReferenceNumber] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { t } = useLanguage();
 
@@ -34,7 +35,8 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ state, set
       setIsLoading(true);
       try {
         if (action === 'collect') {
-            await onConfirm(amount, method);
+            const refNum = method === 'upi' ? referenceNumber : undefined;
+            await onConfirm(amount, method, refNum);
         } else {
             await onConfirm();
         }
@@ -89,7 +91,20 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ state, set
                   </div>
               </div>
             </div>
-            {action === 'collect' && method === 'upi' && (
+           {method === 'upi' && (
+               <div>
+                   <label htmlFor="referenceNumberInput" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">{t('upi-reference-number', 'UPI Reference Number')}</label>
+                   <input
+                       type="text"
+                       id="referenceNumberInput"
+                       value={referenceNumber}
+                       onChange={(e) => setReferenceNumber(e.target.value)}
+                       placeholder={t('enter-upi-ref', 'Enter 12-digit UPI Ref No.')}
+                       className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
+                   />
+               </div>
+           )}
+           {action === 'collect' && method === 'upi' && (
               <div className="mt-4 p-4 rounded-lg bg-slate-50 dark:bg-slate-900/50 border dark:border-slate-700 text-center">
                 {qrCodeUrl ? (
                   <>

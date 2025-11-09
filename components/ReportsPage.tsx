@@ -5,7 +5,6 @@ import { Card, Button, Icon } from './Common';
 import { calculateInvoiceTotal, calculateTotalPaid } from '../hooks/useInvoices';
 import { downloadPDF } from '../services/pdfService';
 import { useToast } from '../hooks/useToast';
-import { useTheme } from '../hooks/useTheme';
 import { useLanguage } from '../hooks/useLanguage';
 import Chart from 'chart.js/auto'; // Dynamically imported
 
@@ -18,9 +17,7 @@ export const ReportsPage: React.FC<{ invoices: Invoice[] }> = ({ invoices }) => 
     const [period, setPeriod] = useState<ReportPeriod>('this_month');
     const chartRef = useRef<HTMLCanvasElement>(null);
     const chartInstanceRef = useRef<any>(null);
-    const { resolvedTheme } = useTheme();
     const { t } = useLanguage();
-    const isDarkMode = resolvedTheme === 'dark';
     const toast = useToast();
 
     const filteredData = useMemo(() => {
@@ -108,8 +105,8 @@ export const ReportsPage: React.FC<{ invoices: Invoice[] }> = ({ invoices }) => 
         });
         
         const chartColors = {
-            grid: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-            ticks: isDarkMode ? '#cbd5e1' : '#64748b',
+            grid: 'rgba(0, 0, 0, 0.1)',
+            ticks: '#64748b',
         };
 
         chartInstanceRef.current = new Chart(ctx, { // Use Chart directly
@@ -124,7 +121,7 @@ export const ReportsPage: React.FC<{ invoices: Invoice[] }> = ({ invoices }) => 
             options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, grid: { color: chartColors.grid }, ticks: { color: chartColors.ticks } }, x: { grid: { color: chartColors.grid }, ticks: { color: chartColors.ticks } } }, plugins: { legend: { labels: { color: chartColors.ticks } } } }
         });
         return () => chartInstanceRef.current?.destroy();
-    }, [filteredData, period, isDarkMode, t]);
+    }, [filteredData, period, t]);
     
     const handleDownload = async () => {
         const reportElement = document.getElementById('report-content');

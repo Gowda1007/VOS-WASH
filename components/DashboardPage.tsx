@@ -1,10 +1,9 @@
-
+ 
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import type { AnalyticsData, Invoice, PendingOrder } from '../types';
 import { filterAndGroupInvoicesForChart } from '../services/analyticsService';
 import { Card, Badge, Icon, Button, EmptyState } from './Common';
 import { calculateInvoiceTotal, calculateStatus } from '../hooks/useInvoices';
-import { useTheme } from '../hooks/useTheme';
 import { useLanguage } from '../hooks/useLanguage';
 import Chart from 'chart.js/auto'; // Dynamically imported
 
@@ -47,7 +46,7 @@ interface DashboardPageProps {
     pendingOrders: PendingOrder[];
     onPreviewInvoice: (invoice: Invoice) => void;
     onGenerateInvoice: (order: PendingOrder) => void;
-    onDeleteOrder: (orderId: number) => void;
+    onDeleteOrder: (orderId: string) => void;
     onNavigateToUnpaid: () => void;
 }
 
@@ -58,9 +57,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ analytics, recentI
     const pieChartInstanceRef = useRef<any>(null);
     const [chartPeriod, setChartPeriod] = useState<ChartPeriod>('month');
     
-    const { resolvedTheme } = useTheme();
     const { t } = useLanguage();
-    const isDarkMode = resolvedTheme === 'dark';
 
     const sortedPendingOrders = useMemo(() => {
         const now = new Date();
@@ -109,8 +106,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ analytics, recentI
 
         const data = filterAndGroupInvoicesForChart(chartPeriod, recentInvoices);
         const chartColors = {
-            grid: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-            ticks: isDarkMode ? '#cbd5e1' : '#64748b',
+            grid: 'rgba(0, 0, 0, 0.1)',
+            ticks: '#64748b',
         };
 
         barChartInstanceRef.current = new Chart(ctx, { // Use Chart directly
@@ -144,7 +141,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ analytics, recentI
             }
         });
         return () => barChartInstanceRef.current?.destroy();
-    }, [chartPeriod, recentInvoices, isDarkMode, t]);
+    }, [chartPeriod, recentInvoices, t]);
 
      useEffect(() => {
         if (!pieChartRef.current || typeof Chart === 'undefined') return; // Use Chart directly
@@ -154,8 +151,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ analytics, recentI
 
         const data = analytics.revenueByCustomerType;
         const chartColors = {
-            ticks: isDarkMode ? '#cbd5e1' : '#64748b',
-            border: isDarkMode ? '#1e293b' : '#fff'
+            ticks: '#64748b',
+            border: '#fff'
         };
 
         pieChartInstanceRef.current = new Chart(ctx, { // Use Chart directly
@@ -181,19 +178,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ analytics, recentI
             }
         });
         return () => pieChartInstanceRef.current?.destroy();
-    }, [analytics.revenueByCustomerType, isDarkMode, t]);
+    }, [analytics.revenueByCustomerType, t]);
 
     return (
         <div className="space-y-8">
             <p className="text-slate-500 dark:text-slate-400">{t('welcome-back')}</p>
             
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-                <KpiCard title={t('total-revenue')} value={`₹${analytics.totalRevenue.toLocaleString('en-IN')}`} icon="chart-pie" color="text-green-600 dark:text-green-400" />
-                <KpiCard title={t('collected')} value={`₹${analytics.totalPayments.toLocaleString('en-IN')}`} icon="banknotes" color="text-blue-600 dark:text-blue-400" />
+                <KpiCard title={t('total-revenue')} value={`₹${analytics.totalRevenue.toLocaleString('en-IN')}`} icon="chart-up-circle" color="text-green-600 dark:text-green-400" />
+                <KpiCard title={t('collected')} value={`₹${analytics.totalPayments.toLocaleString('en-IN')}`} icon="cash-banknote" color="text-blue-600 dark:text-blue-400" />
                 <div onClick={onNavigateToUnpaid} className="cursor-pointer">
-                    <KpiCard title={t('unpaid-balance')} value={`₹${analytics.unpaidBalance.toLocaleString('en-IN')}`} icon="document-text" color="text-red-600 dark:text-red-400" />
+                    <KpiCard title={t('unpaid-balance')} value={`₹${analytics.unpaidBalance.toLocaleString('en-IN')}`} icon="hourglass" color="text-red-600 dark:text-red-400" />
                 </div>
-                <KpiCard title={t('total-invoices')} value={analytics.totalInvoices} icon="document-duplicate" color="text-slate-600 dark:text-slate-400" />
+                <KpiCard title={t('total-invoices')} value={analytics.totalInvoices} icon="document-check" color="text-slate-600 dark:text-slate-400" />
             </div>
 
             {pendingOrders.length > 0 && (
@@ -211,7 +208,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ analytics, recentI
 
                              return (
                                 <li key={order.id} className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                                    <div className="flex-grow">
+                                    <div className="grow">
                                         <div className="flex items-center gap-2 mb-1">
                                             <p className="font-semibold text-indigo-600 dark:text-indigo-400">{order.customerName}</p>
                                             {order.isUrgent && <Badge color="red">{t('urgent-badge', 'Urgent')}</Badge>}
@@ -225,14 +222,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ analytics, recentI
                                         }
                                     </div>
                                     <div className="flex items-center gap-2 self-end sm:self-auto w-full sm:w-auto">
-                                        <div className='text-right flex-grow sm:flex-grow-0'>
+                                        <div className='text-right grow sm:grow-0'>
                                             <p className="text-xs">{t('advance-paid')}</p>
                                             <p className="font-semibold">₹{order.advancePaid.amount.toLocaleString('en-IN')}</p>
                                         </div>
-                                        <Button onClick={() => onGenerateInvoice(order)} variant="primary" className="!py-2 !px-3 text-sm">
+                                        <Button onClick={() => onGenerateInvoice(order)} variant="primary" className="py-2! px-3! text-sm">
                                             {t('generate-invoice')}
                                         </Button>
-                                        <button onClick={() => onDeleteOrder(order.id)} className="p-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors" title={t('delete')}>
+                                        <button onClick={(e) => { e.stopPropagation(); onDeleteOrder(order.id); }} className="p-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors" title={t('delete')}>
                                             <Icon name="trash" className="w-5 h-5"/>
                                         </button>
                                     </div>
@@ -277,9 +274,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ analytics, recentI
                     <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">{t('recent-invoices')}</h3>
                 </div>
                  <ul className="divide-y divide-slate-200 dark:divide-slate-700">
-                     {recentInvoices.length > 0 ? recentInvoices.slice(0, 3).map(inv => <InvoiceListItem key={inv.id} invoice={inv} onPreview={onPreviewInvoice} />)
+                     {recentInvoices.length > 0 ? recentInvoices.slice(0, 3).map((inv, index) => <InvoiceListItem key={inv.invoiceNumber || index} invoice={inv} onPreview={onPreviewInvoice} />)
                      : (
-                        <div className='p-4'>
+                        <div key="empty-state" className='p-4'>
                             <EmptyState icon="document-text" title={t('no-invoices-found')} message={t('no-invoices-found-message', "Your latest invoices will appear here once created.")} />
                         </div>
                      )}

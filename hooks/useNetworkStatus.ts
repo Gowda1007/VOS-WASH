@@ -1,10 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useToast } from './useToast';
 
-// This hook provides basic network status detection for web environments.
-// For a full Expo/React Native app, consider using @react-native-community/netinfo
-// or expo-network for more robust native detection.
-
 export const useNetworkStatus = () => {
     const { warning, info } = useToast();
     const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);

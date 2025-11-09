@@ -13,12 +13,12 @@ interface MainLayoutProps {
 }
 
 const navItems: { view: View; labelKey: string; icon: React.ComponentProps<typeof Icon>['name'] }[] = [
-    { view: 'dashboard', labelKey: 'dashboard', icon: 'chart-pie' },
-    { view: 'invoices', labelKey: 'invoices', icon: 'document-text' },
-    { view: 'customers', labelKey: 'customers', icon: 'users' },
-    { view: 'day-book', labelKey: 'day-book', icon: 'calendar-days' },
-    { view: 'reports', labelKey: 'reports', icon: 'chart-bar-square' },
-    { view: 'settings', labelKey: 'settings', icon: 'cog-6-tooth' },
+    { view: 'dashboard', labelKey: 'dashboard', icon: 'squares-2x2' }, // Grid layout better represents dashboard sections
+    { view: 'invoices', labelKey: 'invoices', icon: 'receipt-percent' }, // Receipt with percent for billing/payments
+    { view: 'customers', labelKey: 'customers', icon: 'users' }, // Cleaner users icon for customer list
+    { view: 'day-book', labelKey: 'day-book', icon: 'calendar-days' }, // Calendar better represents daily records
+    { view: 'reports', labelKey: 'reports', icon: 'presentation-chart-line' }, // Line chart better shows trends
+    { view: 'settings', labelKey: 'settings', icon: 'cog-6-tooth' }, // Keep settings as is
 ];
 
 export const MainLayout: React.FC<MainLayoutProps> = ({ children, currentView, pageTitle, onNavigate, onNewInvoice, onTakeOrder }) => {
@@ -69,7 +69,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children, currentView, p
                 {(currentView !== 'new-invoice' && currentView !== 'take-order') && (
                     <div className="space-y-2">
                         {/* Fix: Replace 'fullWidth' prop with 'w-full' class in className */}
-                        <Button onClick={onTakeOrder} variant="secondary" className="w-full !bg-teal-500 hover:!bg-teal-600 !text-white">
+                        <Button onClick={onTakeOrder} variant="secondary" className="w-full bg-teal-500! hover:bg-teal-600! text-white!">
                             <Icon name="clipboard-document-list" className="w-6 h-6" />
                             {t('take-order', 'Take Order')}
                         </Button>
@@ -87,7 +87,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children, currentView, p
     return (
         <div className="flex h-screen bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200">
             {/* --- Desktop Sidebar --- */}
-            <aside className="hidden lg:block w-64 flex-shrink-0 border-r border-slate-200 dark:border-slate-700">
+            <aside className="hidden lg:block w-64 shrink-0 border-r border-slate-200 dark:border-slate-700">
                 <SidebarContent />
             </aside>
             
@@ -103,7 +103,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children, currentView, p
             {/* --- Main Content Area --- */}
             <div className="flex-1 flex flex-col overflow-hidden">
                 {/* --- Top Header for Mobile/Tablet --- */}
-                <header className="lg:hidden flex items-center justify-between h-16 px-4 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex-shrink-0">
+                <header className="lg:hidden flex items-center justify-between h-16 px-4 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shrink-0">
                     <button onClick={() => setIsDrawerOpen(true)} className="p-2 -ml-2">
                         <Icon name="bars-3" className="w-6 h-6" />
                     </button>
@@ -177,3 +177,5 @@ const LanguageToggle: React.FC = () => {
         </div>
     );
 };
+
+// Theme follows system/device preference. Manual toggle intentionally omitted for testing phase.

@@ -14,7 +14,8 @@ import { DayBookPage } from './components/DayBookPage';
 import { InvoicePreviewOverlay } from './components/InvoicePreviewOverlay';
 
 import type { Invoice, View, Payment, Customer, PendingOrder, PaymentMethod, InvoiceStatus, ConfirmModalState } from './types';
-import { useInvoices } from './hooks/useInvoices';
+import { useInvoices, getUniqueInvoiceNumber } from './hooks/useInvoices';
+import { recordInvoicePayment } from './services/apiService';
 import { useCustomers } from './hooks/useCustomers';
 import { useServices } from './hooks/useServices';
 import { useAppSettings } from './hooks/useAppSettings';
@@ -24,10 +25,11 @@ import { useLanguage } from './hooks/useLanguage';
 import { useToast } from './hooks/useToast';
 import { useNetworkStatus } from './hooks/useNetworkStatus';
 
+
 const App: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [view, setView] = useState<View>('dashboard');
-    const { invoices, addInvoice, updateInvoice, deleteInvoice } = useInvoices();
+    const { invoices, addInvoice, updateInvoice, deleteInvoice, syncInvoiceLocal } = useInvoices();
     const { customers, addOrUpdateCustomer, deleteCustomer } = useCustomers();
     const { serviceSets, saveServiceSets } = useServices();
     const { pendingOrders, addPendingOrder, deletePendingOrder } = usePendingOrders();
@@ -102,16 +104,19 @@ const App: React.FC = () => {
         setPreviewInvoice(invoice);
     };
 
-    const handleSaveInvoice = async (invoiceData: Omit<Invoice, 'id' | 'invoiceNumber' | 'invoiceDate'>): Promise<Invoice> => {
+    const handleSaveInvoice = async (invoiceData: Omit<Invoice, 'invoiceNumber' | 'invoiceDate'>): Promise<Invoice> => {
         await addOrUpdateCustomer({
             phone: invoiceData.customerPhone,
             name: invoiceData.customerName,
             address: invoiceData.customerAddress
         });
         
-        const newInvoiceData: Omit<Invoice, 'id'> = {
+        // Generate unique invoice number
+        const uniqueInvoiceNumber = getUniqueInvoiceNumber(invoices);
+
+        const newInvoiceData: Invoice = {
             ...invoiceData,
-            invoiceNumber: generateInvoiceNumber(invoices),
+            invoiceNumber: uniqueInvoiceNumber,
             invoiceDate: new Date().toLocaleDateString("en-IN"),
         };
         
@@ -136,34 +141,53 @@ const App: React.FC = () => {
         setView('dashboard');
     }
     
-    const handleUpdatePayment = async (invoiceId: string, amount: number, method: PaymentMethod): Promise<Invoice | null> => {
-        const invoice = invoices.find(inv => inv.id === invoiceId);
-        if (!invoice) return null;
-
-        const newPayment: Payment = { amount, method, date: new Date().toLocaleDateString("en-IN") };
-        const updatedPayments = [...invoice.payments, newPayment];
+const handleUpdatePayment = async (invoiceNumber: string, amount: number, method: PaymentMethod, referenceNumber?: string): Promise<Invoice | null> => {
+    try {
+        // Use the dedicated API function for recording payment
+        const updatedInvoice = await recordInvoicePayment(
+            invoiceNumber,
+            amount,
+            method,
+            referenceNumber
+        );
         
-        const updatedInvoice = await updateInvoice(invoiceId, { payments: updatedPayments });
-        if (updatedInvoice) {
-            if (previewInvoice && previewInvoice.id === invoiceId) {
-                setPreviewInvoice(updatedInvoice);
-            }
+        if (!updatedInvoice) {
+            // If the invoice is not found (404 from API), recordInvoicePayment returns null.
+            console.error(`[App] Failed to retrieve updated invoice ${invoiceNumber} after payment (Document not found).`);
+            toast.error(`Failed to record payment for ${invoiceNumber}. Invoice not found.`);
+            return null;
         }
+        
+        // Sync local state immediately with the updated invoice returned from the dedicated API call
+        syncInvoiceLocal(updatedInvoice);
+        
+        toast.success(`Payment recorded for ${invoiceNumber}`);
         return updatedInvoice;
-    };
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`[App] Error recording payment for invoice ${invoiceNumber}: ${errorMessage}`);
+        
+        // The API service handles 404 errors by returning null. If we get here, it's a different error.
+        toast.error(`Failed to record payment for ${invoiceNumber}. ${errorMessage}`);
+        
+        // Return null on any error to prevent uncaught promise rejections in calling components (like onClick handlers).
+        return null;
+    }
+};
 
 
-    const handleDeleteRequest = (invoiceId: string) => {
-        const invoice = invoices.find(inv => inv.id === invoiceId);
+
+    const handleDeleteRequest = (invoiceNumber: string) => {
+        const invoice = invoices.find(inv => inv.invoiceNumber === invoiceNumber);
         if (invoice) {
             setConfirmModalState({
                 isOpen: true,
                 action: 'delete',
                 invoice,
                 title: t('confirm-deletion-title'),
-                message: t('confirm-deletion-message', 'Are you sure you want to permanently delete invoice #{invoiceNumber}? This action cannot be undone.').replace('{invoiceNumber}', invoice.invoiceNumber),
+                message: t('confirm-deletion-message', 'Are you sure you want to permanently delete invoice #{invoiceNumber}? This action cannot be undone.').replace('{invoiceNumber}', invoiceNumber),
                 onConfirm: () => {
-                    deleteInvoice(invoiceId);
+                    deleteInvoice(invoiceNumber);
                     setConfirmModalState({ isOpen: false });
                 },
             });
@@ -204,18 +228,34 @@ const App: React.FC = () => {
         });
     };
     
-    const handleCollectRequest = (invoiceId: string) => {
-        const invoice = invoices.find(inv => inv.id === invoiceId);
+    const handleCollectRequest = (invoiceNumber: string) => {
+        if (!invoiceNumber) {
+            console.error("[App] Attempted to collect payment with undefined or empty invoiceNumber.");
+            toast.error(t('error-missing-invoice-id', 'Cannot collect payment: Invoice Number is missing.'));
+            return;
+        }
+        const invoice = invoices.find(inv => inv.invoiceNumber === invoiceNumber);
         if (invoice) {
             setConfirmModalState({
                 isOpen: true,
                 action: 'collect',
                 invoice,
                 title: t('collect-balance-title'),
-                message: t('collect-balance-message').replace('{invoiceNumber}', invoice.invoiceNumber),
-                onConfirm: async (amount: number, method: PaymentMethod) => {
-                    await handleUpdatePayment(invoiceId, amount, method);
-                    setConfirmModalState({ isOpen: false });
+                message: t('collect-balance-message').replace('{invoiceNumber}', invoiceNumber),
+                onConfirm: async (amount: number, method: PaymentMethod, referenceNumber?: string) => {
+                    try {
+                        const updatedInvoice = await handleUpdatePayment(invoiceNumber, amount, method, referenceNumber);
+                        
+                        // If payment was successful and we have the updated invoice, update the preview state
+                        if (updatedInvoice) {
+                            setPreviewInvoice(updatedInvoice);
+                        }
+                    } catch (error) {
+                        // Error is already logged and toasted in handleUpdatePayment, just catch the rejection
+                        console.log(`[App] Payment confirmation failed for ${invoiceNumber}.`);
+                    } finally {
+                        setConfirmModalState({ isOpen: false });
+                    }
                 },
             });
         }
@@ -285,22 +325,14 @@ const App: React.FC = () => {
             {previewInvoice && (
                 <InvoicePreviewOverlay 
                     invoice={previewInvoice} 
-                    onClose={() => setPreviewInvoice(null)} 
-                    onCollect={handleCollectRequest} 
+                    onClose={() => setPreviewInvoice(null)}
+                    onCollect={() => handleCollectRequest(previewInvoice.invoiceNumber || '')}
                 />
             )}
         </>
     );
 };
 
-const generateInvoiceNumber = (existingInvoices: Invoice[]): string => {
-    const existingNumbers = new Set(existingInvoices.map(inv => inv.invoiceNumber));
-    let newNumber;
-    do {
-        newNumber = Math.floor(Math.random() * 900000 + 100000).toString();
-    } while (existingNumbers.has(newNumber));
-    return newNumber;
-};
 
 
 export default App;

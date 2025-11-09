@@ -1,60 +1,68 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
 type Theme = 'light' | 'dark' | 'system';
 type ResolvedTheme = 'light' | 'dark';
 
 interface ThemeContextType {
-  theme: Theme; // The user's setting: 'light', 'dark', or 'system'
+  theme: Theme;
   setTheme: (theme: Theme) => void;
-  resolvedTheme: ResolvedTheme; // The actually applied theme: 'light' or 'dark'
+  resolvedTheme: ResolvedTheme;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
+const getInitialTheme = (): Theme => {
+  if (typeof window === 'undefined') return 'light';
+  const stored = localStorage.getItem('theme') as Theme | null;
+  return stored ?? 'system';
+};
+
+const getResolvedTheme = (theme: Theme): ResolvedTheme => {
+  if (typeof window === 'undefined') return 'light';
+  if (theme === 'system') {
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  return theme;
+};
+
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setTheme] = useState<Theme>(() => {
-    return (localStorage.getItem('theme') as Theme) || 'system';
-  });
+  const [theme, setThemeState] = useState<Theme>(getInitialTheme);
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(getResolvedTheme(getInitialTheme()));
 
-  const [isSystemDark, setIsSystemDark] = useState(() => 
-    window.matchMedia('(prefers-color-scheme: dark)').matches
-  );
-
-  // Effect to listen for OS theme changes
+  // Apply or remove the `dark` class on the root element whenever resolvedTheme changes
   useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    
-    const handleChange = (e: MediaQueryListEvent) => {
-      setIsSystemDark(e.matches);
-    };
-    
-    mediaQuery.addEventListener('change', handleChange);
-    
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, []);
-
-  // Determine the actual theme to apply
-  const resolvedTheme = useMemo<ResolvedTheme>(() => {
-    return theme === 'system' ? (isSystemDark ? 'dark' : 'light') : theme;
-  }, [theme, isSystemDark]);
-
-  // Effect to apply the theme class to <html> and save the user's preference
-  useEffect(() => {
+    if (typeof window === 'undefined') return;
     const root = window.document.documentElement;
     if (resolvedTheme === 'dark') {
       root.classList.add('dark');
     } else {
       root.classList.remove('dark');
     }
+  }, [resolvedTheme]);
 
-    if (theme === 'system') {
-      localStorage.removeItem('theme');
-    } else {
-      localStorage.setItem('theme', theme);
+  // Persist theme choice (not the resolved one) and update resolvedTheme
+  const setTheme = (next: Theme) => {
+    setThemeState(next);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('theme', next);
     }
-  }, [theme, resolvedTheme]);
+    setResolvedTheme(getResolvedTheme(next));
+  };
 
-  const contextValue = useMemo(() => ({ theme, setTheme, resolvedTheme }), [theme, resolvedTheme]);
+  // Listen to OS theme changes if user selected 'system'
+  useEffect(() => {
+    if (typeof window === 'undefined' || theme !== 'system') return;
+    const mql = window.matchMedia('(prefers-color-scheme: dark)');
+    const listener = () => setResolvedTheme(mql.matches ? 'dark' : 'light');
+    listener();
+    mql.addEventListener?.('change', listener);
+    return () => mql.removeEventListener?.('change', listener);
+  }, [theme]);
+
+  const contextValue = useMemo(
+    () => ({ theme, setTheme, resolvedTheme }),
+    [theme, resolvedTheme]
+  );
 
   return <ThemeContext.Provider value={contextValue}>{children}</ThemeContext.Provider>;
 };

@@ -8,7 +8,7 @@ interface CustomerDetailPageProps {
     customer: Customer;
     invoices: Invoice[];
     onNavigateBack: () => void;
-    onCollectInvoice: (invoiceId: number) => void;
+    onCollectInvoice: (invoiceId: string) => void;
     onPreviewInvoice: (invoice: Invoice) => void;
     onDeleteCustomer: (customer: Customer) => void; // New prop
 }
@@ -71,7 +71,7 @@ export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({ customer
     );
 };
 
-const InvoicesTab: React.FC<{invoices: Invoice[], onPreview: (inv: Invoice) => void, onCollect: (id: number) => void}> = ({ invoices, onPreview, onCollect }) => {
+const InvoicesTab: React.FC<{invoices: Invoice[], onPreview: (inv: Invoice) => void, onCollect: (id: string) => void}> = ({ invoices, onPreview, onCollect }) => {
     const { t } = useLanguage();
     return (
     <div className="overflow-x-auto no-scrollbar">
@@ -86,14 +86,14 @@ const InvoicesTab: React.FC<{invoices: Invoice[], onPreview: (inv: Invoice) => v
                 </tr>
             </thead>
             <tbody>
-                {invoices.map(inv => <InvoiceRow key={inv.id} invoice={inv} onPreview={onPreview} onCollect={onCollect}/>)}
+                {invoices.map(inv => <InvoiceRow key={inv.invoiceNumber} invoice={inv} onPreview={onPreview} onCollect={onCollect}/>)}
             </tbody>
         </table>
         {invoices.length === 0 && <p className="p-8 text-center text-slate-500">{t('no-invoices-for-customer', 'No invoices found for this customer.')}</p>}
     </div>
 )};
 
-const InvoiceRow: React.FC<{invoice: Invoice, onPreview: (inv: Invoice) => void, onCollect: (id: number) => void}> = ({ invoice, onPreview, onCollect }) => {
+const InvoiceRow: React.FC<{invoice: Invoice, onPreview: (inv: Invoice) => void, onCollect: (id: string) => void}> = ({ invoice, onPreview, onCollect }) => {
     const total = calculateInvoiceTotal(invoice.services);
     const status = calculateStatus(invoice);
     return (
@@ -105,7 +105,7 @@ const InvoiceRow: React.FC<{invoice: Invoice, onPreview: (inv: Invoice) => void,
             <td className="p-4">
                 <div className="flex items-center gap-2">
                     <button onClick={() => onPreview(invoice)} className="text-slate-500 hover:text-indigo-600" title="View"><Icon name="eye" className="w-5 h-5"/></button>
-                    <button onClick={() => onCollect(invoice.id)} disabled={status === 'paid'} className="text-slate-500 hover:text-green-600 disabled:opacity-30" title="Collect Payment"><Icon name="banknotes" className="w-5 h-5"/></button>
+                    <button onClick={() => onCollect(invoice.invoiceNumber)} disabled={status === 'paid'} className="text-slate-500 hover:text-green-600 disabled:opacity-30" title="Collect Payment"><Icon name="banknotes" className="w-5 h-5"/></button>
                 </div>
             </td>
         </tr>

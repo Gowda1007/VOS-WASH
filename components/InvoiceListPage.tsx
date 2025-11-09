@@ -8,8 +8,8 @@ import { useLanguage } from '../hooks/useLanguage';
 
 interface InvoiceListPageProps {
   invoices: Invoice[];
-  onDelete: (id: number) => void;
-  onCollect: (id: number) => void;
+  onDelete: (invoiceNumber: string) => void;
+  onCollect: (invoiceNumber: string) => void;
   onPreview: (invoice: Invoice) => void;
   initialFilter?: 'all' | InvoiceStatus | 'outstanding';
 }
@@ -101,7 +101,7 @@ export const InvoiceListPage: React.FC<InvoiceListPageProps> = ({ invoices, onDe
 
       <Card>
         <div className="p-4 flex flex-col md:flex-row gap-4 border-b border-slate-200 dark:border-slate-700 items-start">
-            <div className="flex-grow w-full">
+            <div className="grow w-full">
                 <input
                   type="search"
                   placeholder={t('search-invoices-placeholder')}
@@ -118,7 +118,7 @@ export const InvoiceListPage: React.FC<InvoiceListPageProps> = ({ invoices, onDe
             </div>
         </div>
         <div className="p-4 flex flex-col sm:flex-row gap-4 border-b border-slate-200 dark:border-slate-700">
-             <div className="flex flex-col sm:flex-row gap-2 flex-grow">
+             <div className="flex flex-col sm:flex-row gap-2 grow">
                 <input type="date" value={dateRange.start} onChange={e => setDateRange(p => ({...p, start: e.target.value}))} className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" />
                 <input type="date" value={dateRange.end} onChange={e => setDateRange(p => ({...p, end: e.target.value}))} className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900" />
             </div>
@@ -138,7 +138,7 @@ export const InvoiceListPage: React.FC<InvoiceListPageProps> = ({ invoices, onDe
           <div className="p-4 space-y-4">
             {filteredInvoices.length > 0 ? (
               filteredInvoices.map(inv => (
-                <InvoiceCard key={inv.id} invoice={inv} onDelete={onDelete} onCollect={onCollect} onPreview={onPreview}/>
+                <InvoiceCard key={inv.invoiceNumber} invoice={inv} onDelete={onDelete} onCollect={onCollect} onPreview={onPreview}/>
               ))
             ) : (
                 <EmptyState icon="document-text" title={t('no-invoices-found')} message={t('adjust-filters-message')} />
@@ -160,7 +160,7 @@ export const InvoiceListPage: React.FC<InvoiceListPageProps> = ({ invoices, onDe
                 <tbody>
                     {filteredInvoices.length > 0 ? (
                         filteredInvoices.map(inv => (
-                            <InvoiceRow key={inv.id} invoice={inv} onDelete={onDelete} onCollect={onCollect} onPreview={onPreview}/>
+                            <InvoiceRow key={inv.invoiceNumber} invoice={inv} onDelete={onDelete} onCollect={onCollect} onPreview={onPreview}/>
                         ))
                     ) : (
                         <tr><td colSpan={5}>
@@ -181,7 +181,7 @@ const FilterButton: React.FC<{label: string; isActive: boolean; onClick: () => v
     </button>
 );
 
-const InvoiceRow: React.FC<{invoice: any, onDelete: (id: number) => void, onCollect: (id: number) => void, onPreview: (inv: Invoice) => void}> = ({ invoice, onDelete, onCollect, onPreview }) => (
+const InvoiceRow: React.FC<{invoice: any, onDelete: (id: string) => void, onCollect: (id: string) => void, onPreview: (inv: Invoice) => void}> = ({ invoice, onDelete, onCollect, onPreview }) => (
     <tr className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50">
         <td className="p-4">
             <div className="font-semibold text-slate-800 dark:text-slate-100">{invoice.customerName}</div>
@@ -198,7 +198,7 @@ const InvoiceRow: React.FC<{invoice: any, onDelete: (id: number) => void, onColl
     </tr>
 );
 
-const InvoiceCard: React.FC<{invoice: any, onDelete: (id: number) => void, onCollect: (id: number) => void, onPreview: (inv: Invoice) => void}> = ({ invoice, onDelete, onCollect, onPreview }) => (
+const InvoiceCard: React.FC<{invoice: any, onDelete: (id: string) => void, onCollect: (id: string) => void, onPreview: (inv: Invoice) => void}> = ({ invoice, onDelete, onCollect, onPreview }) => (
   <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg border border-slate-200 dark:border-slate-700">
     <div className="flex justify-between items-start">
       <div>
@@ -215,11 +215,11 @@ const InvoiceCard: React.FC<{invoice: any, onDelete: (id: number) => void, onCol
   </div>
 );
 
-const ActionButtons: React.FC<{invoice: any, onDelete: (id: number) => void, onCollect: (id: number) => void, onPreview: (inv: Invoice) => void}> = ({ invoice, onCollect, onDelete, onPreview }) => (
+const ActionButtons: React.FC<{invoice: any, onDelete: (id: string) => void, onCollect: (id: string) => void, onPreview: (inv: Invoice) => void}> = ({ invoice, onCollect, onDelete, onPreview }) => (
   <div className="flex items-center gap-2">
       <button onClick={() => onPreview(invoice)} className="text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400" title="View"><Icon name="eye" className="w-5 h-5"/></button>
-      <button onClick={() => onCollect(invoice.id)} disabled={invoice.status === 'paid'} className="text-slate-500 hover:text-green-600 dark:hover:text-green-400 disabled:opacity-30 disabled:hover:text-slate-500" title="Collect Payment"><Icon name="banknotes" className="w-5 h-5"/></button>
-      <button onClick={() => onDelete(invoice.id)} className="text-slate-500 hover:text-red-600 dark:hover:text-red-400" title="Delete"><Icon name="trash" className="w-5 h-5"/></button>
+      <button onClick={() => onCollect(invoice.invoiceNumber)} disabled={invoice.status === 'paid'} className="text-slate-500 hover:text-green-600 dark:hover:text-green-400 disabled:opacity-30 disabled:hover:text-slate-500" title="Collect Payment"><Icon name="banknotes" className="w-5 h-5"/></button>
+      <button onClick={() => onDelete(invoice.invoiceNumber)} className="text-slate-500 hover:text-red-600 dark:hover:text-red-400" title="Delete"><Icon name="trash" className="w-5 h-5"/></button>
   </div>
 );
 

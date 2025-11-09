@@ -7,7 +7,7 @@ import { useLanguage } from '../hooks/useLanguage';
 interface DayBookPageProps {
     invoices: Invoice[];
     onPreviewInvoice: (invoice: Invoice) => void;
-    onCollectInvoice: (invoiceId: number) => void;
+    onCollectInvoice: (invoiceId: string) => void;
 }
 
 const StatCard: React.FC<{ title: string; value: string | number; }> = ({ title, value }) => (
@@ -89,8 +89,8 @@ export const DayBookPage: React.FC<DayBookPageProps> = ({ invoices, onPreviewInv
                             <thead className="text-sm text-slate-500 dark:text-slate-400"><tr><th className="p-3 font-semibold">{t('customer-name')}</th><th className="p-3 font-semibold text-right">{t('amount', 'Amount')}</th><th></th></tr></thead>
                             <tbody>
                                 {dayBookData.invoices.map(inv => (
-                                    <tr key={inv.id} className="border-t dark:border-slate-700">
-                                        <td className="p-3">{inv.customerName}</td>
+                                    <tr key={inv.invoiceNumber} className="border-t dark:border-slate-700">
+                                        <td className="p-3">{inv.customerName} <span className="text-xs text-slate-400">(#{inv.invoiceNumber})</span></td>
                                         <td className="p-3 text-right font-semibold">₹{calculateInvoiceTotal(inv.services)}</td>
                                         <td className="p-3 text-right"><button onClick={() => onPreviewInvoice(inv)}><Icon name="eye" className="w-5 h-5"/></button></td>
                                     </tr>
@@ -109,7 +109,7 @@ export const DayBookPage: React.FC<DayBookPageProps> = ({ invoices, onPreviewInv
                            <thead className="text-sm text-slate-500 dark:text-slate-400"><tr><th className="p-3 font-semibold">{t('from', 'From')}</th><th className="p-3 font-semibold text-right">{t('amount', 'Amount')}</th><th className="p-3 font-semibold text-center">{t('payment-method')}</th></tr></thead>
                            <tbody>
                                 {dayBookData.payments.map((p, i) => (
-                                     <tr key={`${p.invoice.id}-${i}`} className="border-t dark:border-slate-700">
+                                     <tr key={`${p.invoice.invoiceNumber}-${i}`} className="border-t dark:border-slate-700">
                                         <td className="p-3">{p.invoice.customerName} <span className="text-xs text-slate-400">(#{p.invoice.invoiceNumber})</span></td>
                                         <td className="p-3 text-right font-semibold">₹{p.amount}</td>
                                         <td className="p-3 text-center"><Badge color={p.method === 'cash' ? 'green' : 'blue'}>{p.method}</Badge></td>

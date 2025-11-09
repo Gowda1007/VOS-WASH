@@ -24,7 +24,7 @@ export const OrderFormPage: React.FC<OrderFormPageProps> = ({ onSave, customers,
     const [selectedServices, setSelectedServices] = useState<Service[]>([]);
     const [isCustomServiceModalOpen, setIsCustomServiceModalOpen] = useState(false);
     const [newCustomService, setNewCustomService] = useState({ name: '', price: 0 });
-    const [advancePaid, setAdvancePaid] = useState({ amount: 0 });
+    const [advancePaid, setAdvancePaid] = useState({ amount: 0, date: '' });
     const [dueDate, setDueDate] = useState('');
     const [isUrgent, setIsUrgent] = useState(false);
 
@@ -163,7 +163,7 @@ export const OrderFormPage: React.FC<OrderFormPageProps> = ({ onSave, customers,
                 </div>
             </div>
             <div className="border-t pt-6 dark:border-slate-700 mt-6">
-                <Button onClick={handleNext} className="w-full !py-3">{t('next')}</Button>
+                <Button onClick={handleNext} className="w-full py-3!">{t('next')}</Button>
             </div>
         </Card>
     );
@@ -180,7 +180,7 @@ export const OrderFormPage: React.FC<OrderFormPageProps> = ({ onSave, customers,
                     {selectedServices.length === 0 && <p className="text-center text-slate-500 py-4">{t('no-services-added')}</p>}
                     {selectedServices.map((service, index) => (
                         <div key={index} className="flex items-center gap-2 p-2 rounded-md bg-slate-50 dark:bg-slate-800/50">
-                            <div className="flex-grow">
+                            <div className="grow">
                                 <p className="font-semibold">{t(service.name)}</p>
                                 <p className="text-sm text-slate-500 dark:text-slate-400">{t('price-label')} ₹{service.price}</p>
                             </div>
@@ -206,8 +206,13 @@ export const OrderFormPage: React.FC<OrderFormPageProps> = ({ onSave, customers,
                     <h4 className="font-semibold mb-2">{t('add-services')}</h4>
                     <div className="flex flex-wrap gap-2 mb-4">
                         {availableServices.map(service => (
-                            <button key={service.name} onClick={() => handleSelectPredefinedService(service)} className="px-3 py-1.5 text-sm bg-slate-200 dark:bg-slate-700 rounded-full hover:bg-slate-300 dark:hover:bg-slate-600">
-                                + {t(service.name)}
+                            <button
+                                key={service.name}
+                                onClick={() => handleSelectPredefinedService(service)}
+                                className="px-3 py-1.5 text-sm bg-slate-200 dark:bg-slate-700 rounded-full hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
+                                title={`${t(service.name)} - ₹${service.price}`}
+                            >
+                                {t(service.name)} (₹{service.price})
                             </button>
                         ))}
                     </div>
@@ -238,9 +243,19 @@ export const OrderFormPage: React.FC<OrderFormPageProps> = ({ onSave, customers,
                                 type="number"
                                 id="advanceAmount"
                                 value={advancePaid.amount || ''}
-                                onChange={(e) => setAdvancePaid({ amount: parseFloat(e.target.value) || 0 })}
+                                onChange={(e) => setAdvancePaid(p => ({ ...p, amount: parseFloat(e.target.value) || 0 }))}
                                 className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
                                 placeholder={t('amount-placeholder')}
+                            />
+                        </div>
+                        <div>
+                            <label htmlFor="advanceDate" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">{t('advance-paid-date', 'Advance Paid Date')}</label>
+                             <input
+                                type="date"
+                                id="advanceDate"
+                                value={advancePaid.date}
+                                onChange={(e) => setAdvancePaid(p => ({ ...p, date: e.target.value }))}
+                                className="block w-full px-4 py-3 text-base border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900"
                             />
                         </div>
                         <div>
