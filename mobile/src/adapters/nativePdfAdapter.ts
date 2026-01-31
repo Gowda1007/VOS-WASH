@@ -1,43 +1,330 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import { Paths, File } from 'expo-file-system';
+import { File, Directory, Paths } from 'expo-file-system';
+import * as FileSystem from 'expo-file-system';
+import { Asset } from 'expo-asset';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform, PermissionsAndroid } from 'react-native';
 import type { PdfAdapter, PdfGenerationOptions, PdfResult } from '../core/adapters/pdfAdapter';
-import { calculateInvoiceTotal, calculateTotalDue, calculateTotalPaid, formatCurrency } from '../core';
+import type { Language } from '../core/types';
+import { invoiceTranslations } from '../context/LanguageContext';
+import { generateInvoiceHTML } from '../core/utils/invoiceRenderer';
+import { calculateInvoiceTotalsFromInvoice, isValidGstNumber } from '../core/utils/invoiceUtils';
+import { getLogoBase64, getBannerBase64 } from '../assets/assetLoader';
 
 export class NativePdfAdapter implements PdfAdapter {
+  private permissionsGranted: boolean = false;
+
+  async requestStoragePermissions(): Promise<boolean> {
+    if (Platform.OS !== 'android') {
+      return true;
+    }
+
+    if (this.permissionsGranted) {
+      return true;
+    }
+
+    try {
+      console.log('📁 [NativePdfAdapter] Requesting storage and call permissions...');
+      
+      // For Android 13+ (API 33+), we need different permissions
+      const androidVersion = Platform.Version;
+      
+      if (androidVersion >= 33) {
+        // Android 13+: Request media permissions
+        const storageGranted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES,
+          {
+            title: 'Storage Permission',
+            message: 'VOS WASH needs storage access to save PDF invoices to your Downloads folder.',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          }
+        );
+        
+        // Request call permission
+        const callGranted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.CALL_PHONE,
+          {
+            title: 'Phone Call Permission',
+            message: 'VOS WASH needs permission to make phone calls to customers.',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          }
+        );
+        
+        this.permissionsGranted = storageGranted === PermissionsAndroid.RESULTS.GRANTED;
+      } else if (androidVersion >= 30) {
+        // Android 11-12: Use SAF, no explicit permission needed
+        // But still request call permission
+        const callGranted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.CALL_PHONE,
+          {
+            title: 'Phone Call Permission',
+            message: 'VOS WASH needs permission to make phone calls to customers.',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          }
+        );
+        this.permissionsGranted = true;
+      } else {
+        // Android 10 and below: Request WRITE_EXTERNAL_STORAGE
+        const storageGranted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+          {
+            title: 'Storage Permission',
+            message: 'VOS WASH needs storage access to save PDF invoices.',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          }
+        );
+        
+        // Request call permission
+        const callGranted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.CALL_PHONE,
+          {
+            title: 'Phone Call Permission',
+            message: 'VOS WASH needs permission to make phone calls to customers.',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          }
+        );
+        
+        this.permissionsGranted = storageGranted === PermissionsAndroid.RESULTS.GRANTED;
+      }
+
+      console.log('📁 [NativePdfAdapter] Storage permissions granted:', this.permissionsGranted);
+      return this.permissionsGranted;
+    } catch (err) {
+      console.error('❌ [NativePdfAdapter] Error requesting storage permissions:', err);
+      return false;
+    }
+  }
+
   async generateInvoicePdf(options: PdfGenerationOptions): Promise<PdfResult> {
     try {
-      const html = this.generateInvoiceHTML(options);
+      console.log('📄 [NativePdfAdapter] Starting PDF generation with image encoding...');
       
-      const { uri } = await Print.printToFileAsync({
-        html,
-        base64: false,
-      });
-
-      const fileName = `Invoice_${options.invoice.invoiceNumber}.pdf`;
+      // Request storage permissions if not already granted
+      await this.requestStoragePermissions();
       
-      // Move to permanent storage
-      const permanentUri = await this.savePdfToDevice(uri, fileName);
+      // Use the cached asset loader instead of loading directly
+      const [logoB64, bannerB64] = await Promise.all([
+        getLogoBase64().catch((e) => { console.warn('Logo load failed:', e); return null; }),
+        getBannerBase64().catch((e) => { console.warn('Banner load failed:', e); return null; }),
+      ]);
+      
+      if (logoB64) {
+        console.log('✅ [NativePdfAdapter] Logo encoded successfully:', logoB64.substring(0, 50) + '... (' + logoB64.length + ' chars)');
+      } else {
+        console.warn('⚠️ [NativePdfAdapter] Logo encoding failed - PDF will be generated without logo');
+      }
+      
+      if (bannerB64) {
+        console.log('✅ [NativePdfAdapter] Banner encoded successfully:', bannerB64.substring(0, 50) + '... (' + bannerB64.length + ' chars)');
+      } else {
+        console.warn('⚠️ [NativePdfAdapter] Banner encoding failed - PDF will be generated without banner');
+      }
+      
+      console.log('🖼️ [NativePdfAdapter] Images ready for PDF:', { hasLogo: !!logoB64, hasBanner: !!bannerB64 });
 
-      return {
-        filePath: permanentUri,
-        fileName,
-        success: true,
-      };
+      const hasValidGst = isValidGstNumber(options.gstNumber);
+      
+      const lang: Language = (options.invoice as any).language || 'en';
+      const translate = (key: string) => invoiceTranslations[key]?.[lang] || key;
+
+      const companyName = lang === 'kn' ? translate('app-name-invoice') : (options.companyName || translate('app-name-invoice'));
+      const companyTagline = lang === 'kn' ? translate('app-tagline') : (options.companyTagline || translate('app-tagline'));
+
+      const renderData = {
+        invoice: options.invoice,
+        language: lang,
+        translate,
+        company: {
+          name: companyName,
+          tagline: companyTagline || '',
+          address: options.companyAddress,
+          phone: options.companyPhone,
+          email: options.companyEmail,
+          gstNumber: options.gstNumber,
+        },
+        images: { logoB64: logoB64 || undefined, bannerB64: bannerB64 || undefined },
+      } as const;
+
+      const calculations = calculateInvoiceTotalsFromInvoice(options.invoice, hasValidGst);
+      const html = generateInvoiceHTML(renderData, calculations, 1.6);
+
+      console.log('📝 [NativePdfAdapter] HTML generated, creating PDF file...');
+      // Generate A4-sized PDF with proper filename including language
+      const langSuffix = lang === 'kn' ? '_KN' : '_EN';
+      const fileName = `Invoice_${options.invoice.invoiceNumber}${langSuffix}.pdf`;
+      
+      const { uri, base64 } = await Print.printToFileAsync({ html, base64: Platform.OS === 'android', width: 595, height: 842 } as any);
+      console.log('📄 [NativePdfAdapter] PDF file created at:', uri);
+      
+      console.log('💾 [NativePdfAdapter] Saving PDF to device storage...');
+      const savedUri = await this.savePdfToDevice(uri, fileName, base64);
+      console.log('✅ [NativePdfAdapter] PDF saved successfully to:', savedUri);
+      
+      return { filePath: savedUri, fileName, success: true };
     } catch (error) {
-      return {
-        fileName: '',
-        success: false,
-        error: error instanceof Error ? error.message : 'PDF generation failed',
+      const errorLang: Language = (options.invoice as any).language || 'en';
+      const langSuffix = errorLang === 'kn' ? '_KN' : '_EN';
+      return { fileName: `Invoice_${options.invoice.invoiceNumber}${langSuffix}.pdf`, success: false, error: error instanceof Error ? error.message : 'PDF generation failed' };
+    }
+  }
+
+  async generateInvoicePdfForSharing(options: PdfGenerationOptions): Promise<PdfResult> {
+    try {
+      console.log('📤 [NativePdfAdapter] Generating PDF for sharing (temporary cache)...');
+      
+      // Use the cached asset loader
+      const [logoB64, bannerB64] = await Promise.all([
+        getLogoBase64().catch(() => null),
+        getBannerBase64().catch(() => null),
+      ]);
+
+      const hasValidGst = isValidGstNumber(options.gstNumber);
+      const lang: Language = (options.invoice as any).language || 'en';
+      const translate = (key: string) => invoiceTranslations[key]?.[lang] || key;
+      const companyName = lang === 'kn' ? translate('app-name-invoice') : (options.companyName || translate('app-name-invoice'));
+      const companyTagline = lang === 'kn' ? translate('app-tagline') : (options.companyTagline || translate('app-tagline'));
+
+      const renderData = {
+        invoice: options.invoice,
+        language: lang,
+        translate,
+        company: {
+          name: companyName,
+          tagline: companyTagline || '',
+          address: options.companyAddress,
+          phone: options.companyPhone,
+          email: options.companyEmail,
+          gstNumber: options.gstNumber,
+        },
+        images: { logoB64: logoB64 || undefined, bannerB64: bannerB64 || undefined },
+      } as const;
+
+      const calculations = calculateInvoiceTotalsFromInvoice(options.invoice, hasValidGst);
+      const html = generateInvoiceHTML(renderData, calculations, 1.6);
+
+      // Generate filename with language suffix
+      const langSuffix = lang === 'kn' ? '_KN' : '_EN';
+      const fileName = `Invoice_${options.invoice.invoiceNumber}${langSuffix}.pdf`;
+
+      // Generate PDF in cache directory (temporary)
+      const cacheDir = new Directory(Paths.cache);
+      const tempFile = new File(cacheDir, fileName);
+
+      // Delete old file with same name if exists
+      try {
+        if (tempFile.exists) {
+          tempFile.delete();
+          console.log('🗑️ [NativePdfAdapter] Deleted old temporary PDF');
+        }
+      } catch {
+        // Ignore if file doesn't exist
+      }
+
+      // Generate new PDF
+      const { uri } = await Print.printToFileAsync({ html, width: 595, height: 842 } as any);
+      
+      // Copy to cache with proper filename (replacing old one)
+      const sourceFile = new File(uri);
+      sourceFile.copy(tempFile);
+      
+      console.log('✅ [NativePdfAdapter] PDF ready for sharing at:', tempFile.uri);
+      
+      return { filePath: tempFile.uri, fileName, success: true };
+    } catch (error) {
+      const errorLang: Language = (options.invoice as any).language || 'en';
+      const langSuffix = errorLang === 'kn' ? '_KN' : '_EN';
+      return { 
+        fileName: `Invoice_${options.invoice.invoiceNumber}${langSuffix}.pdf`, 
+        success: false, 
+        error: error instanceof Error ? error.message : 'PDF generation failed' 
       };
     }
   }
 
-  async savePdfToDevice(filePath: string, fileName: string): Promise<string> {
-     const destFile = new File(Paths.document, fileName);
-     const sourceFile = new File(filePath);
-     await sourceFile.copy(destFile);
-     return destFile.uri;
+  async savePdfToDevice(filePath: string, fileName: string, base64Data?: string): Promise<string> {
+    // Preferred: On Android save into a visible VOSWASH folder via SAF (Downloads or user-chosen location)
+    let savedPath: string | null = null;
+    if (Platform.OS === 'android') {
+      try {
+        const saved = await this.saveWithSaf(fileName, base64Data, filePath);
+        if (saved) {
+          savedPath = saved;
+          // Show download notification
+          this.showDownloadNotification(fileName, saved);
+          return saved;
+        }
+      } catch {
+        // Fall through to sandbox save
+      }
+    }
+
+    // Fallback: App sandbox Documents/VOSWASH
+    const voswashDir = new Directory(Paths.document, 'VOSWASH');
+    try {
+      voswashDir.create({ intermediates: true });
+    } catch (e) {
+      // Directory might already exist, ignore error
+    }
+    let destFile = new File(voswashDir, fileName);
+    // Try to delete if exists, if not, create new filename with timestamp
+    try {
+      if (destFile.exists) {
+        destFile.delete();
+      }
+    } catch {
+      // File might not exist or deletion failed, create new filename
+      const dot = fileName.lastIndexOf('.');
+      const base = dot > 0 ? fileName.substring(0, dot) : fileName;
+      const ext = dot > 0 ? fileName.substring(dot) : '';
+      const ts = new Date().toISOString().replace(/[:.]/g, '-');
+      destFile = new File(voswashDir, `${base}_${ts}${ext}`);
+    }
+    // Copy file using new API
+    const sourceFile = new File(filePath);
+    sourceFile.copy(destFile);
+    
+    // Show download notification for sandbox save too
+    this.showDownloadNotification(fileName, destFile.uri);
+    
+    return destFile.uri;
+  }
+
+  private async showDownloadNotification(fileName: string, path: string): Promise<void> {
+    try {
+      const { notificationAdapter } = await import('./index');
+      // Read persisted SAF directory (if configured) to help open folder view
+      let dirUri: string | null = null;
+      try { dirUri = await AsyncStorage.getItem('VOSWASH_SAF_DIR'); } catch {}
+      
+      // Determine user-friendly path description
+      let locationDesc = 'VOSWASH folder';
+      if (path.includes('Download')) {
+        locationDesc = 'Downloads/VOSWASH';
+      } else if (path.includes('content://')) {
+        locationDesc = 'VOSWASH folder in your chosen location';
+      }
+      
+      await notificationAdapter.showNotification?.({
+        title: '📄 PDF Saved Successfully',
+        body: `${fileName} saved to ${locationDesc}`,
+        data: { type: 'download', path, dirUri },
+      });
+      
+      console.log('✅ [NativePdfAdapter] PDF saved to:', locationDesc);
+    } catch (e) {
+      console.warn('Failed to show download notification:', e);
+    }
   }
 
   async openPdf(filePath: string): Promise<void> {
@@ -47,158 +334,169 @@ export class NativePdfAdapter implements PdfAdapter {
     }
   }
 
-  private generateInvoiceHTML(options: PdfGenerationOptions): string {
-    const { invoice, companyName, companyAddress, companyPhone, companyEmail, gstNumber } = options;
-    const total = calculateInvoiceTotal(invoice.services);
-    const totalDue = calculateTotalDue(invoice);
-    const totalPaid = calculateTotalPaid(invoice);
-    const balance = Math.max(0, totalDue - totalPaid);
+  private async loadAssetBase64(module: any): Promise<string> {
+    try {
+      console.log('📦 [NativePdfAdapter] Loading asset module:', module);
+      
+      // Try Asset API first
+      try {
+        const asset = Asset.fromModule(module);
+        console.log('📦 [NativePdfAdapter] Asset object:', { downloaded: asset.downloaded, uri: asset.uri, localUri: asset.localUri });
+        
+        // Ensure asset is downloaded
+        if (!asset.downloaded) {
+          console.log('⬇️ [NativePdfAdapter] Downloading asset...');
+          await asset.downloadAsync();
+        }
+        
+        // Try multiple URI sources
+        const possibleUris = [
+          asset.localUri,
+          asset.uri,
+          // In production, assets might be at different locations
+          typeof module === 'number' ? `asset:///${module}` : null,
+        ].filter(Boolean);
+        
+        console.log('📦 [NativePdfAdapter] Trying URIs:', possibleUris);
+        
+        for (const uri of possibleUris) {
+          try {
+            console.log('🔍 [NativePdfAdapter] Checking URI:', uri);
+            // Try to read the file using new File API
+            const file = new File(uri as string);
+            const base64 = await file.base64();
+            console.log('✅ [NativePdfAdapter] Asset loaded successfully from:', uri, 'size:', base64.length);
+            return base64;
+          } catch (e) {
+            console.warn('⚠️ [NativePdfAdapter] Failed to read from URI:', uri, e);
+            continue;
+          }
+        }
+        
+        throw new Error('All URI attempts failed');
+      } catch (assetError) {
+        console.warn('⚠️ [NativePdfAdapter] Asset API failed, trying bundled path:', assetError);
+        
+        // Fallback: Try to resolve from bundled assets
+        // In production builds, we need to use the asset's hash/bundled path
+        const resolvedAsset = Asset.fromModule(module);
+        await resolvedAsset.downloadAsync();
+        
+        // Force use the resolved localUri or uri
+        const finalUri = resolvedAsset.localUri || resolvedAsset.uri;
+        if (!finalUri) {
+          throw new Error('Cannot resolve asset URI in production build');
+        }
+        
+        console.log('🔄 [NativePdfAdapter] Fallback URI:', finalUri);
+        const fallbackFile = new File(finalUri);
+        const base64 = await fallbackFile.base64();
+        console.log('✅ [NativePdfAdapter] Asset loaded via fallback, size:', base64.length);
+        return base64;
+      }
+    } catch (error) {
+      console.error('❌ [NativePdfAdapter] Failed to load asset:', error);
+      throw error;
+    }
+  }
 
-    return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: 'Helvetica', 'Arial', sans-serif; padding: 20px; color: #333; }
-          .header { text-align: center; border-bottom: 2px solid #2563eb; padding-bottom: 20px; margin-bottom: 20px; }
-          .company-name { font-size: 24px; font-weight: bold; color: #2563eb; margin-bottom: 5px; }
-          .company-details { font-size: 12px; color: #666; }
-          .invoice-title { font-size: 20px; font-weight: bold; margin: 20px 0; text-align: center; }
-          .info-section { display: flex; justify-content: space-between; margin: 20px 0; }
-          .info-box { width: 48%; }
-          .info-label { font-size: 10px; color: #666; text-transform: uppercase; margin-bottom: 5px; }
-          .info-value { font-size: 14px; font-weight: 600; }
-          .table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-          .table th { background: #f3f4f6; padding: 10px; text-align: left; font-size: 12px; border-bottom: 2px solid #ddd; }
-          .table td { padding: 10px; font-size: 12px; border-bottom: 1px solid #eee; }
-          .totals { margin-top: 20px; text-align: right; }
-          .total-row { display: flex; justify-content: flex-end; padding: 5px 0; font-size: 12px; }
-          .total-label { width: 150px; text-align: right; padding-right: 20px; }
-          .total-value { width: 100px; text-align: right; font-weight: 600; }
-          .grand-total { font-size: 16px; font-weight: bold; color: #2563eb; border-top: 2px solid #2563eb; padding-top: 10px; margin-top: 10px; }
-          .footer { margin-top: 40px; text-align: center; font-size: 10px; color: #666; border-top: 1px solid #eee; padding-top: 20px; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <div class="company-name">${companyName}</div>
-          <div class="company-details">${companyAddress}</div>
-          <div class="company-details">Phone: ${companyPhone} | Email: ${companyEmail}</div>
-          ${gstNumber ? `<div class="company-details">GST: ${gstNumber}</div>` : ''}
-        </div>
+  private async saveWithSaf(fileName: string, base64Data?: string, fallbackPath?: string): Promise<string | null> {
+    const SAF = (FileSystem as any).StorageAccessFramework as unknown as {
+      requestDirectoryPermissionsAsync: (initialUri?: string) => Promise<{ granted: boolean; directoryUri: string }>;
+      readDirectoryAsync: (dirUri: string) => Promise<string[]>;
+      makeDirectoryAsync?: (dirUri: string, folderName: string) => Promise<string>;
+      createDirectoryAsync?: (dirUri: string, folderName: string) => Promise<string>;
+      createFileAsync: (dirUri: string, fileName: string, mimeType: string) => Promise<string>;
+      writeAsStringAsync: (fileUri: string, contents: string, opts: { encoding: any }) => Promise<void>;
+    };
 
-        <div class="invoice-title">TAX INVOICE</div>
+    const KEY = 'VOSWASH_SAF_DIR';
+    let baseDirUri = await AsyncStorage.getItem(KEY);
 
-        <div class="info-section">
-          <div class="info-box">
-            <div class="info-label">Bill To:</div>
-            <div class="info-value">${invoice.customerName}</div>
-            <div class="info-value">${invoice.customerPhone}</div>
-            ${invoice.customerAddress ? `<div class="info-value">${invoice.customerAddress}</div>` : ''}
-          </div>
-          <div class="info-box" style="text-align: right;">
-            <div class="info-label">Invoice Details:</div>
-            <div class="info-value">Invoice #: ${invoice.invoiceNumber}</div>
-              <div class="info-value">Date: ${new Date().toLocaleDateString()}</div>
-          </div>
-        </div>
+    if (!baseDirUri) {
+      console.log('📁 [NativePdfAdapter] No SAF directory configured, requesting access...');
+      
+      // Try to request Downloads directory directly (Android 10+)
+      const downloadsUri = 'content://com.android.externalstorage.documents/tree/primary%3ADownload/document/primary%3ADownload';
+      
+      try {
+        const perm = await SAF.requestDirectoryPermissionsAsync(downloadsUri);
+        if (!perm.granted) {
+          console.warn('⚠️ [NativePdfAdapter] Downloads access denied, asking user to choose folder');
+          const fallbackPerm = await SAF.requestDirectoryPermissionsAsync();
+          if (!fallbackPerm.granted) return null;
+          baseDirUri = fallbackPerm.directoryUri;
+        } else {
+          baseDirUri = perm.directoryUri;
+        }
+      } catch (e) {
+        console.warn('⚠️ [NativePdfAdapter] Direct Downloads access failed, asking user:', e);
+        const perm = await SAF.requestDirectoryPermissionsAsync();
+        if (!perm.granted) return null;
+        baseDirUri = perm.directoryUri;
+      }
+      
+      await AsyncStorage.setItem(KEY, baseDirUri);
+      console.log('✅ [NativePdfAdapter] SAF directory configured:', baseDirUri);
+    }
 
-        <table class="table">
-          <thead>
-            <tr>
-              <th>S.No</th>
-              <th>Service Description</th>
-              <th>Quantity</th>
-              <th>Price</th>
-              <th>Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${invoice.services.map((service, index) => `
-              <tr>
-                <td>${index + 1}</td>
-                <td>${service.name}</td>
-                <td>${service.quantity}</td>
-                <td>${formatCurrency(service.price / service.quantity)}</td>
-                <td>${formatCurrency(service.price)}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
+    // Ensure VOSWASH sub-folder exists
+    let targetDirUri = baseDirUri;
+    try {
+      if (SAF.makeDirectoryAsync) {
+        targetDirUri = await SAF.makeDirectoryAsync(baseDirUri, 'VOSWASH');
+      } else if (SAF.createDirectoryAsync) {
+        targetDirUri = await SAF.createDirectoryAsync(baseDirUri, 'VOSWASH');
+      } else {
+        const items = await SAF.readDirectoryAsync(baseDirUri);
+        const existing = items.find(u => /VOSWASH\/?$/i.test(u));
+        targetDirUri = existing || baseDirUri;
+      }
+    } catch {
+      // Directory may already exist; try to find it
+      try {
+        const items = await SAF.readDirectoryAsync(baseDirUri);
+        const existing = items.find(u => /VOSWASH\/?$/i.test(u));
+        if (existing) targetDirUri = existing;
+      } catch {}
+    }
 
-        <div class="totals">
-          <div class="total-row">
-            <div class="total-label">Subtotal:</div>
-            <div class="total-value">${formatCurrency(total / 1.18)}</div>
-          </div>
-          <div class="total-row">
-            <div class="total-label">GST (18%):</div>
-            <div class="total-value">${formatCurrency(total - (total / 1.18))}</div>
-          </div>
-            ${invoice.oldBalance && typeof invoice.oldBalance.amount === 'number' ? `
-            <div class="total-row">
-              <div class="total-label">Previous Balance:</div>
-                <div class="total-value">${formatCurrency(invoice.oldBalance.amount)}</div>
-            </div>
-          ` : ''}
-            ${invoice.advancePaid && typeof invoice.advancePaid.amount === 'number' ? `
-            <div class="total-row">
-              <div class="total-label">Advance:</div>
-                <div class="total-value">- ${formatCurrency(invoice.advancePaid.amount)}</div>
-            </div>
-          ` : ''}
-          <div class="total-row grand-total">
-            <div class="total-label">Total Due:</div>
-            <div class="total-value">${formatCurrency(totalDue)}</div>
-          </div>
-          ${totalPaid > 0 ? `
-            <div class="total-row">
-              <div class="total-label">Amount Paid:</div>
-              <div class="total-value">${formatCurrency(totalPaid)}</div>
-            </div>
-            <div class="total-row grand-total">
-              <div class="total-label">Balance:</div>
-              <div class="total-value">${formatCurrency(balance)}</div>
-            </div>
-          ` : ''}
-        </div>
+    // Prepare data to write
+    let pdfBase64 = base64Data;
+    if (!pdfBase64) {
+      if (!fallbackPath) return null;
+      const fallbackFile = new File(fallbackPath);
+      pdfBase64 = await fallbackFile.base64();
+    }
 
-        ${invoice.payments && invoice.payments.length > 0 ? `
-          <div style="margin-top: 30px;">
-            <h3 style="font-size: 14px; margin-bottom: 10px;">Payment History:</h3>
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Method</th>
-                  <th>Reference</th>
-                  <th>Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${invoice.payments.map(payment => `
-                  <tr>
-                    <td>${new Date(payment.date).toLocaleDateString()}</td>
-                    <td>${payment.method}</td>
-                    <td>${payment.referenceNumber || '-'}</td>
-                    <td>${formatCurrency(payment.amount)}</td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
-        ` : ''}
+    // Try write; if name exists, append timestamp
+    const tryCreate = async (name: string) => {
+      try {
+        const fileUri = await SAF.createFileAsync(targetDirUri, name, 'application/pdf');
 
-        <div class="footer">
-          <p>Thank you for your business!</p>
-          <p>This is a computer-generated invoice and does not require a signature.</p>
-        </div>
-      </body>
-      </html>
-    `;
+
+
+
+
+
+
+        await SAF.writeAsStringAsync(fileUri, pdfBase64!, { encoding: 'base64' as any });
+        return fileUri;
+      } catch (e) {
+        return null;
+      }
+    };
+
+    let finalUri = await tryCreate(fileName);
+    if (!finalUri) {
+      const dot = fileName.lastIndexOf('.');
+      const base = dot > 0 ? fileName.substring(0, dot) : fileName;
+      const ext = dot > 0 ? fileName.substring(dot) : '';
+      const ts = new Date().toISOString().replace(/[:.]/g, '-');
+      finalUri = await tryCreate(`${base}_${ts}${ext}`);
+    }
+
+    return finalUri;
   }
 
   async generateSimpleListPdf(options: { title: string; columns: string[]; rows: string[][]; fileName?: string }): Promise<PdfResult> {
@@ -219,8 +517,8 @@ export class NativePdfAdapter implements PdfAdapter {
         </tbody></table>
       </body></html>`;
 
-      const { uri } = await Print.printToFileAsync({ html, base64: false });
-      const savedUri = await this.savePdfToDevice(uri, fileName);
+      const { uri, base64 } = await Print.printToFileAsync({ html, base64: Platform.OS === 'android' } as any);
+      const savedUri = await this.savePdfToDevice(uri, fileName, base64);
       return { filePath: savedUri, fileName, success: true };
     } catch (error) {
       return { fileName: options.fileName || 'list.pdf', success: false, error: error instanceof Error ? error.message : 'List PDF generation failed' };

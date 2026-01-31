@@ -11,6 +11,8 @@ interface ButtonProps {
   disabled?: boolean;
   loading?: boolean;
   style?: any;
+  textStyle?: any;
+  icon?: React.ReactNode;
 }
 
 export const Button: React.FC<ButtonProps> = ({ 
@@ -19,7 +21,9 @@ export const Button: React.FC<ButtonProps> = ({
   variant = 'primary', 
   disabled = false,
   loading = false,
-  style 
+  style,
+  textStyle,
+  icon,
 }) => {
   const getVariantStyle = () => {
     switch (variant) {
@@ -40,6 +44,7 @@ export const Button: React.FC<ButtonProps> = ({
 
   return (
     <TouchableOpacity
+      accessibilityRole="button"
       onPress={onPress}
       disabled={disabled || loading}
       style={[
@@ -51,9 +56,15 @@ export const Button: React.FC<ButtonProps> = ({
       activeOpacity={0.7}
     >
       {loading ? (
-        <ActivityIndicator color={getTextColor()} />
+        <>
+          <ActivityIndicator color={getTextColor()} style={styles.spinnerMargin} />
+          <Text style={[styles.buttonText, { color: getTextColor() }, textStyle]}>{children}</Text>
+        </>
       ) : (
-        <Text style={[styles.buttonText, { color: getTextColor() }]}>{children}</Text>
+        <>
+          {icon ? <View style={styles.buttonIcon}>{icon}</View> : null}
+          <Text style={[styles.buttonText, { color: getTextColor() }, textStyle]}>{children}</Text>
+        </>
       )}
     </TouchableOpacity>
   );
@@ -154,29 +165,46 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+  footer?: React.ReactNode;
+  fullScreen?: boolean;
 }
 
-export const Modal: React.FC<ModalProps> = ({ visible, onClose, title, children }) => {
+export const Modal: React.FC<ModalProps> = ({ visible, onClose, title, children, footer, fullScreen = false }) => {
+  const isFullScreen = !title || fullScreen; // Full screen when no title provided or fullScreen=true
+  
   return (
     <RNModal
       visible={visible}
-      transparent
+      transparent={!isFullScreen}
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>{title}</Text>
-            <TouchableOpacity onPress={onClose} style={styles.modalClose}>
-              <MaterialIcons name="close" size={24} color={colors.text} />
-            </TouchableOpacity>
-          </View>
-          <ScrollView style={styles.modalBody}>
-            {children}
-          </ScrollView>
+      {isFullScreen ? (
+        // Full screen mode for invoice preview
+        <View style={styles.modalFullScreen}>
+          {children}
         </View>
-      </View>
+      ) : (
+        // Regular modal mode
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{title}</Text>
+              <TouchableOpacity onPress={onClose} style={styles.modalClose}>
+                <MaterialIcons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.modalBody}>
+              {children}
+            </ScrollView>
+            {footer && (
+              <View style={styles.modalFooter}>
+                {footer}
+              </View>
+            )}
+          </View>
+        </View>
+      )}
     </RNModal>
   );
 };
@@ -270,7 +298,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: borderRadius.full,
-    backgroundColor: colors.background,
+    backgroundColor: colors.borderLight,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.md,
@@ -294,6 +322,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.lg,
+  },
+  modalFullScreen: {
+    flex: 1,
+    backgroundColor: colors.background,
   },
   modalContent: {
     backgroundColor: colors.white,
@@ -320,6 +352,14 @@ const styles = StyleSheet.create({
   modalBody: {
     padding: spacing.md,
   },
+  modalFooter: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    padding: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    gap: spacing.sm,
+  },
 
   // Card styles
   card: {
@@ -329,4 +369,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  // Button icon spacing
+  buttonIcon: {
+    marginRight: spacing.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  spinnerMargin: {
+    marginRight: spacing.xs,
+  }
 });
+
+// Re-export InvoicePreviewScreen
+export { InvoicePreviewScreen } from './InvoicePreviewScreen';

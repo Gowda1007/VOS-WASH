@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { colors, spacing, typography, borderRadius, shadows } from '../styles/theme';
 
@@ -8,29 +8,38 @@ interface StatCardProps {
   value: string | number;
   icon: keyof typeof MaterialIcons.glyphMap;
   color: string;
+  onPress?: () => void; // Optional onPress handler
 }
 
-export const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color }) => {
+export const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, onPress = undefined }) => { // Added default for onPress
   const valueString = String(value);
-  
-  // Dynamic font sizing for large numbers
-  let fontSize = 30;
-  if (valueString.length > 10) {
-    fontSize = 20;
-  } else if (valueString.length > 7) {
-    fontSize = 24;
+  // Count only digits to decide sizing (ignore ₹ and commas)
+  const digitCount = (valueString.match(/\d/g) || []).length;
+  const isAbbreviated = /\b(L|Cr|ಲಕ್ಷ|ಕೋಟಿ)\b/.test(valueString);
+
+  // Base sizing; abbreviated values fit in fewer chars, so larger font permissible
+  let fontSize = isAbbreviated ? 30 : 28;
+  if (digitCount > 7) {
+    fontSize = isAbbreviated ? 24 : 20; // Smaller for 7+ non-abbreviated digits
+  } else if (digitCount > 5) {
+    fontSize = isAbbreviated ? 28 : 24;
   }
 
   return (
-    <View style={[styles.card, shadows.small]}>
+    <TouchableOpacity // Wrap with TouchableOpacity if onPress is provided
+      onPress={onPress}
+      activeOpacity={onPress ? 0.8 : 1} // Only show active feedback if clickable
+      style={[styles.card, shadows.small, { borderLeftWidth: 4, borderLeftColor: color }]}
+      disabled={!onPress}
+    >
       <View style={styles.header}>
-        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">{title}</Text>
         <View style={[styles.iconContainer, { backgroundColor: `${color}20` }]}>
           <MaterialIcons name={icon} size={20} color={color} />
         </View>
       </View>
-      <Text style={[styles.value, { fontSize, color }]} numberOfLines={1}>{value}</Text>
-    </View>
+      <Text style={[styles.value, { fontSize, color, lineHeight: fontSize + 2 }]} numberOfLines={1} adjustsFontSizeToFit allowFontScaling={false}>{value}</Text>
+    </TouchableOpacity>
   );
 };
 
@@ -42,7 +51,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     flex: 1,
-    minHeight: 100,
+    height: 120,
+    justifyContent: 'space-between',
   },
   header: {
     flexDirection: 'row',
@@ -65,5 +75,6 @@ const styles = StyleSheet.create({
   },
   value: {
     fontWeight: 'bold',
+    minWidth: 0,
   },
 });

@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import type { Invoice } from '../core/types';
-import { calculateInvoiceTotal, calculateStatus } from '../core/utils/invoiceUtils';
+import { calculateInvoiceTotal, calculateStatus, formatCurrency } from '../core/utils/invoiceUtils';
 import { Badge } from './Common';
 import { colors, spacing, typography, borderRadius, shadows } from '../styles/theme';
 import { useLanguage } from '../context/LanguageContext';
@@ -12,13 +12,15 @@ interface InvoiceCardProps {
   onPreview: (invoice: Invoice) => void;
   onCollect: (invoice: Invoice) => void;
   onDelete: (invoiceNumber: string) => void;
+  onEdit?: (invoice: Invoice) => void;
 }
 
 export const InvoiceCard: React.FC<InvoiceCardProps> = ({ 
   invoice, 
   onPreview,
   onCollect,
-  onDelete 
+  onDelete,
+  onEdit,
 }) => {
   const { t } = useLanguage();
   const totalAmount = calculateInvoiceTotal(invoice.services);
@@ -34,15 +36,15 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({
     <View style={[styles.card, shadows.small]}>
       <View style={styles.header}>
         <View style={styles.customerInfo}>
-          <Text style={styles.customerName}>{invoice.customerName}</Text>
-          <Text style={styles.invoiceNumber}>#{invoice.invoiceNumber}</Text>
-          <Text style={styles.invoiceDate}>{t('invoice-date-label', 'Date')}: {invoice.invoiceDate}</Text>
+          <Text style={styles.customerName}>{invoice.customerName || 'N/A'}</Text>
+          <Text style={styles.invoiceNumber}>#{invoice.invoiceNumber || 'N/A'}</Text>
+          <Text style={styles.invoiceDate}>{t('invoice-date-label', 'Date')}: {invoice.invoiceDate || 'N/A'}</Text>
         </View>
         {getStatusBadge()}
       </View>
       
       <View style={styles.footer}>
-  <Text style={styles.amount}>{t('total-amount-label', 'Total')}: ₹{totalAmount.toLocaleString('en-IN')}</Text>
+  <Text style={styles.amount}>{t('total-amount-label', 'Total')}: {formatCurrency(totalAmount)}</Text>
         <View style={styles.actions}>
           <TouchableOpacity 
             style={styles.actionButton}
@@ -61,6 +63,14 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({
               color={status === 'paid' ? colors.disabled : colors.success} 
             />
           </TouchableOpacity>
+          {onEdit && (
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={() => onEdit(invoice)}
+            >
+              <MaterialIcons name="edit" size={20} color={colors.info} />
+            </TouchableOpacity>
+          )}
           <TouchableOpacity 
             style={styles.actionButton}
             onPress={() => onDelete(invoice.invoiceNumber)}

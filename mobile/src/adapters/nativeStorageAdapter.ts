@@ -10,31 +10,35 @@ import type {
 export class NativeFileStorageAdapter implements FileStorageAdapter {
   async saveFile(options: StorageOptions): Promise<StorageResult> {
     try {
-        const baseDir = Paths.document;
-        const dir = options.directory
-          ? new Directory(baseDir, options.directory)
-          : baseDir;
+      const baseDir = Paths.document;
+      let dir: Directory = baseDir;
 
       // Create directory if it doesn't exist
       if (options.directory) {
-          if (!dir.exists) {
-            await dir.create({ intermediates: true });
+        dir = new Directory(baseDir, options.directory);
+        try {
+          dir.create({ intermediates: true });
+        } catch {
+          // Directory already exists, ignore
         }
       }
-
-        const file = new File(dir, options.fileName);
+      const file = new File(dir, options.fileName);
 
       // Handle different data types
       if (typeof options.data === 'string') {
-          await file.write(options.data);
+        file.write(options.data);
+      } else if (options.data instanceof Blob) {
+        // For Blob, convert to Uint8Array directly
+        const arrayBuffer = await options.data.arrayBuffer();
+        const uint8Array = new Uint8Array(arrayBuffer);
+        file.write(uint8Array);
       } else {
-        // For Blob, we need to convert to base64
-        const base64 = await this.blobToBase64(options.data);
-          await file.write(base64);
+        // Assume it's already Uint8Array or similar
+        file.write(options.data as any);
       }
 
       return {
-          filePath: file.uri,
+        filePath: file.uri,
         success: true,
       };
     } catch (error) {
@@ -47,8 +51,8 @@ export class NativeFileStorageAdapter implements FileStorageAdapter {
 
   async readFile(filePath: string): Promise<string | null> {
     try {
-        const file = new File(filePath);
-        const content = await file.text();
+      const file = new File(filePath);
+      const content = await file.text();
       return content;
     } catch {
       return null;
@@ -57,10 +61,8 @@ export class NativeFileStorageAdapter implements FileStorageAdapter {
 
   async deleteFile(filePath: string): Promise<boolean> {
     try {
-        const file = new File(filePath);
-        if (file.exists) {
-          await file.delete();
-        }
+      const file = new File(filePath);
+      file.delete();
       return true;
     } catch {
       return false;
@@ -69,27 +71,15 @@ export class NativeFileStorageAdapter implements FileStorageAdapter {
 
   async fileExists(filePath: string): Promise<boolean> {
     try {
-        const file = new File(filePath);
-        return file.exists;
+      const file = new File(filePath);
+      return file.exists;
     } catch {
       return false;
     }
   }
 
   async getStorageDirectory(): Promise<string> {
-     return Paths.document.uri;
-  }
-
-  private async blobToBase64(blob: Blob): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64 = (reader.result as string).split(',')[1];
-        resolve(base64);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
+    return Paths.document.uri;
   }
 }
 

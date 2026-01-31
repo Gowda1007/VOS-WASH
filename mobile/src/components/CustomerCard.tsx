@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import type { Customer } from '../core/types';
 import { colors, spacing, typography, borderRadius, shadows } from '../styles/theme';
+import { formatCurrency } from '../core/utils/invoiceUtils';
 import { useLanguage } from '../context/LanguageContext';
 
 interface CustomerWithStats extends Customer {
@@ -33,13 +34,13 @@ export const CustomerCard: React.FC<CustomerCardProps> = ({ customer, onView }) 
         </View>
         <View style={styles.invoiceCount}>
           <Text style={styles.invoiceLabel}>{t('invoices')}</Text>
-          <Text style={styles.invoiceValue}>{customer.invoiceCount}</Text>
+          <Text style={styles.invoiceValue}>{String(customer.invoiceCount)}</Text>
         </View>
       </View>
       
       <View style={styles.footer}>
   <Text style={styles.totalLabel}>{t('total-spent')}</Text>
-        <Text style={styles.totalAmount}>₹{customer.totalSpent.toLocaleString('en-IN')}</Text>
+  <Text style={styles.totalAmount}>{formatCurrency(customer.totalSpent)}</Text>
       </View>
     </TouchableOpacity>
   );

@@ -1,8 +1,8 @@
 // API Service abstraction - can be used by both web and React Native
 // Platform-specific HTTP client (fetch for web, axios/fetch for RN) should be injected
 
-import type { 
-    Invoice, 
+import type {
+    Invoice,
     Customer,
     ServiceSets,
     AppSettings,
@@ -32,11 +32,19 @@ export class ApiService {
             ...options.headers,
         };
 
+        console.log(`🌐 [ApiService] ${options.method || 'GET'} ${url}`, {
+            hasApiKey: !!this.config.apiKey,
+            apiKeyPrefix: this.config.apiKey?.substring(0, 8),
+        });
+
         try {
             const response = await fetch(url, { ...options, headers });
 
+            console.log(`📡 [ApiService] Response status: ${response.status} for ${endpoint}`);
+
             if (!response.ok) {
                 const errorText = await response.text();
+                console.error(`❌ [ApiService] Error response:`, errorText);
                 throw new Error(`API Error: ${response.status} - ${errorText}`);
             }
 
@@ -51,9 +59,44 @@ export class ApiService {
 
             return JSON.parse(text) as T;
         } catch (error) {
-            console.error(`[ApiService] Failed to fetch ${url}:`, error);
+            console.error(`❌ [ApiService] Failed to fetch ${url}:`, error);
             throw error;
         }
+    }
+
+    async get<T>(endpoint: string, params?: Record<string, any>): Promise<{ data: T }> {
+        const query = new URLSearchParams();
+        for (const key in params) {
+            if (params[key] !== undefined) {
+                query.append(key, String(params[key]));
+            }
+        }
+        const qs = query.toString();
+        const url = `${endpoint}${qs ? `?${qs}` : ''}`;
+        const data = await this.request<T>(url);
+        return { data };
+    }
+
+    async post<T>(endpoint: string, payload: any): Promise<{ data: T }> {
+        const data = await this.request<T>(endpoint, {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        });
+        return { data };
+    }
+
+    async put<T>(endpoint: string, payload: any): Promise<{ data: T }> {
+        const data = await this.request<T>(endpoint, {
+            method: 'PUT',
+            body: JSON.stringify(payload),
+        });
+        return { data };
+    }
+
+    async delete<T>(endpoint: string): Promise<void> {
+        await this.request<T>(endpoint, {
+            method: 'DELETE',
+        });
     }
 
     // --- Invoices ---
@@ -177,5 +220,21 @@ export class ApiService {
 
     async getSyncChanges(since: string): Promise<SyncChangesResponse> {
         return this.request<SyncChangesResponse>(`/sync/changes?since=${encodeURIComponent(since)}`);
+    }
+
+    // --- Bot Triggers ---
+
+    async sendBotInvoice(phone: string, amount: number, serviceName: string): Promise<{ success: boolean; message: string }> {
+        return this.request<{ success: boolean; message: string }>('/bot/send-invoice', {
+            method: 'POST',
+            body: JSON.stringify({ phone, amount, serviceName }),
+        });
+    }
+
+    async requestBotPayment(phone: string, amount: number): Promise<{ success: boolean; message: string }> {
+        return this.request<{ success: boolean; message: string }>('/bot/request-payment', {
+            method: 'POST',
+            body: JSON.stringify({ phone, amount }),
+        });
     }
 }

@@ -1,14 +1,13 @@
 {
   "expo": {
-    "name": "VOS Wash",
+    "name": "VOS WASH",
     "slug": "vos-wash",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -20,17 +19,24 @@
       "package": "com.voswash.app",
       "versionCode": 1,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
       },
       "permissions": [
-        "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
-        "NOTIFICATIONS"
+        "NOTIFICATIONS",
+        "READ_MEDIA_IMAGES",
+        "READ_MEDIA_VIDEO",
+        "MANAGE_EXTERNAL_STORAGE",
+        "CALL_PHONE",
+        "RECORD_AUDIO"
       ],
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
+    "assetBundlePatterns": [
+      "assets/**/*"
+    ],
     "web": {
       "favicon": "./assets/favicon.png"
     },
@@ -42,11 +48,20 @@
           "color": "#ffffff",
           "sounds": []
         }
+      ],
+      "expo-font",
+      "expo-asset",
+      [
+        "@react-native-voice/voice",
+        {
+          "microphonePermission": "Allow VOS WASH to access your microphone to create invoices via voice.",
+          "speechRecognitionPermission": "Allow VOS WASH to recognize your speech for invoice commands."
+        }
       ]
     ],
     "extra": {
       "eas": {
-        "projectId": "your-project-id-here"
+        "projectId": "bf9987c0-4d54-4eea-8b19-126358b1c861"
       }
     }
   }

@@ -47,6 +47,13 @@ export interface NotificationAdapter {
     scheduleNotification(options: ScheduledNotificationOptions): Promise<NotificationResult>;
 
     /**
+     * Schedules daily motivational notifications (morning and evening).
+     * @param apiService API service for fetching metrics
+     * @param rawMaterialService Raw material service for fetching stock data
+     */
+    scheduleDailyMotivationalNotifications(apiService: any, rawMaterialService: any): Promise<void>;
+
+    /**
      * Cancel scheduled notification
      * @param notificationId Notification ID to cancel
      */

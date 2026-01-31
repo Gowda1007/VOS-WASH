@@ -2,10 +2,10 @@
 // Indigo = #4f46e5 (primary), Slate backgrounds, Green/Red/Amber status colors
 
 export const colors = {
-  // Primary colors - Indigo from web app
-  primary: '#4f46e5',        // bg-indigo-600
-  primaryDark: '#4338ca',    // bg-indigo-700
-  primaryLight: '#6366f1',   // bg-indigo-500
+  // Primary colors - Blue-500 as requested
+  primary: '#3b82f6',        // bg-blue-500
+  primaryDark: '#2563eb',    // bg-blue-600
+  primaryLight: '#60a5fa',   // bg-blue-400
   
   // Status colors matching web badges
   success: '#10b981',        // bg-green-500
